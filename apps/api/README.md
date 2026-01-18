@@ -13,7 +13,7 @@ ruff format .
 ```
 
 ## Local Development
-To start the development server, use the following command:
 ```bash
+cp apps/api/.env.example apps/api/.env
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```

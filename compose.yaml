@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hikelog}
+      POSTGRES_USER: ${POSTGRES_USER:-hikelog}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hikelog}
+    ports:
+      - "5432:5432"
+    volumes:
+      - hikelog_db:/var/lib/postgresql/data
+
+volumes:
+  hikelog_db:
