@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 BASE_DIR = Path(__file__).resolve().parents[2]  # .../apps/api
 load_dotenv(BASE_DIR / ".env", override=False)
 
+
 class Settings(BaseModel):
     google_oauth_client_id: str = Field(..., alias="GOOGLE_OAUTH_CLIENT_ID")
 
