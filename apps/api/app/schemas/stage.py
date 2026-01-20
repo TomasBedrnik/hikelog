@@ -69,7 +69,7 @@ class StageUpdate(BaseModel):
     metrics: dict[str, Any] | None = None
 
 
-class StageOut(StageBase):
+class StageRead(StageBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int

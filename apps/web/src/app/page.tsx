@@ -10,6 +10,10 @@ export default async function HomePage() {
 
       <p>Hello from the frontend 👋</p>
 
+      <p>
+        <a href="/admin">Administrace</a>
+      </p>
+
       <h2>Backend status</h2>
       <pre
         style={{
