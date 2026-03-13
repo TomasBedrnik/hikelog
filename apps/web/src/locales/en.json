@@ -1,0 +1,75 @@
+{
+  "common": {
+    "loading": "Loading…",
+    "unknownError": "Unknown error",
+    "english": "English",
+    "czech": "Czech"
+  },
+  "home": {
+    "title": "HikeLog",
+    "greeting": "Hello from the frontend",
+    "adminLink": "Administration",
+    "backendStatus": "Backend status"
+  },
+  "login": {
+    "title": "Admin login",
+    "subtitle": "Sign in with Google to access admin pages.",
+    "googleError": "Google login failed"
+  },
+  "nav": {
+    "brand": "HikeLog Admin",
+    "users": "Users",
+    "trips": "Trips",
+    "logout": "Logout",
+    "language": "Language"
+  },
+  "adminHome": {
+    "title": "Administration",
+    "subtitle": "Choose a section to manage application access or edit trip content.",
+    "usersTitle": "Users",
+    "usersDescription": "Review which Google accounts can access the administration area.",
+    "tripsTitle": "Trips",
+    "tripsDescription": "Create and edit trip records, planning fields, and BlockNote content."
+  },
+  "adminUsers": {
+    "title": "Admin Users",
+    "subtitle": "Authorized Google accounts that can access administration pages.",
+    "sub": "sub",
+    "created": "created"
+  },
+  "trips": {
+    "loading": "Loading trips…",
+    "title": "Trips",
+    "untitled": "Untitled trip",
+    "createNew": "Create a new trip record",
+    "noStartDate": "No start date",
+    "selectPrompt": "Select or create a trip to begin editing.",
+    "tripName": "Trip name",
+    "tripNamePlaceholder": "Iberian Traverse",
+    "created": "Created",
+    "notSavedYet": "Not saved yet",
+    "delete": "Delete",
+    "deleting": "Deleting…",
+    "createTrip": "Create trip",
+    "saveChanges": "Save changes",
+    "saving": "Saving…",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "timezone": "Timezone",
+    "timezonePlaceholder": "Europe/Lisbon",
+    "countries": "Countries",
+    "countriesPlaceholder": "PT, ES",
+    "story": "Story",
+    "storyDescription": "The trip body is stored as BlockNote JSON in the trip content field.",
+    "plannedDistance": "Planned distance (m)",
+    "plannedDistancePlaceholder": "120000",
+    "showPlannedPath": "Show planned path",
+    "plannedPathPolyline": "Planned path polyline",
+    "plannedPathPlaceholder": "Encoded polyline",
+    "metricsConfigJson": "Metrics config JSON",
+    "tripNameRequired": "Trip name is required.",
+    "metricsConfigInvalid": "Metrics config must be valid JSON.",
+    "plannedDistanceInvalid": "Planned distance must be a non-negative number.",
+    "deleteConfirm": "Delete trip \"{name}\"?"
+  }
+}

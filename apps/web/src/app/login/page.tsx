@@ -2,15 +2,21 @@
 
 import { GoogleLogin } from "@react-oauth/google";
 import { useRouter } from "next/navigation";
+import { LocaleSwitcher } from "@/components/locale-switcher";
+import { useI18n } from "@/components/i18n-provider";
 import { setIdToken } from "@/lib/auth";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { dict } = useI18n();
 
   return (
     <main className="mx-auto max-w-md p-6">
-      <h1 className="text-2xl font-semibold">Admin login</h1>
-      <p className="mt-2 text-sm text-gray-600">Sign in with Google to access admin pages.</p>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold">{dict.login.title}</h1>
+        <LocaleSwitcher />
+      </div>
+      <p className="mt-2 text-sm text-gray-600">{dict.login.subtitle}</p>
 
       <div className="mt-6">
         <GoogleLogin
@@ -21,7 +27,7 @@ export default function LoginPage() {
             router.push("/admin");
           }}
           onError={() => {
-            alert("Google login failed");
+            alert(dict.login.googleError);
           }}
         />
       </div>

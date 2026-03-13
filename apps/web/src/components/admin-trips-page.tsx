@@ -1,12 +1,14 @@
 "use client";
 
-import { PartialBlock } from "@blocknote/core";
-import { startTransition, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { clearIdToken, getIdToken } from "@/lib/auth";
-import { AdminNav } from "@/components/admin-nav";
-import { TripContentEditor } from "@/components/trip-content-editor";
-import { createTrip, deleteTrip, listTrips, TripRead, TripWrite, updateTrip } from "@/lib/trips";
+import {PartialBlock} from "@blocknote/core";
+import {startTransition, useEffect, useState} from "react";
+import {useRouter} from "next/navigation";
+import {clearIdToken, getIdToken} from "@/lib/auth";
+import {useI18n} from "@/components/i18n-provider";
+import {AdminNav} from "@/components/admin-nav";
+import {formatMessage, getDateLocale} from "@/lib/i18n";
+import {TripContentEditor} from "@/components/trip-content-editor";
+import {createTrip, deleteTrip, listTrips, TripRead, TripWrite, updateTrip} from "@/lib/trips";
 
 const EMPTY_BLOCKS: PartialBlock[] = [{ type: "paragraph" }];
 
@@ -101,6 +103,7 @@ function toPayload(draft: TripDraft): TripWrite {
 
 export function AdminTripsPage() {
   const router = useRouter();
+  const { dict, locale } = useI18n();
   const [trips, setTrips] = useState<TripRead[] | null>(null);
   const [selectedTripId, setSelectedTripId] = useState<number | "new" | null>(null);
   const [draft, setDraft] = useState<TripDraft | null>(null);
@@ -132,9 +135,9 @@ export function AdminTripsPage() {
           router.push("/login");
           return;
         }
-        setError(e instanceof Error ? e.message : "Unknown error");
+        setError(e instanceof Error ? e.message : dict.common.unknownError);
       });
-  }, [router]);
+  }, [dict.common.unknownError, router]);
 
   const selectTrip = (trip: TripRead) => {
     setError(null);
@@ -156,7 +159,7 @@ export function AdminTripsPage() {
     }
 
     if (!draft.name.trim()) {
-      setError("Trip name is required.");
+      setError(dict.trips.tripNameRequired);
       return;
     }
 
@@ -164,7 +167,7 @@ export function AdminTripsPage() {
     try {
       payload = toPayload(draft);
     } catch {
-      setError("Metrics config must be valid JSON.");
+      setError(dict.trips.metricsConfigInvalid);
       return;
     }
 
@@ -172,7 +175,7 @@ export function AdminTripsPage() {
       payload.planned_distance_m !== null &&
       (!Number.isFinite(payload.planned_distance_m) || payload.planned_distance_m < 0)
     ) {
-      setError("Planned distance must be a non-negative number.");
+      setError(dict.trips.plannedDistanceInvalid);
       return;
     }
 
@@ -188,11 +191,9 @@ export function AdminTripsPage() {
       startTransition(() => {
         setTrips((current) => {
           const items = current ?? [];
-          const next =
-            draft.id === null
+          return draft.id === null
               ? [saved, ...items]
               : items.map((trip) => (trip.id === saved.id ? saved : trip));
-          return next;
         });
         setSelectedTripId(saved.id);
         setDraft(toDraft(saved));
@@ -203,7 +204,7 @@ export function AdminTripsPage() {
         router.push("/login");
         return;
       }
-      setError(e instanceof Error ? e.message : "Unknown error");
+      setError(e instanceof Error ? e.message : dict.common.unknownError);
     } finally {
       setBusy(null);
     }
@@ -215,7 +216,7 @@ export function AdminTripsPage() {
       return;
     }
 
-    if (!window.confirm(`Delete trip "${draft.name}"?`)) {
+    if (!window.confirm(formatMessage(dict.trips.deleteConfirm, { name: draft.name }))) {
       return;
     }
 
@@ -244,7 +245,7 @@ export function AdminTripsPage() {
         router.push("/login");
         return;
       }
-      setError(e instanceof Error ? e.message : "Unknown error");
+      setError(e instanceof Error ? e.message : dict.common.unknownError);
     } finally {
       setBusy(null);
     }
@@ -256,13 +257,13 @@ export function AdminTripsPage() {
         <AdminNav />
 
         {error && <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
-        {!trips && !error && <p className="mt-4 text-sm text-stone-600">Loading trips…</p>}
+        {!trips && !error && <p className="mt-4 text-sm text-stone-600">{dict.trips.loading}</p>}
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
           <aside className="rounded-[28px] border border-stone-300/80 bg-white/85 p-3 shadow-sm backdrop-blur">
             <div className="flex items-center justify-between px-3 pb-3">
               <h1 className="text-sm font-semibold uppercase tracking-[0.2em] text-stone-500">
-                Trips
+                {dict.trips.title}
               </h1>
               <span className="rounded-full bg-stone-100 px-2 py-1 text-xs text-stone-600">
                 {trips?.length ?? 0}
@@ -279,8 +280,8 @@ export function AdminTripsPage() {
                 onClick={startNewTrip}
                 type="button"
               >
-                <div className="text-sm font-medium">Untitled trip</div>
-                <div className="mt-1 text-xs text-stone-500">Create a new trip record</div>
+                <div className="text-sm font-medium">{dict.trips.untitled}</div>
+                <div className="mt-1 text-xs text-stone-500">{dict.trips.createNew}</div>
               </button>
 
               {trips?.map((trip) => (
@@ -296,8 +297,8 @@ export function AdminTripsPage() {
                 >
                   <div className="truncate text-sm font-medium">{trip.name}</div>
                   <div className="mt-1 text-xs text-stone-500">
-                    {trip.start_date ?? "No start date"}
-                    {trip.end_date ? ` to ${trip.end_date}` : ""}
+                    {trip.start_date ?? dict.trips.noStartDate}
+                    {trip.end_date ? ` - ${trip.end_date}` : ""}
                   </div>
                 </button>
               ))}
@@ -306,13 +307,13 @@ export function AdminTripsPage() {
 
           <section className="rounded-[32px] border border-stone-300/80 bg-white p-6 shadow-sm">
             {!draft ? (
-              <p className="text-sm text-stone-500">Select or create a trip to begin editing.</p>
+              <p className="text-sm text-stone-500">{dict.trips.selectPrompt}</p>
             ) : (
               <div className="space-y-8">
                 <div className="flex flex-col gap-4 border-b border-stone-200 pb-6 xl:flex-row xl:items-start xl:justify-between">
                   <div className="min-w-0 flex-1">
                     <label className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
-                      Trip name
+                      {dict.trips.tripName}
                     </label>
                     <input
                       className="mt-2 w-full border-0 bg-transparent p-0 text-3xl font-semibold tracking-tight outline-none placeholder:text-stone-300"
@@ -320,13 +321,13 @@ export function AdminTripsPage() {
                         const value = event.target.value;
                         setDraft((current) => (current ? { ...current, name: value } : current));
                       }}
-                      placeholder="Iberian Traverse"
+                      placeholder={dict.trips.tripNamePlaceholder}
                       value={draft.name}
                     />
                     <p className="mt-2 text-xs text-stone-500">
                       {draft.createdAt
-                        ? `Created ${new Date(draft.createdAt).toLocaleString()}`
-                        : "Not saved yet"}
+                        ? `${dict.trips.created} ${new Date(draft.createdAt).toLocaleString(getDateLocale(locale))}`
+                        : dict.trips.notSavedYet}
                     </p>
                   </div>
 
@@ -338,7 +339,7 @@ export function AdminTripsPage() {
                         onClick={removeTrip}
                         type="button"
                       >
-                        {busy === "deleting" ? "Deleting…" : "Delete"}
+                        {busy === "deleting" ? dict.trips.deleting : dict.trips.delete}
                       </button>
                     )}
                     <button
@@ -347,14 +348,18 @@ export function AdminTripsPage() {
                       onClick={persistTrip}
                       type="button"
                     >
-                      {busy === "saving" ? "Saving…" : draft.id === null ? "Create trip" : "Save changes"}
+                      {busy === "saving"
+                        ? dict.trips.saving
+                        : draft.id === null
+                          ? dict.trips.createTrip
+                          : dict.trips.saveChanges}
                     </button>
                   </div>
                 </div>
 
                 <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
                   <label className="block">
-                    <span className="text-sm font-medium text-stone-700">Start date</span>
+                    <span className="text-sm font-medium text-stone-700">{dict.trips.startDate}</span>
                     <input
                       className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
                       onChange={(event) => {
@@ -367,7 +372,7 @@ export function AdminTripsPage() {
                   </label>
 
                   <label className="block">
-                    <span className="text-sm font-medium text-stone-700">End date</span>
+                    <span className="text-sm font-medium text-stone-700">{dict.trips.endDate}</span>
                     <input
                       className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
                       onChange={(event) => {
@@ -380,20 +385,20 @@ export function AdminTripsPage() {
                   </label>
 
                   <label className="block">
-                    <span className="text-sm font-medium text-stone-700">Timezone</span>
+                    <span className="text-sm font-medium text-stone-700">{dict.trips.timezone}</span>
                     <input
                       className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
                       onChange={(event) => {
                         const value = event.target.value;
                         setDraft((current) => (current ? { ...current, timezone: value } : current));
                       }}
-                      placeholder="Europe/Lisbon"
+                      placeholder={dict.trips.timezonePlaceholder}
                       value={draft.timezone}
                     />
                   </label>
 
                   <label className="block">
-                    <span className="text-sm font-medium text-stone-700">Countries</span>
+                    <span className="text-sm font-medium text-stone-700">{dict.trips.countries}</span>
                     <input
                       className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
                       onChange={(event) => {
@@ -402,7 +407,7 @@ export function AdminTripsPage() {
                           current ? { ...current, countryCodes: value } : current,
                         );
                       }}
-                      placeholder="PT, ES"
+                      placeholder={dict.trips.countriesPlaceholder}
                       value={draft.countryCodes}
                     />
                   </label>
@@ -411,10 +416,8 @@ export function AdminTripsPage() {
                 <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
                   <div className="space-y-3">
                     <div>
-                      <h2 className="text-lg font-semibold">Story</h2>
-                      <p className="text-sm text-stone-500">
-                        The trip body is stored as BlockNote JSON in the trip content field.
-                      </p>
+                      <h2 className="text-lg font-semibold">{dict.trips.story}</h2>
+                      <p className="text-sm text-stone-500">{dict.trips.storyDescription}</p>
                     </div>
                     <TripContentEditor
                       editorKey={draft.id === null ? "new" : String(draft.id)}
@@ -427,7 +430,7 @@ export function AdminTripsPage() {
 
                   <div className="space-y-5">
                     <label className="block">
-                      <span className="text-sm font-medium text-stone-700">Planned distance (m)</span>
+                      <span className="text-sm font-medium text-stone-700">{dict.trips.plannedDistance}</span>
                       <input
                         className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
                         inputMode="numeric"
@@ -437,7 +440,7 @@ export function AdminTripsPage() {
                             current ? { ...current, plannedDistanceM: value } : current,
                           );
                         }}
-                        placeholder="120000"
+                        placeholder={dict.trips.plannedDistancePlaceholder}
                         value={draft.plannedDistanceM}
                       />
                     </label>
@@ -454,11 +457,11 @@ export function AdminTripsPage() {
                         }}
                         type="checkbox"
                       />
-                      <span className="text-sm font-medium text-stone-700">Show planned path</span>
+                      <span className="text-sm font-medium text-stone-700">{dict.trips.showPlannedPath}</span>
                     </label>
 
                     <label className="block">
-                      <span className="text-sm font-medium text-stone-700">Planned path polyline</span>
+                      <span className="text-sm font-medium text-stone-700">{dict.trips.plannedPathPolyline}</span>
                       <textarea
                         className="mt-2 min-h-32 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
                         onChange={(event) => {
@@ -467,13 +470,13 @@ export function AdminTripsPage() {
                             current ? { ...current, plannedPathPolyline: value } : current,
                           );
                         }}
-                        placeholder="Encoded polyline"
+                        placeholder={dict.trips.plannedPathPlaceholder}
                         value={draft.plannedPathPolyline}
                       />
                     </label>
 
                     <label className="block">
-                      <span className="text-sm font-medium text-stone-700">Metrics config JSON</span>
+                      <span className="text-sm font-medium text-stone-700">{dict.trips.metricsConfigJson}</span>
                       <textarea
                         className="mt-2 min-h-48 w-full rounded-2xl border border-stone-300 px-4 py-3 font-mono text-sm outline-none transition focus:border-emerald-600"
                         onChange={(event) => {
