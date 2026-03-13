@@ -1,84 +1,45 @@
-"use client";
+import Link from "next/link";
+import { AdminNav } from "@/components/admin-nav";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { clearIdToken, getIdToken } from "@/lib/auth";
-
-type AdminUserRead = {
-  id: number;
-  email: string;
-  google_sub: string | null;
-  created_at: string;
-  last_login_at: string | null;
-};
+const sections = [
+  {
+    href: "/admin/users",
+    title: "Users",
+    description: "Review which Google accounts can access the administration area.",
+  },
+  {
+    href: "/admin/trips",
+    title: "Trips",
+    description: "Create and edit trip records, planning fields, and BlockNote content.",
+  },
+];
 
 export default function AdminPage() {
-  const router = useRouter();
-  const [admins, setAdmins] = useState<AdminUserRead[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const token = getIdToken();
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.API_BASE_URL;
-
-    fetch(`${baseUrl}/api/v1/admin-users`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      cache: "no-store",
-    })
-      .then(async (res) => {
-        if (res.status === 401 || res.status === 403) {
-          clearIdToken();
-          router.push("/login");
-          return;
-        }
-        if (!res.ok) {
-          throw new Error(`Request failed: ${res.status}`);
-        }
-        const data = (await res.json()) as AdminUserRead[];
-        setAdmins(data);
-      })
-      .catch((e: unknown) => {
-        setError(e instanceof Error ? e.message : "Unknown error");
-      });
-  }, [router]);
-
   return (
-    <main className="mx-auto max-w-2xl p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Admins</h1>
-        <button
-          className="rounded-md border px-3 py-2 text-sm"
-          onClick={() => {
-            clearIdToken();
-            router.push("/login");
-          }}
-        >
-          Logout
-        </button>
+    <main className="min-h-screen bg-[linear-gradient(180deg,#f5f1e8_0%,#f8fafc_30%,#ffffff_100%)] p-6 text-stone-900">
+      <div className="mx-auto max-w-5xl">
+        <AdminNav />
+
+        <div className="mt-8 rounded-[32px] border border-stone-300/80 bg-white p-6 shadow-sm">
+          <h1 className="text-4xl font-semibold tracking-tight">Administration</h1>
+          <p className="mt-3 max-w-2xl text-sm text-stone-600">
+            Choose a section to manage application access or edit trip content.
+          </p>
+
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            {sections.map((section) => (
+              <Link
+                key={section.href}
+                className="rounded-[28px] border border-stone-300 bg-stone-50 p-6 transition hover:border-emerald-600 hover:bg-emerald-50"
+                href={section.href}
+              >
+                <div className="text-xl font-semibold">{section.title}</div>
+                <p className="mt-2 text-sm text-stone-600">{section.description}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
       </div>
-
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
-      {!admins && !error && <p className="mt-4 text-sm text-gray-600">Loading…</p>}
-
-      {admins && (
-        <ul className="mt-6 divide-y rounded-md border">
-          {admins.map((a) => (
-            <li key={a.id} className="p-4">
-              <div className="font-medium">{a.email}</div>
-              <div className="mt-1 text-xs text-gray-600">
-                sub: {a.google_sub ?? "—"} · created: {new Date(a.created_at).toLocaleString()}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
     </main>
   );
 }
