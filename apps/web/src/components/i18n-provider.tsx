@@ -17,19 +17,22 @@ type I18nContextValue = {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
-export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocale] = useState<Locale>(() => {
-    if (typeof window === "undefined") {
-      return "en";
-    }
-
-    const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
-    return normalizeLocale(stored ?? window.navigator.language);
-  });
+export function I18nProvider({
+  children,
+  initialLocale,
+}: {
+  children: React.ReactNode;
+  initialLocale: Locale;
+}) {
+  const [locale, setLocale] = useState<Locale>(initialLocale);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
-    const nextLocale = normalizeLocale(stored ?? window.navigator.language);
+    if (!stored) {
+      return;
+    }
+
+    const nextLocale = normalizeLocale(stored);
     setLocale(nextLocale);
   }, []);
 

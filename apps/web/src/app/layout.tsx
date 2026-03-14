@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { headers } from "next/headers";
+import { normalizeLocale } from "@/lib/i18n";
 import Providers from "./providers";
 import "./globals.css";
 
@@ -18,15 +20,19 @@ export const metadata: Metadata = {
   description: "HikeLog web application",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headerStore = await headers();
+  const acceptLanguage = headerStore.get("accept-language");
+  const initialLocale = normalizeLocale(acceptLanguage);
+
   return (
-    <html lang="en">
+    <html lang={initialLocale}>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <Providers>{children}</Providers>
+        <Providers initialLocale={initialLocale}>{children}</Providers>
       </body>
     </html>
   );

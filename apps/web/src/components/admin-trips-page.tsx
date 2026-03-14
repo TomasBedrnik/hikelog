@@ -1,14 +1,15 @@
 "use client";
 
-import {PartialBlock} from "@blocknote/core";
-import {startTransition, useEffect, useState} from "react";
-import {useRouter} from "next/navigation";
-import {clearIdToken, getIdToken} from "@/lib/auth";
-import {useI18n} from "@/components/i18n-provider";
-import {AdminNav} from "@/components/admin-nav";
-import {formatMessage, getDateLocale} from "@/lib/i18n";
-import {TripContentEditor} from "@/components/trip-content-editor";
-import {createTrip, deleteTrip, listTrips, TripRead, TripWrite, updateTrip} from "@/lib/trips";
+import { PartialBlock } from "@blocknote/core";
+import { startTransition, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { clearIdToken, getIdToken } from "@/lib/auth";
+import { AdminNav } from "@/components/admin-nav";
+import { useI18n } from "@/components/i18n-provider";
+import { TripContentEditor } from "@/components/trip-content-editor";
+import { formatMessage, getDateLocale } from "@/lib/i18n";
+import { getCountryOptions, getTimezoneOptions } from "@/lib/options";
+import { createTrip, deleteTrip, listTrips, TripRead, TripWrite, updateTrip } from "@/lib/trips";
 
 const EMPTY_BLOCKS: PartialBlock[] = [{ type: "paragraph" }];
 
@@ -19,7 +20,7 @@ type TripDraft = {
   startDate: string;
   endDate: string;
   timezone: string;
-  countryCodes: string;
+  countryCodes: string[];
   plannedDistanceM: string;
   plannedPathPolyline: string;
   showPlannedPath: boolean;
@@ -52,7 +53,7 @@ function toDraft(trip: TripRead): TripDraft {
     startDate: trip.start_date ?? "",
     endDate: trip.end_date ?? "",
     timezone: trip.timezone ?? "",
-    countryCodes: trip.country_codes.join(", "),
+    countryCodes: trip.country_codes,
     plannedDistanceM: trip.planned_distance_m?.toString() ?? "",
     plannedPathPolyline: trip.planned_path_polyline ?? "",
     showPlannedPath: trip.show_planned_path,
@@ -69,7 +70,7 @@ function createEmptyDraft(): TripDraft {
     startDate: "",
     endDate: "",
     timezone: "",
-    countryCodes: "",
+    countryCodes: [],
     plannedDistanceM: "",
     plannedPathPolyline: "",
     showPlannedPath: false,
@@ -90,10 +91,7 @@ function toPayload(draft: TripDraft): TripWrite {
     start_date: draft.startDate || null,
     end_date: draft.endDate || null,
     timezone: draft.timezone.trim() || null,
-    country_codes: draft.countryCodes
-      .split(",")
-      .map((value) => value.trim().toUpperCase())
-      .filter(Boolean),
+    country_codes: draft.countryCodes,
     planned_distance_m: draft.plannedDistanceM ? Number(draft.plannedDistanceM) : null,
     planned_path_polyline: draft.plannedPathPolyline.trim() || null,
     show_planned_path: draft.showPlannedPath,
@@ -104,11 +102,27 @@ function toPayload(draft: TripDraft): TripWrite {
 export function AdminTripsPage() {
   const router = useRouter();
   const { dict, locale } = useI18n();
+  const timezoneOptions = getTimezoneOptions();
+  const countryOptions = getCountryOptions(locale);
+  const timezoneSet = new Set(timezoneOptions);
   const [trips, setTrips] = useState<TripRead[] | null>(null);
   const [selectedTripId, setSelectedTripId] = useState<number | "new" | null>(null);
   const [draft, setDraft] = useState<TripDraft | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<"saving" | "deleting" | null>(null);
+  const [countriesExpanded, setCountriesExpanded] = useState(false);
+  const [countryQuery, setCountryQuery] = useState("");
+
+  const filteredCountryOptions = countryOptions.filter((country) =>
+    country.label.toLowerCase().includes(countryQuery.trim().toLowerCase()),
+  );
+
+  const selectedCountriesLabel = draft?.countryCodes.length
+    ? countryOptions
+        .filter((country) => draft.countryCodes.includes(country.code))
+        .map((country) => country.label)
+        .join(", ")
+    : dict.trips.countriesPlaceholder;
 
   useEffect(() => {
     const token = getIdToken();
@@ -143,12 +157,16 @@ export function AdminTripsPage() {
     setError(null);
     setSelectedTripId(trip.id);
     setDraft(toDraft(trip));
+    setCountriesExpanded(false);
+    setCountryQuery("");
   };
 
   const startNewTrip = () => {
     setError(null);
     setSelectedTripId("new");
     setDraft(createEmptyDraft());
+    setCountriesExpanded(false);
+    setCountryQuery("");
   };
 
   const persistTrip = async () => {
@@ -168,6 +186,11 @@ export function AdminTripsPage() {
       payload = toPayload(draft);
     } catch {
       setError(dict.trips.metricsConfigInvalid);
+      return;
+    }
+
+    if (payload.timezone && !timezoneSet.has(payload.timezone)) {
+      setError(dict.trips.timezoneInvalid);
       return;
     }
 
@@ -305,7 +328,7 @@ export function AdminTripsPage() {
             </div>
           </aside>
 
-          <section className="rounded-[32px] border border-stone-300/80 bg-white p-6 shadow-sm">
+          <section className="rounded-4xl border border-stone-300/80 bg-white p-6 shadow-sm">
             {!draft ? (
               <p className="text-sm text-stone-500">{dict.trips.selectPrompt}</p>
             ) : (
@@ -388,6 +411,7 @@ export function AdminTripsPage() {
                     <span className="text-sm font-medium text-stone-700">{dict.trips.timezone}</span>
                     <input
                       className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
+                      list="trip-timezones"
                       onChange={(event) => {
                         const value = event.target.value;
                         setDraft((current) => (current ? { ...current, timezone: value } : current));
@@ -395,22 +419,78 @@ export function AdminTripsPage() {
                       placeholder={dict.trips.timezonePlaceholder}
                       value={draft.timezone}
                     />
+                    <datalist id="trip-timezones">
+                      {timezoneOptions.map((timezone) => (
+                        <option key={timezone} value={timezone} />
+                      ))}
+                    </datalist>
                   </label>
 
-                  <label className="block">
+                  <div className="block">
                     <span className="text-sm font-medium text-stone-700">{dict.trips.countries}</span>
-                    <input
-                      className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setDraft((current) =>
-                          current ? { ...current, countryCodes: value } : current,
-                        );
+                    <button
+                      className="mt-2 min-h-12 w-full rounded-2xl border border-stone-300 px-4 py-3 text-left outline-none transition hover:border-stone-400 focus:border-emerald-600"
+                      onClick={() => {
+                        setCountriesExpanded((current) => !current);
                       }}
-                      placeholder={dict.trips.countriesPlaceholder}
-                      value={draft.countryCodes}
-                    />
-                  </label>
+                      type="button"
+                    >
+                      <span className={draft.countryCodes.length ? "text-stone-900" : "text-stone-400"}>
+                        {selectedCountriesLabel}
+                      </span>
+                    </button>
+                    <p className="mt-2 text-xs text-stone-500">{dict.trips.countriesHelp}</p>
+
+                    {countriesExpanded && (
+                      <div className="mt-3 rounded-2xl border border-stone-300 bg-stone-50 p-3">
+                        <input
+                          className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 outline-none transition focus:border-emerald-600"
+                          onChange={(event) => {
+                            setCountryQuery(event.target.value);
+                          }}
+                          placeholder={dict.trips.countriesSearchPlaceholder}
+                          value={countryQuery}
+                        />
+
+                        <div className="mt-3 max-h-44 space-y-2 overflow-auto">
+                          {filteredCountryOptions.length === 0 && (
+                            <p className="px-1 text-sm text-stone-500">{dict.trips.countriesEmpty}</p>
+                          )}
+
+                          {filteredCountryOptions.map((country) => {
+                            const checked = draft.countryCodes.includes(country.code);
+
+                            return (
+                              <label
+                                key={country.code}
+                                className="flex items-center gap-3 rounded-xl bg-white px-3 py-2 text-sm"
+                              >
+                                <input
+                                  checked={checked}
+                                  className="size-4 accent-emerald-700"
+                                  onChange={() => {
+                                    setDraft((current) => {
+                                      if (!current) {
+                                        return current;
+                                      }
+
+                                      const next = checked
+                                        ? current.countryCodes.filter((code) => code !== country.code)
+                                        : [...current.countryCodes, country.code];
+
+                                      return { ...current, countryCodes: next };
+                                    });
+                                  }}
+                                  type="checkbox"
+                                />
+                                <span>{country.label}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -458,36 +538,6 @@ export function AdminTripsPage() {
                         type="checkbox"
                       />
                       <span className="text-sm font-medium text-stone-700">{dict.trips.showPlannedPath}</span>
-                    </label>
-
-                    <label className="block">
-                      <span className="text-sm font-medium text-stone-700">{dict.trips.plannedPathPolyline}</span>
-                      <textarea
-                        className="mt-2 min-h-32 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
-                        onChange={(event) => {
-                          const value = event.target.value;
-                          setDraft((current) =>
-                            current ? { ...current, plannedPathPolyline: value } : current,
-                          );
-                        }}
-                        placeholder={dict.trips.plannedPathPlaceholder}
-                        value={draft.plannedPathPolyline}
-                      />
-                    </label>
-
-                    <label className="block">
-                      <span className="text-sm font-medium text-stone-700">{dict.trips.metricsConfigJson}</span>
-                      <textarea
-                        className="mt-2 min-h-48 w-full rounded-2xl border border-stone-300 px-4 py-3 font-mono text-sm outline-none transition focus:border-emerald-600"
-                        onChange={(event) => {
-                          const value = event.target.value;
-                          setDraft((current) =>
-                            current ? { ...current, metricsConfigText: value } : current,
-                          );
-                        }}
-                        spellCheck={false}
-                        value={draft.metricsConfigText}
-                      />
                     </label>
                   </div>
                 </div>
