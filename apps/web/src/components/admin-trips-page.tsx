@@ -5,9 +5,11 @@ import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearIdToken, getIdToken } from "@/lib/auth";
 import { AdminNav } from "@/components/admin-nav";
+import { ActivityPhotoManager } from "@/components/activity-photo-manager";
 import { useI18n } from "@/components/i18n-provider";
 import { TripContentEditor } from "@/components/trip-content-editor";
 import {
+  ActivityPhotoRead,
   ActivityRead,
   ActivityWrite,
   createActivity,
@@ -424,6 +426,14 @@ export function AdminTripsPage() {
   };
 
   const visibleActivities = draft?.id ? (activities ?? []).filter((activity) => activity.trip_id === draft.id) : [];
+  const selectedActivity =
+    activityDraft?.id !== null ? visibleActivities.find((activity) => activity.id === activityDraft?.id) ?? null : null;
+
+  const replaceActivityPhotos = (activityId: number, photos: ActivityPhotoRead[]) => {
+    setActivities((current) =>
+      (current ?? []).map((activity) => (activity.id === activityId ? { ...activity, photos } : activity)),
+    );
+  };
 
   const startNewActivity = () => {
     setError(null);
@@ -1112,6 +1122,16 @@ export function AdminTripsPage() {
                               </label>
                             </div>
                           </div>
+
+                          <ActivityPhotoManager
+                            activity={selectedActivity}
+                            onPhotosChange={(photos) => {
+                              if (!selectedActivity) {
+                                return;
+                              }
+                              replaceActivityPhotos(selectedActivity.id, photos);
+                            }}
+                          />
                         </div>
                       )}
                     </div>

@@ -30,6 +30,7 @@ async def list_public_trip_activities(
 ) -> list[ActivitySummaryRead]:
     stmt = (
         select(Activity)
+        .options(selectinload(Activity.photos))
         .where(Activity.trip_id == trip_id)
         .order_by(Activity.start_date.desc().nullslast(), Activity.created_at.desc(), Activity.id.desc())
     )
@@ -42,7 +43,11 @@ async def get_public_activity(
     activity_id: int,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> ActivityRead:
-    stmt = select(Activity).options(selectinload(Activity.trip)).where(Activity.id == activity_id)
+    stmt = (
+        select(Activity)
+        .options(selectinload(Activity.trip), selectinload(Activity.photos))
+        .where(Activity.id == activity_id)
+    )
     activity = (await session.scalars(stmt)).first()
     if activity is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Activity not found")

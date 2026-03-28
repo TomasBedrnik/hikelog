@@ -5,6 +5,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.activity_photo import ActivityPhotoRead
+
 
 class ActivityBase(BaseModel):
     trip_id: int
@@ -54,6 +56,7 @@ class ActivityRead(ActivityBase):
     id: int
     created_at: datetime
     trip_name: str | None = None
+    photos: list[ActivityPhotoRead] = Field(default_factory=list)
 
 
 class ActivitySummaryRead(BaseModel):
@@ -69,3 +72,4 @@ class ActivitySummaryRead(BaseModel):
     moving_time: int | None
     elapsed_time: int | None
     total_elevation_gain: float | None
+    photos: list[ActivityPhotoRead] = Field(default_factory=list)

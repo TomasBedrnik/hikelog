@@ -10,6 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.models.activity_photo import ActivityPhoto
     from app.models.trip import Trip
 
 
@@ -49,3 +50,8 @@ class Activity(Base):
     )
 
     trip: Mapped["Trip"] = relationship(back_populates="activities")
+    photos: Mapped[list["ActivityPhoto"]] = relationship(
+        back_populates="activity",
+        cascade="all, delete-orphan",
+        order_by="ActivityPhoto.position.asc(), ActivityPhoto.created_at.asc(), ActivityPhoto.id.asc()",
+    )

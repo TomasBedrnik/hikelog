@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ActivityRead } from "@/lib/activities";
+import { ActivityPhotoGallery } from "@/components/activity-photo-gallery";
 import { useI18n } from "@/components/i18n-provider";
 import { getDateLocale } from "@/lib/i18n";
 import { getTripContentBlocks, hasTripContent } from "@/lib/blocknote";
@@ -33,6 +34,12 @@ export function PublicActivityPage({ activity }: { activity: ActivityRead }) {
   const [error, setError] = useState<string | null>(null);
   const descriptionBlocks = getTripContentBlocks(activity.description);
   const hasDescription = hasTripContent(activity.description);
+  const photoItems = activity.photos.map((photo) => ({
+    id: photo.id,
+    imageUrl: photo.image_url,
+    thumbnailUrl: photo.thumbnail_url,
+    alt: photo.original_filename ?? activity.name,
+  }));
 
   const infoItems = [
     {
@@ -70,7 +77,19 @@ export function PublicActivityPage({ activity }: { activity: ActivityRead }) {
         }}
       />
 
-      <div className="absolute left-4 top-4 z-[1000] max-h-[calc(100vh-2rem)] w-[min(26rem,calc(100vw-2rem))] overflow-auto rounded-[1.75rem] border border-stone-200 bg-white/95 px-5 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur">
+      {photoItems.length > 0 ? (
+        <div className="absolute left-4 right-4 top-4 z-[1000] rounded-[1.75rem] border border-stone-200 bg-white/90 px-4 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
+            {dict.activityPhotos.publicTitle}
+          </p>
+          <ActivityPhotoGallery items={photoItems} layout="strip" />
+        </div>
+      ) : null}
+
+      <div
+        className="absolute left-4 z-[1000] max-h-[calc(100vh-2rem)] w-[min(26rem,calc(100vw-2rem))] overflow-auto rounded-[1.75rem] border border-stone-200 bg-white/95 px-5 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur"
+        style={{ top: photoItems.length > 0 ? "11.5rem" : "1rem" }}
+      >
         <p className="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">{dict.activities.mapEyebrow}</p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950">{activity.name}</h1>
 

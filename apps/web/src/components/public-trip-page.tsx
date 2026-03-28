@@ -1,6 +1,7 @@
 "use client";
 
 import { PublicFooter } from "@/components/public-footer";
+import { ActivityPhotoGallery } from "@/components/activity-photo-gallery";
 import { TripContentRenderer } from "@/components/trip-content-renderer";
 import { TripList } from "@/components/trip-list";
 import { useI18n } from "@/components/i18n-provider";
@@ -30,6 +31,16 @@ export function PublicTripPage({
   const { dict, locale } = useI18n();
   const contentBlocks = getTripContentBlocks(trip.content);
   const tripHasContent = hasTripContent(trip.content);
+  const activityPhotoItems = activities.flatMap((activity) =>
+    activity.photos.map((photo) => ({
+      id: photo.id,
+      imageUrl: photo.image_url,
+      thumbnailUrl: photo.thumbnail_url,
+      alt: photo.original_filename ?? activity.name,
+      href: `/activities/${activity.id}`,
+      label: activity.name,
+    })),
+  );
 
   const metaItems = [
     {
@@ -104,6 +115,23 @@ export function PublicTripPage({
               <p className="mt-3 text-sm leading-6 text-stone-500">{dict.publicSite.sectionPlaceholder}</p>
             </div>
           ))}
+        </section>
+
+        <section className="mt-10 rounded-[2rem] border border-stone-200 bg-white p-6">
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-xl font-semibold text-stone-900">{dict.activityPhotos.tripTitle}</h2>
+            <span className="text-sm text-stone-500">{activityPhotoItems.length}</span>
+          </div>
+
+          {activityPhotoItems.length === 0 ? (
+            <p className="mt-4 rounded-2xl bg-stone-50 px-4 py-4 text-sm text-stone-500">
+              {dict.activityPhotos.emptyTrip}
+            </p>
+          ) : (
+            <div className="mt-5">
+              <ActivityPhotoGallery items={activityPhotoItems} layout="grid" />
+            </div>
+          )}
         </section>
 
         <section className="mt-10 rounded-[2rem] border border-stone-200 bg-white p-6">
