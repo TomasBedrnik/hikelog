@@ -7,6 +7,14 @@ import { clearIdToken, getIdToken } from "@/lib/auth";
 import { AdminNav } from "@/components/admin-nav";
 import { useI18n } from "@/components/i18n-provider";
 import { TripContentEditor } from "@/components/trip-content-editor";
+import {
+  ActivityRead,
+  ActivityWrite,
+  createActivity,
+  deleteActivity,
+  listActivities,
+  updateActivity,
+} from "@/lib/activities";
 import { getTripContentBlocks } from "@/lib/blocknote";
 import { formatMessage, getDateLocale } from "@/lib/i18n";
 import { getCountryOptions, getTimezoneOptions } from "@/lib/options";
@@ -32,8 +40,47 @@ type TripDraft = {
   createdAt: string | null;
 };
 
+type ActivityDraft = {
+  id: number | null;
+  tripId: number | null;
+  stravaActivityId: string;
+  userId: string;
+  uploadId: string;
+  externalId: string;
+  type: string;
+  sportType: string;
+  startDate: string;
+  name: string;
+  distance: string;
+  movingTime: string;
+  elapsedTime: string;
+  totalElevationGain: string;
+  descriptionBlocks: PartialBlock[];
+  polyline: string;
+  summaryPolyline: string;
+  createdAt: string | null;
+};
+
 function formatJson(value: Record<string, unknown>) {
   return JSON.stringify(value, null, 2);
+}
+
+function toDateTimeInput(value: string | null) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  const formatter = new Intl.DateTimeFormat("sv-SE", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "UTC",
+  });
+  return formatter.format(date).replace(" ", "T");
 }
 
 function toDraft(trip: TripRead): TripDraft {
@@ -76,6 +123,52 @@ function createEmptyDraft(): TripDraft {
   };
 }
 
+function toActivityDraft(activity: ActivityRead): ActivityDraft {
+  return {
+    id: activity.id,
+    tripId: activity.trip_id,
+    stravaActivityId: activity.strava_activity_id?.toString() ?? "",
+    userId: activity.user_id?.toString() ?? "",
+    uploadId: activity.upload_id?.toString() ?? "",
+    externalId: activity.external_id ?? "",
+    type: activity.type ?? "",
+    sportType: activity.sport_type ?? "",
+    startDate: toDateTimeInput(activity.start_date),
+    name: activity.name,
+    distance: activity.distance?.toString() ?? "",
+    movingTime: activity.moving_time?.toString() ?? "",
+    elapsedTime: activity.elapsed_time?.toString() ?? "",
+    totalElevationGain: activity.total_elevation_gain?.toString() ?? "",
+    descriptionBlocks: getTripContentBlocks(activity.description),
+    polyline: activity.polyline ?? "",
+    summaryPolyline: activity.summary_polyline ?? "",
+    createdAt: activity.created_at,
+  };
+}
+
+function createEmptyActivityDraft(tripId: number | null): ActivityDraft {
+  return {
+    id: null,
+    tripId,
+    stravaActivityId: "",
+    userId: "",
+    uploadId: "",
+    externalId: "",
+    type: "",
+    sportType: "",
+    startDate: "",
+    name: "",
+    distance: "",
+    movingTime: "",
+    elapsedTime: "",
+    totalElevationGain: "",
+    descriptionBlocks: EMPTY_BLOCKS,
+    polyline: "",
+    summaryPolyline: "",
+    createdAt: null,
+  };
+}
+
 function toPayload(draft: TripDraft): TripWrite {
   const metricsConfig = JSON.parse(draft.metricsConfigText) as Record<string, unknown>;
 
@@ -106,10 +199,14 @@ export function AdminTripsPage() {
   const countryOptions = getCountryOptions(locale);
   const timezoneSet = new Set(timezoneOptions);
   const [trips, setTrips] = useState<TripRead[] | null>(null);
+  const [activities, setActivities] = useState<ActivityRead[] | null>(null);
   const [selectedTripId, setSelectedTripId] = useState<number | "new" | null>(null);
   const [draft, setDraft] = useState<TripDraft | null>(null);
+  const [selectedActivityId, setSelectedActivityId] = useState<number | "new" | null>(null);
+  const [activityDraft, setActivityDraft] = useState<ActivityDraft | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<"saving" | "deleting" | null>(null);
+  const [activityBusy, setActivityBusy] = useState<"saving" | "deleting" | null>(null);
   const [countriesExpanded, setCountriesExpanded] = useState(false);
   const [countryQuery, setCountryQuery] = useState("");
 
@@ -131,17 +228,29 @@ export function AdminTripsPage() {
       return;
     }
 
-    listTrips(token)
-      .then((data) => {
-        setTrips(data);
-        if (data.length === 0) {
+    Promise.all([listTrips(token), listActivities(token)])
+      .then(([tripItems, activityItems]) => {
+        setTrips(tripItems);
+        setActivities(activityItems);
+        if (tripItems.length === 0) {
           setSelectedTripId("new");
           setDraft(createEmptyDraft());
+          setSelectedActivityId("new");
+          setActivityDraft(createEmptyActivityDraft(null));
           return;
         }
 
-        setSelectedTripId(data[0].id);
-        setDraft(toDraft(data[0]));
+        const firstTrip = tripItems[0];
+        const firstTripActivities = activityItems.filter((activity) => activity.trip_id === firstTrip.id);
+        setSelectedTripId(firstTrip.id);
+        setDraft(toDraft(firstTrip));
+        if (firstTripActivities.length > 0) {
+          setSelectedActivityId(firstTripActivities[0].id);
+          setActivityDraft(toActivityDraft(firstTripActivities[0]));
+        } else {
+          setSelectedActivityId("new");
+          setActivityDraft(createEmptyActivityDraft(firstTrip.id));
+        }
       })
       .catch((e: unknown) => {
         if (e instanceof Error && e.message === "AUTH_REQUIRED") {
@@ -159,6 +268,14 @@ export function AdminTripsPage() {
     setDraft(toDraft(trip));
     setCountriesExpanded(false);
     setCountryQuery("");
+    const nextActivities = (activities ?? []).filter((activity) => activity.trip_id === trip.id);
+    if (nextActivities.length > 0) {
+      setSelectedActivityId(nextActivities[0].id);
+      setActivityDraft(toActivityDraft(nextActivities[0]));
+    } else {
+      setSelectedActivityId("new");
+      setActivityDraft(createEmptyActivityDraft(trip.id));
+    }
   };
 
   const startNewTrip = () => {
@@ -167,6 +284,8 @@ export function AdminTripsPage() {
     setDraft(createEmptyDraft());
     setCountriesExpanded(false);
     setCountryQuery("");
+    setSelectedActivityId("new");
+    setActivityDraft(createEmptyActivityDraft(null));
   };
 
   const persistTrip = async () => {
@@ -238,6 +357,8 @@ export function AdminTripsPage() {
         });
         setSelectedTripId(saved.id);
         setDraft(toDraft(saved));
+        setSelectedActivityId("new");
+        setActivityDraft(createEmptyActivityDraft(saved.id));
       });
     } catch (e: unknown) {
       if (e instanceof Error && e.message === "AUTH_REQUIRED") {
@@ -272,11 +393,21 @@ export function AdminTripsPage() {
           if (next.length === 0) {
             setSelectedTripId("new");
             setDraft(createEmptyDraft());
+            setSelectedActivityId("new");
+            setActivityDraft(createEmptyActivityDraft(null));
             return next;
           }
 
           setSelectedTripId(next[0].id);
           setDraft(toDraft(next[0]));
+          const nextActivities = (activities ?? []).filter((activity) => activity.trip_id === next[0].id);
+          if (nextActivities.length > 0) {
+            setSelectedActivityId(nextActivities[0].id);
+            setActivityDraft(toActivityDraft(nextActivities[0]));
+          } else {
+            setSelectedActivityId("new");
+            setActivityDraft(createEmptyActivityDraft(next[0].id));
+          }
           return next;
         });
       });
@@ -289,6 +420,131 @@ export function AdminTripsPage() {
       setError(e instanceof Error ? e.message : dict.common.unknownError);
     } finally {
       setBusy(null);
+    }
+  };
+
+  const visibleActivities = draft?.id ? (activities ?? []).filter((activity) => activity.trip_id === draft.id) : [];
+
+  const startNewActivity = () => {
+    setError(null);
+    setSelectedActivityId("new");
+    setActivityDraft(createEmptyActivityDraft(draft?.id ?? null));
+  };
+
+  const selectActivity = (activity: ActivityRead) => {
+    setError(null);
+    setSelectedActivityId(activity.id);
+    setActivityDraft(toActivityDraft(activity));
+  };
+
+  const persistActivity = async () => {
+    const token = getIdToken();
+    if (!token || !activityDraft || !draft?.id) {
+      return;
+    }
+
+    if (!activityDraft.name.trim()) {
+      setError(dict.activities.nameRequired);
+      return;
+    }
+
+    const payload: ActivityWrite = {
+      trip_id: draft.id,
+      strava_activity_id: activityDraft.stravaActivityId ? Number(activityDraft.stravaActivityId) : null,
+      user_id: activityDraft.userId ? Number(activityDraft.userId) : null,
+      upload_id: activityDraft.uploadId ? Number(activityDraft.uploadId) : null,
+      external_id: activityDraft.externalId.trim() || null,
+      type: activityDraft.type.trim() || null,
+      sport_type: activityDraft.sportType.trim() || null,
+      start_date: activityDraft.startDate ? new Date(activityDraft.startDate).toISOString() : null,
+      name: activityDraft.name.trim(),
+      distance: activityDraft.distance ? Number(activityDraft.distance) : null,
+      moving_time: activityDraft.movingTime ? Number(activityDraft.movingTime) : null,
+      elapsed_time: activityDraft.elapsedTime ? Number(activityDraft.elapsedTime) : null,
+      total_elevation_gain: activityDraft.totalElevationGain ? Number(activityDraft.totalElevationGain) : null,
+      description: {
+        type: "blocknote",
+        blocks: activityDraft.descriptionBlocks,
+      },
+      polyline: activityDraft.polyline.trim() || null,
+      summary_polyline: activityDraft.summaryPolyline.trim() || null,
+    };
+
+    if (
+      [payload.distance, payload.moving_time, payload.elapsed_time, payload.total_elevation_gain].some(
+        (value) => value !== null && (!Number.isFinite(value) || value < 0),
+      )
+    ) {
+      setError(dict.activities.invalidNumber);
+      return;
+    }
+
+    setActivityBusy("saving");
+    setError(null);
+
+    try {
+      const saved =
+        activityDraft.id === null
+          ? await createActivity(token, payload)
+          : await updateActivity(token, activityDraft.id, payload);
+
+      startTransition(() => {
+        setActivities((current) => {
+          const items = current ?? [];
+          return activityDraft.id === null
+            ? [saved, ...items]
+            : items.map((activity) => (activity.id === saved.id ? saved : activity));
+        });
+        setSelectedActivityId(saved.id);
+        setActivityDraft(toActivityDraft(saved));
+      });
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === "AUTH_REQUIRED") {
+        clearIdToken();
+        router.push("/login");
+        return;
+      }
+      setError(e instanceof Error ? e.message : dict.common.unknownError);
+    } finally {
+      setActivityBusy(null);
+    }
+  };
+
+  const removeCurrentActivity = async () => {
+    const token = getIdToken();
+    if (!token || !activityDraft?.id || !draft?.id) {
+      return;
+    }
+
+    if (!window.confirm(formatMessage(dict.activities.deleteConfirm, { name: activityDraft.name }))) {
+      return;
+    }
+
+    setActivityBusy("deleting");
+    setError(null);
+
+    try {
+      await deleteActivity(token, activityDraft.id);
+      startTransition(() => {
+        const nextItems = visibleActivities.filter((activity) => activity.id !== activityDraft.id);
+        setActivities((current) => (current ?? []).filter((activity) => activity.id !== activityDraft.id));
+        if (nextItems.length > 0) {
+          setSelectedActivityId(nextItems[0].id);
+          setActivityDraft(toActivityDraft(nextItems[0]));
+        } else {
+          setSelectedActivityId("new");
+          setActivityDraft(createEmptyActivityDraft(draft.id));
+        }
+      });
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === "AUTH_REQUIRED") {
+        clearIdToken();
+        router.push("/login");
+        return;
+      }
+      setError(e instanceof Error ? e.message : dict.common.unknownError);
+    } finally {
+      setActivityBusy(null);
     }
   };
 
@@ -601,6 +857,266 @@ export function AdminTripsPage() {
                     </label>
                   </div>
                 </div>
+
+                <section className="rounded-[2rem] border border-stone-200 bg-stone-50/70 p-5">
+                  <div className="flex flex-col gap-4 border-b border-stone-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h2 className="text-lg font-semibold">{dict.activities.title}</h2>
+                      <p className="text-sm text-stone-500">{dict.adminHome.activitiesDescription}</p>
+                    </div>
+                    {draft.id !== null ? (
+                      <button
+                        className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+                        onClick={startNewActivity}
+                        type="button"
+                      >
+                        {dict.activities.create}
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {draft.id === null ? (
+                    <p className="mt-4 rounded-2xl bg-white px-4 py-4 text-sm text-stone-500">
+                      {dict.activities.tripRequired}
+                    </p>
+                  ) : (
+                    <div className="mt-5 grid gap-5 xl:grid-cols-[260px_minmax(0,1fr)]">
+                      <div className="space-y-2">
+                        {visibleActivities.length === 0 ? (
+                          <p className="rounded-2xl bg-white px-4 py-4 text-sm text-stone-500">
+                            {dict.activities.emptyPublic}
+                          </p>
+                        ) : (
+                          visibleActivities.map((activity) => (
+                            <button
+                              key={activity.id}
+                              className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                                selectedActivityId === activity.id
+                                  ? "border-emerald-600 bg-emerald-50"
+                                  : "border-stone-200 bg-white hover:border-stone-400 hover:bg-stone-50"
+                              }`}
+                              onClick={() => selectActivity(activity)}
+                              type="button"
+                            >
+                              <div className="truncate text-sm font-medium">{activity.name}</div>
+                              <div className="mt-1 text-xs text-stone-500">{activity.sport_type ?? activity.type ?? "—"}</div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+
+                      {!activityDraft ? null : (
+                        <div className="space-y-5 rounded-[1.5rem] border border-stone-200 bg-white p-5">
+                          <div className="flex flex-col gap-4 border-b border-stone-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0 flex-1">
+                              <label className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
+                                {dict.activities.name}
+                              </label>
+                              <input
+                                className="mt-2 w-full border-0 bg-transparent p-0 text-2xl font-semibold tracking-tight outline-none placeholder:text-stone-300"
+                                onChange={(event) => {
+                                  const value = event.target.value;
+                                  setActivityDraft((current) => (current ? { ...current, name: value } : current));
+                                }}
+                                placeholder={dict.activities.namePlaceholder}
+                                value={activityDraft.name}
+                              />
+                              <p className="mt-2 text-xs text-stone-500">
+                                {activityDraft.createdAt
+                                  ? `${dict.activities.created} ${new Date(activityDraft.createdAt).toLocaleString(getDateLocale(locale))}`
+                                  : dict.activities.notSavedYet}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-3">
+                              {activityDraft.id !== null ? (
+                                <button
+                                  className="rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                  disabled={activityBusy !== null}
+                                  onClick={removeCurrentActivity}
+                                  type="button"
+                                >
+                                  {activityBusy === "deleting" ? dict.activities.deleting : dict.activities.delete}
+                                </button>
+                              ) : null}
+                              <button
+                                className="rounded-full bg-stone-900 px-5 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                disabled={activityBusy !== null}
+                                onClick={persistActivity}
+                                type="button"
+                              >
+                                {activityBusy === "saving"
+                                  ? dict.activities.saving
+                                  : activityDraft.id === null
+                                    ? dict.activities.create
+                                    : dict.activities.save}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+                            {[
+                              ["stravaActivityId", dict.activities.stravaActivityId],
+                              ["userId", dict.activities.userId],
+                              ["uploadId", dict.activities.uploadId],
+                              ["externalId", dict.activities.externalId],
+                            ].map(([field, label]) => (
+                              <label key={field} className="block">
+                                <span className="text-sm font-medium text-stone-700">{label}</span>
+                                <input
+                                  className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
+                                  onChange={(event) => {
+                                    const value = event.target.value;
+                                    setActivityDraft((current) => (current ? { ...current, [field]: value } : current));
+                                  }}
+                                  value={activityDraft[field as keyof ActivityDraft] as string}
+                                />
+                              </label>
+                            ))}
+                          </div>
+
+                          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+                            <label className="block">
+                              <span className="text-sm font-medium text-stone-700">{dict.activities.startDate}</span>
+                              <input
+                                className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
+                                onChange={(event) => {
+                                  setActivityDraft((current) =>
+                                    current ? { ...current, startDate: event.target.value } : current,
+                                  );
+                                }}
+                                type="datetime-local"
+                                value={activityDraft.startDate}
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="text-sm font-medium text-stone-700">{dict.activities.type}</span>
+                              <input
+                                className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
+                                onChange={(event) => {
+                                  setActivityDraft((current) => (current ? { ...current, type: event.target.value } : current));
+                                }}
+                                value={activityDraft.type}
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="text-sm font-medium text-stone-700">{dict.activities.sportType}</span>
+                              <input
+                                className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
+                                onChange={(event) => {
+                                  setActivityDraft((current) =>
+                                    current ? { ...current, sportType: event.target.value } : current,
+                                  );
+                                }}
+                                value={activityDraft.sportType}
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="text-sm font-medium text-stone-700">{dict.activities.distance}</span>
+                              <input
+                                className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
+                                inputMode="decimal"
+                                onChange={(event) => {
+                                  setActivityDraft((current) =>
+                                    current ? { ...current, distance: event.target.value } : current,
+                                  );
+                                }}
+                                value={activityDraft.distance}
+                              />
+                            </label>
+                          </div>
+
+                          <div className="grid gap-5 md:grid-cols-3">
+                            <label className="block">
+                              <span className="text-sm font-medium text-stone-700">{dict.activities.movingTime}</span>
+                              <input
+                                className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
+                                inputMode="numeric"
+                                onChange={(event) => {
+                                  setActivityDraft((current) =>
+                                    current ? { ...current, movingTime: event.target.value } : current,
+                                  );
+                                }}
+                                value={activityDraft.movingTime}
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="text-sm font-medium text-stone-700">{dict.activities.elapsedTime}</span>
+                              <input
+                                className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
+                                inputMode="numeric"
+                                onChange={(event) => {
+                                  setActivityDraft((current) =>
+                                    current ? { ...current, elapsedTime: event.target.value } : current,
+                                  );
+                                }}
+                                value={activityDraft.elapsedTime}
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="text-sm font-medium text-stone-700">{dict.activities.totalElevationGain}</span>
+                              <input
+                                className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
+                                inputMode="decimal"
+                                onChange={(event) => {
+                                  setActivityDraft((current) =>
+                                    current ? { ...current, totalElevationGain: event.target.value } : current,
+                                  );
+                                }}
+                                value={activityDraft.totalElevationGain}
+                              />
+                            </label>
+                          </div>
+
+                          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+                            <div className="space-y-3">
+                              <div>
+                                <h3 className="text-lg font-semibold">{dict.activities.descriptionTitle}</h3>
+                                <p className="text-sm text-stone-500">{dict.activities.descriptionHelp}</p>
+                              </div>
+                              <TripContentEditor
+                                editorKey={activityDraft.id === null ? `new-${draft.id}` : `activity-${activityDraft.id}`}
+                                initialBlocks={activityDraft.descriptionBlocks}
+                                onChangeAction={(descriptionBlocks) => {
+                                  setActivityDraft((current) =>
+                                    current ? { ...current, descriptionBlocks } : current,
+                                  );
+                                }}
+                              />
+                            </div>
+
+                            <div className="space-y-5">
+                              <label className="block">
+                                <span className="text-sm font-medium text-stone-700">{dict.activities.polyline}</span>
+                                <textarea
+                                  className="mt-2 min-h-32 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
+                                  onChange={(event) => {
+                                    setActivityDraft((current) =>
+                                      current ? { ...current, polyline: event.target.value } : current,
+                                    );
+                                  }}
+                                  value={activityDraft.polyline}
+                                />
+                              </label>
+                              <label className="block">
+                                <span className="text-sm font-medium text-stone-700">{dict.activities.summaryPolyline}</span>
+                                <textarea
+                                  className="mt-2 min-h-32 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
+                                  onChange={(event) => {
+                                    setActivityDraft((current) =>
+                                      current ? { ...current, summaryPolyline: event.target.value } : current,
+                                    );
+                                  }}
+                                  value={activityDraft.summaryPolyline}
+                                />
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </section>
               </div>
             )}
           </section>

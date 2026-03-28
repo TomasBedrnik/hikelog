@@ -6,6 +6,7 @@ import { TripList } from "@/components/trip-list";
 import { useI18n } from "@/components/i18n-provider";
 import { getTripContentBlocks, hasTripContent } from "@/lib/blocknote";
 import { getDateLocale } from "@/lib/i18n";
+import { ActivitySummaryRead } from "@/lib/activities";
 import { TripRead } from "@/lib/trips";
 import Link from "next/link";
 
@@ -20,9 +21,11 @@ function formatDate(value: string | null, locale: "en" | "cs") {
 export function PublicTripPage({
   trip,
   trips,
+  activities,
 }: {
   trip: TripRead;
   trips: TripRead[];
+  activities: ActivitySummaryRead[];
 }) {
   const { dict, locale } = useI18n();
   const contentBlocks = getTripContentBlocks(trip.content);
@@ -101,6 +104,39 @@ export function PublicTripPage({
               <p className="mt-3 text-sm leading-6 text-stone-500">{dict.publicSite.sectionPlaceholder}</p>
             </div>
           ))}
+        </section>
+
+        <section className="mt-10 rounded-[2rem] border border-stone-200 bg-white p-6">
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-xl font-semibold text-stone-900">{dict.activities.publicTitle}</h2>
+            <span className="text-sm text-stone-500">{activities.length}</span>
+          </div>
+
+          {activities.length === 0 ? (
+            <p className="mt-4 rounded-2xl bg-stone-50 px-4 py-4 text-sm text-stone-500">{dict.activities.emptyPublic}</p>
+          ) : (
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              {activities.map((activity) => (
+                <Link
+                  key={activity.id}
+                  className="rounded-[1.5rem] border border-stone-200 bg-stone-50 px-5 py-4 transition hover:border-emerald-600 hover:bg-emerald-50"
+                  href={`/activities/${activity.id}`}
+                >
+                  <p className="text-lg font-semibold text-stone-900">{activity.name}</p>
+                  <p className="mt-2 text-sm text-stone-600">
+                    {activity.sport_type ?? activity.type ?? dict.publicSite.metaEmpty}
+                  </p>
+                  <p className="mt-2 text-xs uppercase tracking-[0.2em] text-stone-400">
+                    {activity.start_date
+                      ? new Intl.DateTimeFormat(getDateLocale(locale), { dateStyle: "medium", timeStyle: "short" }).format(
+                          new Date(activity.start_date),
+                        )
+                      : dict.publicSite.metaEmpty}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="mt-10 grid gap-4 lg:grid-cols-2">

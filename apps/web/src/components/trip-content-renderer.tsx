@@ -6,13 +6,14 @@ import "@blocknote/mantine/style.css";
 import { PartialBlock } from "@blocknote/core";
 import { BlockNoteView } from "@blocknote/mantine";
 import { useCreateBlockNote } from "@blocknote/react";
+import { useEffect, useState } from "react";
 
 type TripContentRendererProps = {
   blocks: PartialBlock[];
   editorKey: string;
 };
 
-export function TripContentRenderer({
+function MountedTripContentRenderer({
   blocks,
   editorKey,
 }: TripContentRendererProps) {
@@ -28,4 +29,18 @@ export function TripContentRenderer({
       <BlockNoteView editor={editor} editable={false} />
     </div>
   );
+}
+
+export function TripContentRenderer(props: TripContentRendererProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <div className="min-h-24 rounded-2xl bg-stone-50" />;
+  }
+
+  return <MountedTripContentRenderer {...props} />;
 }
