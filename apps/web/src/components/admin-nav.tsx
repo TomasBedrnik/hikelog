@@ -13,6 +13,7 @@ export function AdminNav() {
   const links = [
     { href: "/admin/users", label: dict.nav.users },
     { href: "/admin/trips", label: dict.nav.trips },
+    { href: "/admin/gallery", label: dict.nav.gallery },
   ];
 
   return (

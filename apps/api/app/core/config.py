@@ -13,6 +13,23 @@ load_dotenv(BASE_DIR / ".env", override=False)
 
 class Settings(BaseModel):
     google_oauth_client_id: str = Field(..., alias="GOOGLE_OAUTH_CLIENT_ID")
+    firebase_project_id: str = Field(..., alias="FIREBASE_PROJECT_ID")
+    firebase_private_key_id: str = Field(..., alias="FIREBASE_PRIVATE_KEY_ID")
+    firebase_private_key: str = Field(..., alias="FIREBASE_PRIVATE_KEY")
+    firebase_client_email: str = Field(..., alias="FIREBASE_CLIENT_EMAIL")
+    firebase_client_id: str = Field(..., alias="FIREBASE_CLIENT_ID")
+    firebase_client_x509_cert_url: str = Field(..., alias="FIREBASE_CLIENT_X509_CERT_URL")
+    firebase_storage_bucket: str = Field(..., alias="FIREBASE_STORAGE_BUCKET")
+    cors_allowed_origins_raw: str | None = Field(default=None, alias="CORS_ALLOWED_ORIGINS")
+
+    def firebase_private_key_value(self) -> str:
+        return self.firebase_private_key.replace("\\n", "\n")
+
+    def cors_allowed_origins(self) -> list[str]:
+        raw = self.cors_allowed_origins_raw
+        if not raw:
+            return []
+        return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
 
 def load_settings() -> Settings:

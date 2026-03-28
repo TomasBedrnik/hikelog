@@ -17,6 +17,11 @@ export default function AdminPage() {
       title: dict.adminHome.tripsTitle,
       description: dict.adminHome.tripsDescription,
     },
+    {
+      href: "/admin/gallery",
+      title: dict.adminHome.galleryTitle,
+      description: dict.adminHome.galleryDescription,
+    },
   ];
 
   return (

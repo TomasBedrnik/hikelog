@@ -57,6 +57,7 @@
     "brand": "HikeLog Admin",
     "users": "Users",
     "trips": "Trips",
+    "gallery": "Gallery",
     "logout": "Logout",
     "language": "Language"
   },
@@ -66,13 +67,38 @@
     "usersTitle": "Users",
     "usersDescription": "Review which Google accounts can access the administration area.",
     "tripsTitle": "Trips",
-    "tripsDescription": "Create and edit trip records, planning fields, and BlockNote content."
+    "tripsDescription": "Create and edit trip records, planning fields, and BlockNote content.",
+    "galleryTitle": "Gallery",
+    "galleryDescription": "Upload reusable images for BlockNote and copy public image URLs."
   },
   "adminUsers": {
     "title": "Admin Users",
     "subtitle": "Authorized Google accounts that can access administration pages.",
     "sub": "sub",
     "created": "created"
+  },
+  "gallery": {
+    "title": "Global Image Gallery",
+    "description": "Upload reusable JPG or PNG images to Firebase Storage. Use copied URLs inside BlockNote image blocks.",
+    "files": "Images",
+    "filesHelp": "Supported formats: JPG and PNG. You can select multiple files.",
+    "filesRequired": "Select at least one image to upload.",
+    "resizeMode": "Upload mode",
+    "keepOriginal": "Keep original resolution",
+    "resizeTo": "Resize before upload",
+    "width": "Width (px)",
+    "height": "Height (px)",
+    "resizeInvalid": "Resize width and height must be positive integers.",
+    "upload": "Upload images",
+    "uploading": "Uploading…",
+    "empty": "No images in the gallery yet.",
+    "imageAlt": "Gallery image",
+    "originalUrl": "Original URL",
+    "thumbnailUrl": "Thumbnail URL",
+    "copyOriginal": "Copy original URL",
+    "copyThumbnail": "Copy thumbnail URL",
+    "copied": "Copied",
+    "delete": "Remove"
   },
   "trips": {
     "loading": "Loading trips…",

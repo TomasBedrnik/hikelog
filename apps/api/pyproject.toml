@@ -12,8 +12,11 @@ dependencies = [
     "alembic>=1.13",
     "psycopg[binary]>=3.1",
     "google-auth>=2.38",
+    "google-cloud-storage>=2.18",
     "requests>=2.31",
     "email-validator>=2.1",
+    "python-multipart>=0.0.9",
+    "pillow>=11.1",
 ]
 
 [project.optional-dependencies]
