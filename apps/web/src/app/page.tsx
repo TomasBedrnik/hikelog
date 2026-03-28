@@ -1,8 +1,7 @@
-import { getHealth } from "@/lib/api";
 import { HomePageContent } from "@/components/home-page-content";
 
-export default async function HomePage() {
-  const health = await getHealth();
+export const dynamic = "force-dynamic";
 
-  return <HomePageContent health={health} />;
+export default async function HomePage() {
+  return <HomePageContent />;
 }

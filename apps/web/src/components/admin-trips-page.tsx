@@ -7,6 +7,7 @@ import { clearIdToken, getIdToken } from "@/lib/auth";
 import { AdminNav } from "@/components/admin-nav";
 import { useI18n } from "@/components/i18n-provider";
 import { TripContentEditor } from "@/components/trip-content-editor";
+import { getTripContentBlocks } from "@/lib/blocknote";
 import { formatMessage, getDateLocale } from "@/lib/i18n";
 import { getCountryOptions, getTimezoneOptions } from "@/lib/options";
 import { createTrip, deleteTrip, listTrips, TripRead, TripWrite, updateTrip } from "@/lib/trips";
@@ -28,19 +29,6 @@ type TripDraft = {
   createdAt: string | null;
 };
 
-function toEditorBlocks(content: TripRead["content"]): PartialBlock[] {
-  if (!content) {
-    return EMPTY_BLOCKS;
-  }
-
-  const blocks = content.blocks;
-  if (Array.isArray(blocks) && blocks.length > 0) {
-    return blocks as PartialBlock[];
-  }
-
-  return EMPTY_BLOCKS;
-}
-
 function formatJson(value: Record<string, unknown>) {
   return JSON.stringify(value, null, 2);
 }
@@ -49,7 +37,7 @@ function toDraft(trip: TripRead): TripDraft {
   return {
     id: trip.id,
     name: trip.name,
-    contentBlocks: toEditorBlocks(trip.content),
+    contentBlocks: getTripContentBlocks(trip.content),
     startDate: trip.start_date ?? "",
     endDate: trip.end_date ?? "",
     timezone: trip.timezone ?? "",
