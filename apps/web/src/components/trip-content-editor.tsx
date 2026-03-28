@@ -10,13 +10,13 @@ import { useCreateBlockNote } from "@blocknote/react";
 type TripContentEditorProps = {
   initialBlocks: PartialBlock[];
   editorKey: string;
-  onChange: (blocks: PartialBlock[]) => void;
+  onChangeAction: (blocks: PartialBlock[]) => void;
 };
 
 export function TripContentEditor({
   initialBlocks,
   editorKey,
-  onChange,
+                                      onChangeAction,
 }: TripContentEditorProps) {
   const editor = useCreateBlockNote(
     {
@@ -30,7 +30,7 @@ export function TripContentEditor({
       <BlockNoteView
         editor={editor}
         onChange={() => {
-          onChange(editor.document as PartialBlock[]);
+            onChangeAction(editor.document as PartialBlock[]);
         }}
       />
     </div>

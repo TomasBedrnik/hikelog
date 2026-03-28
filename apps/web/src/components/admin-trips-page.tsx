@@ -490,7 +490,7 @@ export function AdminTripsPage() {
                     <TripContentEditor
                       editorKey={draft.id === null ? "new" : String(draft.id)}
                       initialBlocks={draft.contentBlocks}
-                      onChange={(contentBlocks) => {
+                      onChangeAction={(contentBlocks) => {
                         setDraft((current) => (current ? { ...current, contentBlocks } : current));
                       }}
                     />
