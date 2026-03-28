@@ -14,7 +14,12 @@ const DEFAULT_ZOOM = 7;
 declare global {
   interface Window {
     L?: {
-      map: (element: HTMLElement) => {
+      map: (
+        element: HTMLElement,
+        options?: {
+          zoomControl?: boolean;
+        },
+      ) => {
         setView: (center: [number, number], zoom: number) => unknown;
         remove: () => void;
       };
@@ -75,10 +80,10 @@ export function TripMapPage({ trip }: { trip: TripRead }) {
       const latitude = trip.latitude ?? DEFAULT_LATITUDE;
       const longitude = trip.longitude ?? DEFAULT_LONGITUDE;
       const zoom = trip.zoom ?? DEFAULT_ZOOM;
-      const map = window.L.map(mapRef.current);
+      const map = window.L.map(mapRef.current, { zoomControl: false });
       map.setView([latitude, longitude], zoom);
 
-      window.L.tileLayer(`https://api.mapy.com/v1/maptiles/basic/256/{z}/{x}/{y}?apikey=${apiKey}`, {
+      window.L.tileLayer(`https://api.mapy.com/v1/maptiles/outdoor/256/{z}/{x}/{y}?apikey=${apiKey}`, {
         minZoom: 0,
         maxZoom: 19,
         attribution:
