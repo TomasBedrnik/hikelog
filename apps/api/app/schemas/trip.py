@@ -24,6 +24,9 @@ class TripBase(BaseModel):
     planned_distance_m: int | None = Field(default=None, ge=0)
     planned_path_polyline: str | None = None
     show_planned_path: bool = False
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    zoom: int | None = Field(default=None, ge=0, le=19)
 
     # Per-trip metrics config (empty object is fine)
     metrics_config: dict[str, Any] = Field(default_factory=dict)
@@ -54,6 +57,9 @@ class TripUpdate(BaseModel):
     planned_distance_m: int | None = Field(default=None, ge=0)
     planned_path_polyline: str | None = None
     show_planned_path: bool | None = None
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    zoom: int | None = Field(default=None, ge=0, le=19)
 
     metrics_config: dict[str, Any] | None = None
 

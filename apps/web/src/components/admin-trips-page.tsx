@@ -25,6 +25,9 @@ type TripDraft = {
   plannedDistanceM: string;
   plannedPathPolyline: string;
   showPlannedPath: boolean;
+  latitude: string;
+  longitude: string;
+  zoom: string;
   metricsConfigText: string;
   createdAt: string | null;
 };
@@ -45,6 +48,9 @@ function toDraft(trip: TripRead): TripDraft {
     plannedDistanceM: trip.planned_distance_m?.toString() ?? "",
     plannedPathPolyline: trip.planned_path_polyline ?? "",
     showPlannedPath: trip.show_planned_path,
+    latitude: trip.latitude?.toString() ?? "",
+    longitude: trip.longitude?.toString() ?? "",
+    zoom: trip.zoom?.toString() ?? "",
     metricsConfigText: formatJson(trip.metrics_config),
     createdAt: trip.created_at,
   };
@@ -62,6 +68,9 @@ function createEmptyDraft(): TripDraft {
     plannedDistanceM: "",
     plannedPathPolyline: "",
     showPlannedPath: false,
+    latitude: "",
+    longitude: "",
+    zoom: "",
     metricsConfigText: "{}",
     createdAt: null,
   };
@@ -83,6 +92,9 @@ function toPayload(draft: TripDraft): TripWrite {
     planned_distance_m: draft.plannedDistanceM ? Number(draft.plannedDistanceM) : null,
     planned_path_polyline: draft.plannedPathPolyline.trim() || null,
     show_planned_path: draft.showPlannedPath,
+    latitude: draft.latitude ? Number(draft.latitude) : null,
+    longitude: draft.longitude ? Number(draft.longitude) : null,
+    zoom: draft.zoom ? Number(draft.zoom) : null,
     metrics_config: metricsConfig,
   };
 }
@@ -187,6 +199,24 @@ export function AdminTripsPage() {
       (!Number.isFinite(payload.planned_distance_m) || payload.planned_distance_m < 0)
     ) {
       setError(dict.trips.plannedDistanceInvalid);
+      return;
+    }
+
+    if (payload.latitude !== null && (!Number.isFinite(payload.latitude) || payload.latitude < -90 || payload.latitude > 90)) {
+      setError(dict.trips.latitudeInvalid);
+      return;
+    }
+
+    if (
+      payload.longitude !== null &&
+      (!Number.isFinite(payload.longitude) || payload.longitude < -180 || payload.longitude > 180)
+    ) {
+      setError(dict.trips.longitudeInvalid);
+      return;
+    }
+
+    if (payload.zoom !== null && (!Number.isInteger(payload.zoom) || payload.zoom < 0 || payload.zoom > 19)) {
+      setError(dict.trips.zoomInvalid);
       return;
     }
 
@@ -526,6 +556,48 @@ export function AdminTripsPage() {
                         type="checkbox"
                       />
                       <span className="text-sm font-medium text-stone-700">{dict.trips.showPlannedPath}</span>
+                    </label>
+
+                    <label className="block">
+                      <span className="text-sm font-medium text-stone-700">{dict.trips.latitude}</span>
+                      <input
+                        className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
+                        inputMode="decimal"
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          setDraft((current) => (current ? { ...current, latitude: value } : current));
+                        }}
+                        placeholder={dict.trips.latitudePlaceholder}
+                        value={draft.latitude}
+                      />
+                    </label>
+
+                    <label className="block">
+                      <span className="text-sm font-medium text-stone-700">{dict.trips.longitude}</span>
+                      <input
+                        className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
+                        inputMode="decimal"
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          setDraft((current) => (current ? { ...current, longitude: value } : current));
+                        }}
+                        placeholder={dict.trips.longitudePlaceholder}
+                        value={draft.longitude}
+                      />
+                    </label>
+
+                    <label className="block">
+                      <span className="text-sm font-medium text-stone-700">{dict.trips.zoom}</span>
+                      <input
+                        className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
+                        inputMode="numeric"
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          setDraft((current) => (current ? { ...current, zoom: value } : current));
+                        }}
+                        placeholder={dict.trips.zoomPlaceholder}
+                        value={draft.zoom}
+                      />
                     </label>
                   </div>
                 </div>

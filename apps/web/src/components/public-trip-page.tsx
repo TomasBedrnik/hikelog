@@ -7,6 +7,7 @@ import { useI18n } from "@/components/i18n-provider";
 import { getTripContentBlocks, hasTripContent } from "@/lib/blocknote";
 import { getDateLocale } from "@/lib/i18n";
 import { TripRead } from "@/lib/trips";
+import Link from "next/link";
 
 function formatDate(value: string | null, locale: "en" | "cs") {
   if (!value) {
@@ -68,6 +69,12 @@ export function PublicTripPage({
             <p className="mt-4 max-w-2xl text-base leading-7 text-stone-600">
               {dict.publicSite.tripTemplateDescription}
             </p>
+            <Link
+              className="mt-6 inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+              href={`/trips/${trip.id}/map`}
+            >
+              {dict.publicSite.openMap}
+            </Link>
           </div>
 
           <div className="rounded-[1.5rem] bg-stone-50 p-6">

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Date, DateTime, Integer, String, func, text
+from sqlalchemy import Boolean, Date, DateTime, Float, Integer, String, func, text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -45,6 +45,9 @@ class Trip(Base):
     show_planned_path: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    zoom: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Per-trip custom metrics configuration (empty object = no metrics configured)
     metrics_config: Mapped[dict] = mapped_column(
