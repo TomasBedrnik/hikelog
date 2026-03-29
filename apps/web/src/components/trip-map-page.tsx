@@ -26,6 +26,17 @@ const TRIP_ROUTE_STYLE = {
   },
 };
 
+const ACTIVITY_ROUTE_COLORS = [
+  "#e41a1c",
+  "#377eb8",
+  "#b3ff00",
+  "#ff00fc",
+  "#ff7f00",
+  "#ffff33",
+  "#a65628",
+  "#7f49f1",
+];
+
 export function TripMapPage({
   trip,
   activities,
@@ -35,6 +46,26 @@ export function TripMapPage({
 }) {
   const { dict } = useI18n();
   const [error, setError] = useState<string | null>(null);
+  const activityRoutes = activities.flatMap((activity, index) => {
+    if (!activity.summary_polyline) {
+      return [];
+    }
+
+    return [
+      {
+        polyline: activity.summary_polyline,
+        style: {
+          outline: {
+            color: ACTIVITY_ROUTE_COLORS[index % ACTIVITY_ROUTE_COLORS.length],
+            weight: 4,
+            opacity: 0.95,
+            lineCap: "round" as const,
+            lineJoin: "round" as const,
+          },
+        },
+      },
+    ];
+  });
 
   return (
     <main className="relative h-screen w-full overflow-hidden bg-stone-200">
@@ -46,6 +77,7 @@ export function TripMapPage({
         }}
         polyline={trip.show_planned_path ? trip.planned_path_polyline : null}
         routeStyle={TRIP_ROUTE_STYLE}
+        routes={activityRoutes}
         onError={(message) => {
           setError(message === "missing_api_key" ? dict.publicSite.mapMissingApiKey : null);
         }}

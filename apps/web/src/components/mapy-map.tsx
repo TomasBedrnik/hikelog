@@ -17,6 +17,11 @@ type RouteStyle = {
   inner?: PolylineStyle;
 };
 
+type MapRoute = {
+  polyline: string;
+  style?: RouteStyle;
+};
+
 type MapMarker = {
   id: number | string;
   latitude: number;
@@ -32,6 +37,7 @@ type MapyMapProps = {
     zoom: number;
   } | null;
   polyline?: string | null;
+  routes?: MapRoute[];
   markers?: MapMarker[];
   onMarkerClick?: (markerId: number | string) => void;
   routeStyle?: RouteStyle;
@@ -96,6 +102,7 @@ function buildMarkerIcon(marker: MapMarker, leaflet: NonNullable<Window["L"]>) {
 export function MapyMap({
   center = null,
   polyline = null,
+  routes = [],
   markers = [],
   onMarkerClick,
   routeStyle,
@@ -145,14 +152,27 @@ export function MapyMap({
           '<a href="https://api.mapy.com/copyright" target="_blank" rel="noreferrer">&copy; Seznam.cz a.s. and others</a>',
       }).addTo(map);
 
-      let routePoints: [number, number][] = [];
+      let primaryRoutePoints: [number, number][] = [];
       if (polyline) {
         try {
-          routePoints = decodePolyline(polyline);
+          primaryRoutePoints = decodePolyline(polyline);
         } catch {
-          routePoints = [];
+          primaryRoutePoints = [];
         }
       }
+
+      const decodedRoutes = routes.flatMap((route) => {
+        try {
+          return [
+            {
+              points: decodePolyline(route.polyline),
+              style: route.style,
+            },
+          ];
+        } catch {
+          return [];
+        }
+      });
 
       for (const marker of markers) {
         const leafletMarker = window.L.marker([marker.latitude, marker.longitude], {
@@ -165,11 +185,12 @@ export function MapyMap({
       }
 
       const allPoints = [
-        ...routePoints,
+        ...primaryRoutePoints,
+        ...decodedRoutes.flatMap((route) => route.points),
         ...markers.map((marker) => [marker.latitude, marker.longitude] as [number, number]),
       ];
 
-      if (routePoints.length > 0) {
+      if (primaryRoutePoints.length > 0) {
         const styles = {
           outline: {
             ...DEFAULT_ROUTE_STYLE.outline,
@@ -181,8 +202,32 @@ export function MapyMap({
           },
         };
 
-        window.L.polyline(routePoints, styles.outline).addTo(map);
-        window.L.polyline(routePoints, styles.inner).addTo(map);
+        window.L.polyline(primaryRoutePoints, styles.outline).addTo(map);
+        window.L.polyline(primaryRoutePoints, styles.inner).addTo(map);
+      }
+
+      for (const route of decodedRoutes) {
+        if (route.points.length === 0) {
+          continue;
+        }
+
+        const styles = {
+          outline: {
+            ...DEFAULT_ROUTE_STYLE.outline,
+            ...route.style?.outline,
+          },
+          inner: route.style?.inner
+            ? {
+                ...DEFAULT_ROUTE_STYLE.inner,
+                ...route.style.inner,
+              }
+            : null,
+        };
+
+        window.L.polyline(route.points, styles.outline).addTo(map);
+        if (styles.inner) {
+          window.L.polyline(route.points, styles.inner).addTo(map);
+        }
       }
 
       if (allPoints.length > 1) {
@@ -217,7 +262,7 @@ export function MapyMap({
       window.clearInterval(interval);
       mapInstance?.remove();
     };
-  }, [center, emitError, emitMarkerClick, markers, mounted, polyline, routeStyle]);
+  }, [center, emitError, emitMarkerClick, markers, mounted, polyline, routeStyle, routes]);
 
   return <div ref={mapRef} className={className} />;
 }
