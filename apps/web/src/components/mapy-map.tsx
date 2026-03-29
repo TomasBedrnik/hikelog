@@ -110,7 +110,13 @@ export function MapyMap({
   onError,
 }: MapyMapProps) {
   const mapRef = useRef<HTMLDivElement | null>(null);
+  const mapInstanceRef = useRef<ReturnType<NonNullable<Window["L"]>["map"]> | null>(null);
+  const routeLayersRef = useRef<Array<{ remove: () => void }>>([]);
+  const markerLayersRef = useRef<Array<{ remove: () => void }>>([]);
+  const previousViewSignatureRef = useRef<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [mapReadyVersion, setMapReadyVersion] = useState(0);
+  const apiKey = process.env.NEXT_PUBLIC_MAPYCOM_API_KEY;
   const emitError = useEffectEvent((message: string | null) => {
     onError?.(message);
   });
@@ -127,7 +133,6 @@ export function MapyMap({
       return;
     }
 
-    const apiKey = process.env.NEXT_PUBLIC_MAPYCOM_API_KEY;
     if (!apiKey) {
       emitError("missing_api_key");
       return;
@@ -136,10 +141,9 @@ export function MapyMap({
     ensureLeafletAssets();
 
     let cancelled = false;
-    let mapInstance: { remove: () => void } | null = null;
 
-    const mountMap = () => {
-      if (cancelled || !mapRef.current || !window.L) {
+    const ensureMap = () => {
+      if (cancelled || !mapRef.current || !window.L || mapInstanceRef.current) {
         return false;
       }
 
@@ -152,84 +156,137 @@ export function MapyMap({
           '<a href="https://api.mapy.com/copyright" target="_blank" rel="noreferrer">&copy; Seznam.cz a.s. and others</a>',
       }).addTo(map);
 
-      let primaryRoutePoints: [number, number][] = [];
-      if (polyline) {
-        try {
-          primaryRoutePoints = decodePolyline(polyline);
-        } catch {
-          primaryRoutePoints = [];
-        }
-      }
+      mapInstanceRef.current = map;
+      setMapReadyVersion((current) => current + 1);
+      emitError(null);
+      return true;
+    };
 
-      const decodedRoutes = routes.flatMap((route) => {
-        try {
-          return [
-            {
-              points: decodePolyline(route.polyline),
-              style: route.style,
-            },
-          ];
-        } catch {
-          return [];
-        }
+    if (ensureMap()) {
+      return () => {
+        cancelled = true;
+        routeLayersRef.current.forEach((layer) => layer.remove());
+        markerLayersRef.current.forEach((layer) => layer.remove());
+        routeLayersRef.current = [];
+        markerLayersRef.current = [];
+        mapInstanceRef.current?.remove();
+        mapInstanceRef.current = null;
+        previousViewSignatureRef.current = null;
+      };
+    }
+
+    const interval = window.setInterval(() => {
+      if (ensureMap()) {
+        window.clearInterval(interval);
+      }
+    }, 100);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [apiKey, mounted]);
+
+  useEffect(() => {
+    if (!mounted || !mapInstanceRef.current || !window.L || mapReadyVersion === 0) {
+      return;
+    }
+
+    const map = mapInstanceRef.current;
+
+    routeLayersRef.current.forEach((layer) => layer.remove());
+    markerLayersRef.current.forEach((layer) => layer.remove());
+    routeLayersRef.current = [];
+    markerLayersRef.current = [];
+
+    let primaryRoutePoints: [number, number][] = [];
+    if (polyline) {
+      try {
+        primaryRoutePoints = decodePolyline(polyline);
+      } catch {
+        primaryRoutePoints = [];
+      }
+    }
+
+    const decodedRoutes = routes.flatMap((route) => {
+      try {
+        return [
+          {
+            points: decodePolyline(route.polyline),
+            style: route.style,
+            polyline: route.polyline,
+          },
+        ];
+      } catch {
+        return [];
+      }
+    });
+
+    for (const marker of markers) {
+      const leafletMarker = window.L.marker([marker.latitude, marker.longitude], {
+        icon: buildMarkerIcon(marker, window.L),
+        title: marker.title ?? undefined,
+      }).addTo(map);
+      leafletMarker.on("click", () => {
+        emitMarkerClick(marker.id);
       });
+      markerLayersRef.current.push(leafletMarker);
+    }
 
-      for (const marker of markers) {
-        const leafletMarker = window.L.marker([marker.latitude, marker.longitude], {
-          icon: buildMarkerIcon(marker, window.L),
-          title: marker.title ?? undefined,
-        }).addTo(map);
-        leafletMarker.on("click", () => {
-          emitMarkerClick(marker.id);
-        });
+    const allPoints = [
+      ...primaryRoutePoints,
+      ...decodedRoutes.flatMap((route) => route.points),
+      ...markers.map((marker) => [marker.latitude, marker.longitude] as [number, number]),
+    ];
+
+    if (primaryRoutePoints.length > 0) {
+      const styles = {
+        outline: {
+          ...DEFAULT_ROUTE_STYLE.outline,
+          ...routeStyle?.outline,
+        },
+        inner: {
+          ...DEFAULT_ROUTE_STYLE.inner,
+          ...routeStyle?.inner,
+        },
+      };
+
+      routeLayersRef.current.push(window.L.polyline(primaryRoutePoints, styles.outline).addTo(map));
+      routeLayersRef.current.push(window.L.polyline(primaryRoutePoints, styles.inner).addTo(map));
+    }
+
+    for (const route of decodedRoutes) {
+      if (route.points.length === 0) {
+        continue;
       }
 
-      const allPoints = [
-        ...primaryRoutePoints,
-        ...decodedRoutes.flatMap((route) => route.points),
-        ...markers.map((marker) => [marker.latitude, marker.longitude] as [number, number]),
-      ];
+      const styles = {
+        outline: {
+          ...DEFAULT_ROUTE_STYLE.outline,
+          ...route.style?.outline,
+        },
+        inner: route.style?.inner
+          ? {
+              ...DEFAULT_ROUTE_STYLE.inner,
+              ...route.style.inner,
+            }
+          : null,
+      };
 
-      if (primaryRoutePoints.length > 0) {
-        const styles = {
-          outline: {
-            ...DEFAULT_ROUTE_STYLE.outline,
-            ...routeStyle?.outline,
-          },
-          inner: {
-            ...DEFAULT_ROUTE_STYLE.inner,
-            ...routeStyle?.inner,
-          },
-        };
-
-        window.L.polyline(primaryRoutePoints, styles.outline).addTo(map);
-        window.L.polyline(primaryRoutePoints, styles.inner).addTo(map);
+      routeLayersRef.current.push(window.L.polyline(route.points, styles.outline).addTo(map));
+      if (styles.inner) {
+        routeLayersRef.current.push(window.L.polyline(route.points, styles.inner).addTo(map));
       }
+    }
 
-      for (const route of decodedRoutes) {
-        if (route.points.length === 0) {
-          continue;
-        }
+    const viewSignature = JSON.stringify({
+      center,
+      polyline,
+      routes: routes.map((route) => route.polyline),
+      markers: markers.map((marker) => [marker.latitude, marker.longitude, marker.id]),
+    });
 
-        const styles = {
-          outline: {
-            ...DEFAULT_ROUTE_STYLE.outline,
-            ...route.style?.outline,
-          },
-          inner: route.style?.inner
-            ? {
-                ...DEFAULT_ROUTE_STYLE.inner,
-                ...route.style.inner,
-              }
-            : null,
-        };
-
-        window.L.polyline(route.points, styles.outline).addTo(map);
-        if (styles.inner) {
-          window.L.polyline(route.points, styles.inner).addTo(map);
-        }
-      }
-
+    if (previousViewSignatureRef.current !== viewSignature) {
       if (allPoints.length > 1) {
         map.fitBounds(window.L.latLngBounds(allPoints), { padding: [48, 48] });
       } else if (allPoints.length === 1) {
@@ -238,31 +295,11 @@ export function MapyMap({
         const nextCenter = center ?? DEFAULT_CENTER;
         map.setView([nextCenter.latitude, nextCenter.longitude], nextCenter.zoom);
       }
-
-      emitError(null);
-      mapInstance = map;
-      return true;
-    };
-
-    if (mountMap()) {
-      return () => {
-        cancelled = true;
-        mapInstance?.remove();
-      };
+      previousViewSignatureRef.current = viewSignature;
     }
 
-    const interval = window.setInterval(() => {
-      if (mountMap()) {
-        window.clearInterval(interval);
-      }
-    }, 100);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-      mapInstance?.remove();
-    };
-  }, [center, emitError, emitMarkerClick, markers, mounted, polyline, routeStyle, routes]);
+    emitError(null);
+  }, [center, mapReadyVersion, markers, mounted, polyline, routeStyle, routes]);
 
   return <div ref={mapRef} className={className} />;
 }

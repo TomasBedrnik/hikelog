@@ -46,19 +46,29 @@ export function TripMapPage({
 }) {
   const { dict } = useI18n();
   const [error, setError] = useState<string | null>(null);
+  const [hoveredActivityId, setHoveredActivityId] = useState<number | null>(null);
   const activityRoutes = activities.flatMap((activity, index) => {
     if (!activity.summary_polyline) {
       return [];
     }
 
+    const isHovered = hoveredActivityId === activity.id;
     return [
       {
         polyline: activity.summary_polyline,
         style: {
           outline: {
             color: ACTIVITY_ROUTE_COLORS[index % ACTIVITY_ROUTE_COLORS.length],
-            weight: 4,
+            weight: isHovered ? 10 : 6,
             opacity: 0.95,
+            lineCap: "round" as const,
+            lineJoin: "round" as const,
+          },
+          inner: {
+            color: "black",
+            weight: isHovered ? 0 : 2,
+            opacity: 1,
+            dashArray: "6,6",
             lineCap: "round" as const,
             lineJoin: "round" as const,
           },
@@ -106,6 +116,12 @@ export function TripMapPage({
                 key={activity.id}
                 className="block rounded-[1.25rem] border border-stone-200 bg-stone-50 px-4 py-3 transition hover:border-emerald-700 hover:bg-emerald-50"
                 href={`/activities/${activity.id}`}
+                onMouseEnter={() => {
+                  setHoveredActivityId(activity.id);
+                }}
+                onMouseLeave={() => {
+                  setHoveredActivityId((current) => (current === activity.id ? null : current));
+                }}
               >
                 <p className="text-sm font-semibold text-stone-900">{activity.name}</p>
                 <p className="mt-1 text-sm leading-6 text-stone-600">
