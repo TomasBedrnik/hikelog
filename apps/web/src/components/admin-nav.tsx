@@ -12,6 +12,7 @@ export function AdminNav() {
   const { dict } = useI18n();
   const links = [
     { href: "/admin/users", label: dict.nav.users },
+    { href: "/admin/site", label: dict.nav.site },
     { href: "/admin/trips", label: dict.nav.trips },
     { href: "/admin/gallery", label: dict.nav.gallery },
   ];

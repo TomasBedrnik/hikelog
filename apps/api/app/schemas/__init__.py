@@ -2,6 +2,7 @@ from app.schemas.activity import ActivityCreate, ActivityRead, ActivitySummaryRe
 from app.schemas.activity_photo import ActivityPhotoOrderUpdate, ActivityPhotoRead
 from app.schemas.admin_user import AdminUserCreate, AdminUserRead
 from app.schemas.gallery_image import GalleryImageRead
+from app.schemas.global_content import GlobalContentRead, GlobalContentUpdate
 from app.schemas.stage import StageCreate, StageRead, StageUpdate
 from app.schemas.trip import TripCreate, TripRead, TripUpdate
 from app.schemas.trip_image import TripImageOrderUpdate, TripImageRead
@@ -19,6 +20,8 @@ __all__ = [
     "TripImageOrderUpdate",
     "TripImageRead",
     "GalleryImageRead",
+    "GlobalContentRead",
+    "GlobalContentUpdate",
     "StageCreate",
     "StageRead",
     "StageUpdate",

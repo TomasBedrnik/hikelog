@@ -3,9 +3,10 @@
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 
-import { BlockNoteView } from "@blocknote/mantine";
 import { PartialBlock } from "@blocknote/core";
+import { BlockNoteView } from "@blocknote/mantine";
 import { useCreateBlockNote } from "@blocknote/react";
+import { useEffect, useState } from "react";
 
 type TripContentEditorProps = {
   initialBlocks: PartialBlock[];
@@ -13,10 +14,10 @@ type TripContentEditorProps = {
   onChangeAction: (blocks: PartialBlock[]) => void;
 };
 
-export function TripContentEditor({
+function MountedTripContentEditor({
   initialBlocks,
   editorKey,
-                                      onChangeAction,
+  onChangeAction,
 }: TripContentEditorProps) {
   const editor = useCreateBlockNote(
     {
@@ -30,9 +31,23 @@ export function TripContentEditor({
       <BlockNoteView
         editor={editor}
         onChange={() => {
-            onChangeAction(editor.document as PartialBlock[]);
+          onChangeAction(editor.document as PartialBlock[]);
         }}
       />
     </div>
   );
+}
+
+export function TripContentEditor(props: TripContentEditorProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <div className="min-h-24 rounded-2xl bg-stone-50" />;
+  }
+
+  return <MountedTripContentEditor {...props} />;
 }

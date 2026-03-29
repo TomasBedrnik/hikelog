@@ -13,6 +13,11 @@ export default function AdminPage() {
       description: dict.adminHome.usersDescription,
     },
     {
+      href: "/admin/site",
+      title: dict.adminHome.siteTitle,
+      description: dict.adminHome.siteDescription,
+    },
+    {
       href: "/admin/trips",
       title: dict.adminHome.tripsTitle,
       description: dict.adminHome.tripsDescription,

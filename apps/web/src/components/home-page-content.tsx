@@ -3,7 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { PublicFooter } from "@/components/public-footer";
+import { TripContentRenderer } from "@/components/trip-content-renderer";
 import { useI18n } from "@/components/i18n-provider";
+import { getTripContentBlocks } from "@/lib/blocknote";
+import { GlobalContentRead } from "@/lib/global-content";
 import { getDateLocale } from "@/lib/i18n";
 import { TripRead } from "@/lib/trips";
 
@@ -22,8 +25,18 @@ function formatTripDates(trip: TripRead, locale: "en" | "cs") {
   return [start, end].filter(Boolean).join(" - ");
 }
 
-export function HomePageContent({ trips }: { trips: TripRead[] }) {
+export function HomePageContent({
+  trips,
+  globalContent,
+}: {
+  trips: TripRead[];
+  globalContent: GlobalContentRead | null;
+}) {
   const { dict, locale } = useI18n();
+  const heroImageUrl = globalContent?.hero_image_url ?? "/home-hero-theme.png";
+  const heroHeadline = globalContent?.main_headline?.trim() || dict.publicSite.homeTitle;
+  const heroBlocks = getTripContentBlocks(globalContent?.home_content ?? null);
+  const hasGlobalHeroContent = globalContent?.home_content != null;
   const fallbackTripCards = [
     {
       title: dict.publicSite.homeTripOne,
@@ -73,7 +86,10 @@ export function HomePageContent({ trips }: { trips: TripRead[] }) {
           sm:px-8 lg:px-12">
       <div className="mx-auto max-w-7xl">
         <section className="relative overflow-hidden rounded-[2.5rem] border border-stone-300/70 shadow-[0_30px_120px_-60px_rgba(55,43,23,0.55)]">
-          <div className="absolute inset-0 bg-[url('/home-hero-theme.png')] bg-cover bg-[left_center]" />
+          <div
+            className="absolute inset-0 bg-cover bg-[left_center]"
+            style={{ backgroundImage: `url('${heroImageUrl}')` }}
+          />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.08)_34%,rgba(245,239,227,0.72)_66%,rgba(245,239,227,0.94)_100%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.62),transparent_36%),radial-gradient(circle_at_bottom,rgba(116,92,54,0.12),transparent_45%)]" />
 
@@ -93,11 +109,20 @@ export function HomePageContent({ trips }: { trips: TripRead[] }) {
               <div className="hidden lg:block" />
               <div className="pb-2 lg:justify-self-end lg:text-left">
                 <h1 className="max-w-3xl font-serif text-5xl italic leading-[0.95] text-stone-900 sm:text-6xl lg:text-7xl">
-                  {dict.publicSite.homeTitle}
+                  {heroHeadline}
                 </h1>
-                <p className="mt-5 max-w-2xl text-base leading-7 text-stone-700 sm:text-lg">
-                  {dict.publicSite.homeDescription}
-                </p>
+                {hasGlobalHeroContent ? (
+                  <TripContentRenderer
+                    blocks={heroBlocks}
+                    chrome="plain"
+                    className="mt-5 max-w-2xl text-base leading-7 text-stone-700 sm:text-lg [&_.bn-block-content]:text-stone-700 [&_.bn-inline-content]:text-stone-700"
+                    editorKey={globalContent?.updated_at ?? "home-hero"}
+                  />
+                ) : (
+                  <p className="mt-5 max-w-2xl text-base leading-7 text-stone-700 sm:text-lg">
+                    {dict.publicSite.homeDescription}
+                  </p>
+                )}
               </div>
             </div>
           </div>
