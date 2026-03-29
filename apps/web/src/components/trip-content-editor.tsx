@@ -27,9 +27,10 @@ function MountedTripContentEditor({
   );
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-stone-300 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-stone-300 bg-white shadow-sm [&_.bn-container]:border-0 [&_.bn-container]:bg-white [&_.bn-editor]:bg-white [&_.bn-editor]:text-stone-800 [&_.bn-side-menu]:bg-white [&_.mantine-Menu-dropdown]:bg-white">
       <BlockNoteView
         editor={editor}
+        theme="light"
         onChange={() => {
           onChangeAction(editor.document as PartialBlock[]);
         }}
