@@ -80,9 +80,17 @@ export function PublicTripPage({
             <h1 className="mt-4 text-4xl font-semibold tracking-tight text-stone-950 sm:text-5xl">
               {trip.name || dict.publicSite.untitledTrip}
             </h1>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-stone-600">
-              {dict.publicSite.tripTemplateDescription}
-            </p>
+            <div>
+              {tripHasContent ? (
+                  <div className="mt-4">
+                    <TripContentRenderer blocks={contentBlocks} editorKey={`trip-${trip.id}-content`} />
+                  </div>
+              ) : (
+                  <p className="mt-4 rounded-2xl bg-stone-50 px-4 py-5 text-sm leading-6 text-stone-500">
+                    {dict.publicSite.contentEmpty}
+                  </p>
+              )}
+            </div>
             <Link
               className="mt-6 inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
               href={`/trips/${trip.id}/map`}
@@ -92,9 +100,6 @@ export function PublicTripPage({
           </div>
 
           <div className="rounded-[1.5rem] bg-stone-50 p-6">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-stone-500">
-              {dict.publicSite.tripMetaTitle}
-            </h2>
             <dl className="mt-4 space-y-4">
               {metaItems.map((item) => (
                 <div key={item.label}>
@@ -108,13 +113,37 @@ export function PublicTripPage({
           </div>
         </section>
 
-        <section className="mt-10 grid gap-4 md:grid-cols-2">
-          {[dict.publicSite.sectionOne, dict.publicSite.sectionTwo].map((title) => (
-            <div key={title} className="rounded-[2rem] border border-dashed border-stone-300 bg-stone-50 px-6 py-8">
-              <h2 className="text-xl font-semibold text-stone-900">{title}</h2>
-              <p className="mt-3 text-sm leading-6 text-stone-500">{dict.publicSite.sectionPlaceholder}</p>
-            </div>
-          ))}
+        <section className="mt-10 rounded-[2rem] border border-stone-200 bg-white p-6">
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-xl font-semibold text-stone-900">{dict.activities.publicTitle}</h2>
+            <span className="text-sm text-stone-500">{activities.length}</span>
+          </div>
+
+          {activities.length === 0 ? (
+              <p className="mt-4 rounded-2xl bg-stone-50 px-4 py-4 text-sm text-stone-500">{dict.activities.emptyPublic}</p>
+          ) : (
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                {sortedActivities.map((activity) => (
+                    <Link
+                        key={activity.id}
+                        className="rounded-[1.5rem] border border-stone-200 bg-stone-50 px-5 py-4 transition hover:border-emerald-600 hover:bg-emerald-50"
+                        href={`/activities/${activity.id}`}
+                    >
+                      <p className="text-lg font-semibold text-stone-900">{activity.name}</p>
+                      <p className="mt-2 text-sm text-stone-600">
+                        {activity.sport_type ?? activity.type ?? dict.publicSite.metaEmpty}
+                      </p>
+                      <p className="mt-2 text-xs uppercase tracking-[0.2em] text-stone-400">
+                        {activity.start_date
+                            ? new Intl.DateTimeFormat(getDateLocale(locale), { dateStyle: "medium", timeStyle: "short" }).format(
+                                new Date(activity.start_date),
+                            )
+                            : dict.publicSite.metaEmpty}
+                      </p>
+                    </Link>
+                ))}
+              </div>
+          )}
         </section>
 
         <section className="mt-10 rounded-[2rem] border border-stone-200 bg-white p-6">
@@ -132,76 +161,6 @@ export function PublicTripPage({
               <ActivityPhotoGallery items={activityPhotoItems} layout="grid" />
             </div>
           )}
-        </section>
-
-        <section className="mt-10 rounded-[2rem] border border-stone-200 bg-white p-6">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-xl font-semibold text-stone-900">{dict.activities.publicTitle}</h2>
-            <span className="text-sm text-stone-500">{activities.length}</span>
-          </div>
-
-          {activities.length === 0 ? (
-            <p className="mt-4 rounded-2xl bg-stone-50 px-4 py-4 text-sm text-stone-500">{dict.activities.emptyPublic}</p>
-          ) : (
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              {sortedActivities.map((activity) => (
-                <Link
-                  key={activity.id}
-                  className="rounded-[1.5rem] border border-stone-200 bg-stone-50 px-5 py-4 transition hover:border-emerald-600 hover:bg-emerald-50"
-                  href={`/activities/${activity.id}`}
-                >
-                  <p className="text-lg font-semibold text-stone-900">{activity.name}</p>
-                  <p className="mt-2 text-sm text-stone-600">
-                    {activity.sport_type ?? activity.type ?? dict.publicSite.metaEmpty}
-                  </p>
-                  <p className="mt-2 text-xs uppercase tracking-[0.2em] text-stone-400">
-                    {activity.start_date
-                      ? new Intl.DateTimeFormat(getDateLocale(locale), { dateStyle: "medium", timeStyle: "short" }).format(
-                          new Date(activity.start_date),
-                        )
-                      : dict.publicSite.metaEmpty}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="mt-10 grid gap-4 lg:grid-cols-2">
-          <div className="rounded-[2rem] border border-stone-200 bg-white p-6">
-            <h2 className="text-xl font-semibold text-stone-900">{dict.publicSite.contentTitle}</h2>
-            {tripHasContent ? (
-              <div className="mt-4">
-                <TripContentRenderer blocks={contentBlocks} editorKey={`trip-${trip.id}-content`} />
-              </div>
-            ) : (
-              <p className="mt-4 rounded-2xl bg-stone-50 px-4 py-5 text-sm leading-6 text-stone-500">
-                {dict.publicSite.contentEmpty}
-              </p>
-            )}
-          </div>
-
-          <div className="rounded-[2rem] border border-stone-200 bg-white p-6">
-            <h2 className="text-xl font-semibold text-stone-900">{dict.publicSite.technicalTitle}</h2>
-            <div className="mt-4 space-y-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
-                  {dict.publicSite.metricsConfig}
-                </p>
-                <pre className="mt-2 overflow-x-auto rounded-2xl bg-stone-100 p-4 text-xs leading-6 text-stone-700">
-                  {JSON.stringify(trip.metrics_config, null, 2)}
-                </pre>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
-                  {dict.publicSite.plannedPathPolyline}
-                </p>
-                <p className="mt-2 break-all rounded-2xl bg-stone-100 p-4 text-sm leading-6 text-stone-700">
-                  {trip.planned_path_polyline ?? dict.publicSite.metaEmpty}
-                </p>
-              </div>
-            </div>
-          </div>
         </section>
 
         <TripList trips={trips} />
