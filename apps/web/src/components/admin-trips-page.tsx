@@ -992,7 +992,7 @@ export function AdminTripsPage() {
 
                       {!activityDraft ? null : (
                         <div className="space-y-5 rounded-[1.5rem] border border-stone-200 bg-white p-5">
-                          <div className="flex flex-col gap-4 border-b border-stone-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             <div className="min-w-0 flex-1">
                               <label className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
                                 {dict.activities.name}
@@ -1039,6 +1039,15 @@ export function AdminTripsPage() {
                             </div>
                           </div>
 
+                          <TripContentEditor
+                              editorKey={activityDraft.id === null ? `new-${draft.id}` : `activity-${activityDraft.id}`}
+                              initialBlocks={activityDraft.descriptionBlocks}
+                              onChangeAction={(descriptionBlocks) => {
+                                setActivityDraft((current) =>
+                                    current ? { ...current, descriptionBlocks } : current,
+                                );
+                              }}
+                          />
                           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
                             {[
                               ["stravaActivityId", dict.activities.stravaActivityId],
@@ -1153,23 +1162,7 @@ export function AdminTripsPage() {
                             </label>
                           </div>
 
-                          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-                            <div className="space-y-3">
-                              <div>
-                                <h3 className="text-lg font-semibold">{dict.activities.descriptionTitle}</h3>
-                                <p className="text-sm text-stone-500">{dict.activities.descriptionHelp}</p>
-                              </div>
-                              <TripContentEditor
-                                editorKey={activityDraft.id === null ? `new-${draft.id}` : `activity-${activityDraft.id}`}
-                                initialBlocks={activityDraft.descriptionBlocks}
-                                onChangeAction={(descriptionBlocks) => {
-                                  setActivityDraft((current) =>
-                                    current ? { ...current, descriptionBlocks } : current,
-                                  );
-                                }}
-                              />
-                            </div>
-
+                          <div>
                             <div className="space-y-5">
                               <div className="rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4">
                                 <p className="text-sm font-medium text-stone-700">{dict.activities.gpxFile}</p>

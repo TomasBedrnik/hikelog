@@ -72,4 +72,5 @@ class ActivitySummaryRead(BaseModel):
     moving_time: int | None
     elapsed_time: int | None
     total_elevation_gain: float | None
+    description: dict[str, Any] | None = None
     photos: list[ActivityPhotoRead] = Field(default_factory=list)

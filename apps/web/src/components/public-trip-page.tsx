@@ -70,7 +70,7 @@ export function PublicTripPage({
   ];
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#f5f2e8_0%,#ffffff_28%,#ffffff_100%)] px-6 py-8 text-stone-900 sm:px-10 lg:px-16">
+    <main className="min-h-screen bg-[#ece3cf] bg-[url('/topo_seamless_contours.svg')] bg-[length:3000px_3000px] bg-[position:0_0] bg-repeat px-6 py-8 text-stone-900 sm:px-10 lg:px-16">
       <div className="mx-auto max-w-6xl">
         <section className="grid gap-8 rounded-[2rem] border border-stone-200 bg-white/90 px-8 py-12 shadow-[0_24px_80px_-48px_rgba(41,37,36,0.45)] backdrop-blur lg:grid-cols-[minmax(0,2fr)_20rem]">
           <div>

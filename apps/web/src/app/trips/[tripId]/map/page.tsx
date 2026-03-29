@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { TripMapPage } from "@/components/trip-map-page";
+import { listPublicTripActivities } from "@/lib/public-activities";
 import { getPublicTrip } from "@/lib/public-trips";
 
 export const dynamic = "force-dynamic";
@@ -16,11 +17,14 @@ export default async function TripMapRoute({
     notFound();
   }
 
-  const trip = await getPublicTrip(id).catch(() => null);
+  const [trip, activities] = await Promise.all([
+    getPublicTrip(id).catch(() => null),
+    listPublicTripActivities(id).catch(() => []),
+  ]);
 
   if (!trip) {
     notFound();
   }
 
-  return <TripMapPage trip={trip} />;
+  return <TripMapPage activities={activities} trip={trip} />;
 }

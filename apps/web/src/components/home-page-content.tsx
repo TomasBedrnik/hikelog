@@ -66,7 +66,7 @@ export function HomePageContent({
         }))
       : fallbackTripCards.map((card, index) => ({
           id: index,
-          href: "/trips",
+          href: "/",
           title: card.title,
           text: card.text,
           imageUrl: "/home-hero-theme.png",
@@ -95,7 +95,10 @@ export function HomePageContent({
 
           <div className="relative px-6 py-6 sm:px-8 lg:px-10">
             <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-stone-700">
-              <p className="font-semibold uppercase tracking-[0.35em] text-stone-500"></p>
+              <h1 className="flex items-center gap-3 text-lg font-bold tracking-[0.18em] text-[#035E24] sm:text-xl">
+                <Image alt="" className="size-8 rounded-md" height={32} src="/favicon-32x32.png" width={32} />
+                <span>Zuzka jde...</span>
+              </h1>
               <nav className="flex flex-wrap gap-5 text-sm text-stone-700/85">
                 <span>{dict.publicSite.homeNavAbout}</span>
                 <span>{dict.publicSite.homeNavTalks}</span>
@@ -108,9 +111,9 @@ export function HomePageContent({
             <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.1fr)] lg:items-end">
               <div className="hidden lg:block" />
               <div className="pb-2 lg:justify-self-end lg:text-left">
-                <h1 className="max-w-3xl font-serif text-5xl italic leading-[0.95] text-stone-900 sm:text-6xl lg:text-7xl">
+                <h2 className="max-w-3xl text-5xl font-bold leading-[0.95] text-[#035E24] sm:text-6xl lg:text-7xl">
                   {heroHeadline}
-                </h1>
+                </h2>
                 {hasGlobalHeroContent ? (
                   <TripContentRenderer
                     blocks={heroBlocks}
