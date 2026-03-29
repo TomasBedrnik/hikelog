@@ -16,7 +16,11 @@ from app.models.admin_user import AdminUser
 from app.models.trip import Trip
 from app.schemas.activity import ActivityCreate, ActivityRead, ActivityUpdate
 from app.schemas.activity_photo import ActivityPhotoOrderUpdate, ActivityPhotoRead
-from app.services.image_uploads import create_uploaded_image, delete_uploaded_image_files
+from app.services.image_uploads import (
+    create_uploaded_image,
+    delete_uploaded_image_files,
+    rotate_uploaded_image,
+)
 
 router = APIRouter()
 
@@ -238,3 +242,31 @@ async def reorder_activity_photos(
     await session.commit()
     ordered_photos = [photos_by_id[photo_id] for photo_id in ordered_ids]
     return [ActivityPhotoRead.model_validate(photo) for photo in ordered_photos]
+
+
+@router.patch("/{activity_id}/photos/{photo_id}/rotate", response_model=ActivityPhotoRead)
+async def rotate_activity_photo(
+    activity_id: int,
+    photo_id: int,
+    _: Annotated[AdminUser, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> ActivityPhotoRead:
+    photo = await session.get(ActivityPhoto, photo_id)
+    if photo is None or photo.activity_id != activity_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Activity photo not found")
+
+    rotated = rotate_uploaded_image(
+        storage_path=photo.storage_path,
+        thumbnail_storage_path=photo.thumbnail_storage_path,
+        image_url=photo.image_url,
+        thumbnail_url=photo.thumbnail_url,
+        content_type=photo.content_type,
+        original_filename=photo.original_filename,
+    )
+
+    for field, value in asdict(rotated).items():
+        setattr(photo, field, value)
+
+    await session.commit()
+    await session.refresh(photo)
+    return ActivityPhotoRead.model_validate(photo)

@@ -15,6 +15,7 @@ import {
   createActivity,
   deleteActivity,
   listActivities,
+  sortActivitiesByStartDate,
   updateActivity,
 } from "@/lib/activities";
 import { getTripContentBlocks } from "@/lib/blocknote";
@@ -243,7 +244,9 @@ export function AdminTripsPage() {
         }
 
         const firstTrip = tripItems[0];
-        const firstTripActivities = activityItems.filter((activity) => activity.trip_id === firstTrip.id);
+        const firstTripActivities = sortActivitiesByStartDate(
+          activityItems.filter((activity) => activity.trip_id === firstTrip.id),
+        );
         setSelectedTripId(firstTrip.id);
         setDraft(toDraft(firstTrip));
         if (firstTripActivities.length > 0) {
@@ -270,7 +273,7 @@ export function AdminTripsPage() {
     setDraft(toDraft(trip));
     setCountriesExpanded(false);
     setCountryQuery("");
-    const nextActivities = (activities ?? []).filter((activity) => activity.trip_id === trip.id);
+    const nextActivities = sortActivitiesByStartDate((activities ?? []).filter((activity) => activity.trip_id === trip.id));
     if (nextActivities.length > 0) {
       setSelectedActivityId(nextActivities[0].id);
       setActivityDraft(toActivityDraft(nextActivities[0]));
@@ -402,7 +405,9 @@ export function AdminTripsPage() {
 
           setSelectedTripId(next[0].id);
           setDraft(toDraft(next[0]));
-          const nextActivities = (activities ?? []).filter((activity) => activity.trip_id === next[0].id);
+          const nextActivities = sortActivitiesByStartDate(
+            (activities ?? []).filter((activity) => activity.trip_id === next[0].id),
+          );
           if (nextActivities.length > 0) {
             setSelectedActivityId(nextActivities[0].id);
             setActivityDraft(toActivityDraft(nextActivities[0]));
@@ -425,7 +430,9 @@ export function AdminTripsPage() {
     }
   };
 
-  const visibleActivities = draft?.id ? (activities ?? []).filter((activity) => activity.trip_id === draft.id) : [];
+  const visibleActivities = draft?.id
+    ? sortActivitiesByStartDate((activities ?? []).filter((activity) => activity.trip_id === draft.id))
+    : [];
   const selectedActivity =
     activityDraft?.id !== null ? visibleActivities.find((activity) => activity.id === activityDraft?.id) ?? null : null;
 

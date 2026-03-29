@@ -8,6 +8,7 @@ import {
   ActivityRead,
   deleteActivityPhoto,
   reorderActivityPhotos,
+  rotateActivityPhoto,
   uploadActivityPhotos,
 } from "@/lib/activities";
 import { useI18n } from "@/components/i18n-provider";
@@ -26,26 +27,17 @@ export function ActivityPhotoManager({
   const router = useRouter();
   const { dict, locale } = useI18n();
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"uploading" | `delete-${number}` | `move-${number}` | null>(null);
+  const [busy, setBusy] = useState<"uploading" | `delete-${number}` | `move-${number}` | `rotate-${number}` | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [resizeMode, setResizeMode] = useState<"keep" | "resize">("keep");
   const [resizeWidth, setResizeWidth] = useState(DEFAULT_WIDTH);
   const [resizeHeight, setResizeHeight] = useState(DEFAULT_HEIGHT);
   const [inputKey, setInputKey] = useState(0);
-  const [copiedValue, setCopiedValue] = useState<string | null>(null);
 
   const photos = useMemo(
     () => [...(activity?.photos ?? [])].sort((a, b) => a.position - b.position || a.id - b.id),
     [activity?.photos],
   );
-
-  const copyText = async (value: string) => {
-    await navigator.clipboard.writeText(value);
-    setCopiedValue(value);
-    window.setTimeout(() => {
-      setCopiedValue((current) => (current === value ? null : current));
-    }, 1500);
-  };
 
   const requireToken = () => {
     const token = getIdToken();
@@ -182,6 +174,32 @@ export function ActivityPhotoManager({
     }
   };
 
+  const handleRotate = async (photo: ActivityPhotoRead) => {
+    if (!activity?.id) {
+      return;
+    }
+    const token = requireToken();
+    if (!token) {
+      return;
+    }
+
+    setBusy(`rotate-${photo.id}`);
+    setError(null);
+    try {
+      const rotated = await rotateActivityPhoto(token, activity.id, photo.id);
+      startTransition(() => {
+        onPhotosChange(photos.map((item) => (item.id === photo.id ? rotated : item)));
+      });
+    } catch (e: unknown) {
+      if (handleAuthError(e)) {
+        return;
+      }
+      setError(e instanceof Error ? e.message : dict.common.unknownError);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <section className="rounded-[1.5rem] border border-stone-200 bg-stone-50/70 p-5">
       <div className="flex flex-col gap-2">
@@ -291,7 +309,7 @@ export function ActivityPhotoManager({
                   key={photo.id}
                   className="overflow-hidden rounded-[1.5rem] border border-stone-200 bg-white shadow-sm"
                 >
-                  <a href={photo.image_url} rel="noreferrer" target="_blank">
+                  <div className="relative">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       alt={photo.original_filename ?? dict.activityPhotos.imageAlt}
@@ -299,7 +317,52 @@ export function ActivityPhotoManager({
                       loading="lazy"
                       src={photo.thumbnail_url}
                     />
-                  </a>
+
+                    <div className="absolute inset-x-3 top-3 flex items-start justify-between">
+                      <div className="flex gap-2">
+                        <button
+                          className="rounded-full bg-white/90 px-2.5 py-1.5 text-xs font-semibold text-stone-700 shadow-sm transition hover:bg-white disabled:opacity-50"
+                          disabled={busy !== null || index === 0}
+                          onClick={() => {
+                            void handleMove(photo.id, -1);
+                          }}
+                          type="button"
+                        >
+                          {dict.activityPhotos.moveEarlierArrow}
+                        </button>
+                        <button
+                          className="rounded-full bg-white/90 px-2.5 py-1.5 text-xs font-semibold text-stone-700 shadow-sm transition hover:bg-white disabled:opacity-50"
+                          disabled={busy !== null || index === photos.length - 1}
+                          onClick={() => {
+                            void handleMove(photo.id, 1);
+                          }}
+                          type="button"
+                        >
+                          {dict.activityPhotos.moveLaterArrow}
+                        </button>
+                        <button
+                          className="rounded-full bg-white/90 px-2.5 py-1.5 text-xs font-semibold text-stone-700 shadow-sm transition hover:bg-white disabled:opacity-50"
+                          disabled={busy !== null}
+                          onClick={() => {
+                            void handleRotate(photo);
+                          }}
+                          type="button"
+                        >
+                          {dict.activityPhotos.rotate}
+                        </button>
+                      </div>
+                      <button
+                        className="rounded-full bg-white/90 px-2.5 py-1.5 text-xs font-semibold text-red-700 shadow-sm transition hover:bg-white disabled:opacity-50"
+                        disabled={busy !== null}
+                        onClick={() => {
+                          void handleDelete(photo);
+                        }}
+                        type="button"
+                      >
+                        {dict.activityPhotos.delete}
+                      </button>
+                    </div>
+                  </div>
 
                   <div className="space-y-4 px-4 py-4">
                     <div>
@@ -311,76 +374,6 @@ export function ActivityPhotoManager({
                         {new Date(photo.created_at).toLocaleString(getDateLocale(locale))}
                       </p>
                     </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        className="rounded-full border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100 disabled:opacity-50"
-                        disabled={busy !== null || index === 0}
-                        onClick={() => {
-                          void handleMove(photo.id, -1);
-                        }}
-                        type="button"
-                      >
-                        {dict.activityPhotos.moveEarlier}
-                      </button>
-                      <button
-                        className="rounded-full border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100 disabled:opacity-50"
-                        disabled={busy !== null || index === photos.length - 1}
-                        onClick={() => {
-                          void handleMove(photo.id, 1);
-                        }}
-                        type="button"
-                      >
-                        {dict.activityPhotos.moveLater}
-                      </button>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="rounded-2xl bg-stone-50 p-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
-                          {dict.activityPhotos.originalUrl}
-                        </p>
-                        <p className="mt-2 break-all text-xs leading-5 text-stone-600">{photo.image_url}</p>
-                        <button
-                          className="mt-3 rounded-full border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
-                          onClick={() => {
-                            void copyText(photo.image_url);
-                          }}
-                          type="button"
-                        >
-                          {copiedValue === photo.image_url ? dict.activityPhotos.copied : dict.activityPhotos.copyOriginal}
-                        </button>
-                      </div>
-
-                      <div className="rounded-2xl bg-stone-50 p-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
-                          {dict.activityPhotos.thumbnailUrl}
-                        </p>
-                        <p className="mt-2 break-all text-xs leading-5 text-stone-600">{photo.thumbnail_url}</p>
-                        <button
-                          className="mt-3 rounded-full border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
-                          onClick={() => {
-                            void copyText(photo.thumbnail_url);
-                          }}
-                          type="button"
-                        >
-                          {copiedValue === photo.thumbnail_url
-                            ? dict.activityPhotos.copied
-                            : dict.activityPhotos.copyThumbnail}
-                        </button>
-                      </div>
-                    </div>
-
-                    <button
-                      className="rounded-full border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-50"
-                      disabled={busy !== null}
-                      onClick={() => {
-                        void handleDelete(photo);
-                      }}
-                      type="button"
-                    >
-                      {busy === `delete-${photo.id}` ? dict.activityPhotos.deleting : dict.activityPhotos.delete}
-                    </button>
                   </div>
                 </article>
               ))}

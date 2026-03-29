@@ -7,7 +7,7 @@ import { TripList } from "@/components/trip-list";
 import { useI18n } from "@/components/i18n-provider";
 import { getTripContentBlocks, hasTripContent } from "@/lib/blocknote";
 import { getDateLocale } from "@/lib/i18n";
-import { ActivitySummaryRead } from "@/lib/activities";
+import { ActivitySummaryRead, sortActivitiesByStartDate } from "@/lib/activities";
 import { TripRead } from "@/lib/trips";
 import Link from "next/link";
 
@@ -31,14 +31,14 @@ export function PublicTripPage({
   const { dict, locale } = useI18n();
   const contentBlocks = getTripContentBlocks(trip.content);
   const tripHasContent = hasTripContent(trip.content);
-  const activityPhotoItems = activities.flatMap((activity) =>
+  const sortedActivities = sortActivitiesByStartDate(activities);
+  const activityPhotoItems = sortedActivities.flatMap((activity) =>
     activity.photos.map((photo) => ({
       id: photo.id,
       imageUrl: photo.image_url,
       thumbnailUrl: photo.thumbnail_url,
       alt: photo.original_filename ?? activity.name,
       href: `/activities/${activity.id}`,
-      label: activity.name,
     })),
   );
 
@@ -144,7 +144,7 @@ export function PublicTripPage({
             <p className="mt-4 rounded-2xl bg-stone-50 px-4 py-4 text-sm text-stone-500">{dict.activities.emptyPublic}</p>
           ) : (
             <div className="mt-5 grid gap-4 md:grid-cols-2">
-              {activities.map((activity) => (
+              {sortedActivities.map((activity) => (
                 <Link
                   key={activity.id}
                   className="rounded-[1.5rem] border border-stone-200 bg-stone-50 px-5 py-4 transition hover:border-emerald-600 hover:bg-emerald-50"

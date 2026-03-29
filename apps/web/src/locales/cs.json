@@ -105,7 +105,8 @@
     "copyOriginal": "Kopírovat URL originálu",
     "copyThumbnail": "Kopírovat URL náhledu",
     "copied": "Zkopírováno",
-    "delete": "Odebrat"
+    "delete": "Odebrat",
+    "rotate": "Otočit"
   },
   "activities": {
     "loading": "Načítání aktivit…",
@@ -172,13 +173,16 @@
     "delete": "Odstranit",
     "moveEarlier": "Posunout dříve",
     "moveLater": "Posunout později",
+    "moveEarlierArrow": "←",
+    "moveLaterArrow": "→",
     "positionLabel": "Pořadí",
     "imageAlt": "Fotka aktivity",
     "originalUrl": "Původní URL",
     "thumbnailUrl": "URL náhledu",
     "copyOriginal": "Kopírovat původní URL",
     "copyThumbnail": "Kopírovat URL náhledu",
-    "copied": "Zkopírováno"
+    "copied": "Zkopírováno",
+    "rotate": "Otočit"
   },
   "trips": {
     "loading": "Načítání tras…",

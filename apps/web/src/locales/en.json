@@ -105,7 +105,8 @@
     "copyOriginal": "Copy original URL",
     "copyThumbnail": "Copy thumbnail URL",
     "copied": "Copied",
-    "delete": "Remove"
+    "delete": "Remove",
+    "rotate": "Rotate"
   },
   "activities": {
     "loading": "Loading activities…",
@@ -172,13 +173,16 @@
     "delete": "Remove",
     "moveEarlier": "Move earlier",
     "moveLater": "Move later",
+    "moveEarlierArrow": "←",
+    "moveLaterArrow": "→",
     "positionLabel": "Order",
     "imageAlt": "Activity photo",
     "originalUrl": "Original URL",
     "thumbnailUrl": "Thumbnail URL",
     "copyOriginal": "Copy original URL",
     "copyThumbnail": "Copy thumbnail URL",
-    "copied": "Copied"
+    "copied": "Copied",
+    "rotate": "Rotate"
   },
   "trips": {
     "loading": "Loading trips…",

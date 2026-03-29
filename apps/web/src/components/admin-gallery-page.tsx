@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { clearIdToken, getIdToken } from "@/lib/auth";
 import { AdminNav } from "@/components/admin-nav";
 import { useI18n } from "@/components/i18n-provider";
-import { GalleryImageRead, deleteGalleryImage, listGalleryImages, uploadGalleryImages } from "@/lib/gallery";
+import { GalleryImageRead, deleteGalleryImage, listGalleryImages, rotateGalleryImage, uploadGalleryImages } from "@/lib/gallery";
 import { getDateLocale } from "@/lib/i18n";
 
 const DEFAULT_GALLERY_WIDTH = "1920";
@@ -16,13 +16,12 @@ export function AdminGalleryPage() {
   const { dict, locale } = useI18n();
   const [images, setImages] = useState<GalleryImageRead[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"uploading" | number | null>(null);
+  const [busy, setBusy] = useState<"uploading" | `delete-${number}` | `rotate-${number}` | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [resizeMode, setResizeMode] = useState<"keep" | "resize">("keep");
   const [resizeWidth, setResizeWidth] = useState(DEFAULT_GALLERY_WIDTH);
   const [resizeHeight, setResizeHeight] = useState(DEFAULT_GALLERY_HEIGHT);
   const [inputKey, setInputKey] = useState(0);
-  const [copiedValue, setCopiedValue] = useState<string | null>(null);
 
   useEffect(() => {
     const token = getIdToken();
@@ -44,14 +43,6 @@ export function AdminGalleryPage() {
         setError(e instanceof Error ? e.message : dict.common.unknownError);
       });
   }, [dict.common.unknownError, router]);
-
-  const copyText = async (value: string) => {
-    await navigator.clipboard.writeText(value);
-    setCopiedValue(value);
-    window.setTimeout(() => {
-      setCopiedValue((current) => (current === value ? null : current));
-    }, 1500);
-  };
 
   const uploadImages = async () => {
     const token = getIdToken();
@@ -112,13 +103,40 @@ export function AdminGalleryPage() {
       return;
     }
 
-    setBusy(image.id);
+    setBusy(`delete-${image.id}`);
     setError(null);
 
     try {
       await deleteGalleryImage(token, image.id);
       startTransition(() => {
         setImages((current) => (current ?? []).filter((item) => item.id !== image.id));
+      });
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === "AUTH_REQUIRED") {
+        clearIdToken();
+        router.push("/login");
+        return;
+      }
+      setError(e instanceof Error ? e.message : dict.common.unknownError);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const rotateImage = async (image: GalleryImageRead) => {
+    const token = getIdToken();
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    setBusy(`rotate-${image.id}`);
+    setError(null);
+
+    try {
+      const rotated = await rotateGalleryImage(token, image.id);
+      startTransition(() => {
+        setImages((current) => (current ?? []).map((item) => (item.id === image.id ? rotated : item)));
       });
     } catch (e: unknown) {
       if (e instanceof Error && e.message === "AUTH_REQUIRED") {
@@ -240,7 +258,7 @@ export function AdminGalleryPage() {
                   key={image.id}
                   className="overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-sm"
                 >
-                  <a href={image.image_url} rel="noreferrer" target="_blank">
+                  <div className="relative">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       alt={image.original_filename ?? dict.gallery.imageAlt}
@@ -248,7 +266,30 @@ export function AdminGalleryPage() {
                       loading="lazy"
                       src={image.thumbnail_url}
                     />
-                  </a>
+
+                    <div className="absolute inset-x-3 top-3 flex items-start justify-between">
+                      <button
+                        className="rounded-full bg-white/90 px-2.5 py-1.5 text-xs font-semibold text-stone-700 shadow-sm transition hover:bg-white disabled:opacity-50"
+                        disabled={busy !== null}
+                        onClick={() => {
+                          void rotateImage(image);
+                        }}
+                        type="button"
+                      >
+                        {dict.gallery.rotate}
+                      </button>
+                      <button
+                        className="rounded-full bg-white/90 px-2.5 py-1.5 text-xs font-semibold text-red-700 shadow-sm transition hover:bg-white disabled:opacity-50"
+                        disabled={busy !== null}
+                        onClick={() => {
+                          void removeImage(image);
+                        }}
+                        type="button"
+                      >
+                        {dict.gallery.delete}
+                      </button>
+                    </div>
+                  </div>
 
                   <div className="space-y-4 px-4 py-4">
                     <div>
@@ -259,51 +300,6 @@ export function AdminGalleryPage() {
                         {image.width} x {image.height} · {new Date(image.created_at).toLocaleString(getDateLocale(locale))}
                       </p>
                     </div>
-
-                    <div className="space-y-2">
-                      <div className="rounded-2xl bg-stone-50 p-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
-                          {dict.gallery.originalUrl}
-                        </p>
-                        <p className="mt-2 break-all text-xs leading-5 text-stone-600">{image.image_url}</p>
-                        <button
-                          className="mt-3 rounded-full border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
-                          onClick={() => {
-                            void copyText(image.image_url);
-                          }}
-                          type="button"
-                        >
-                          {copiedValue === image.image_url ? dict.gallery.copied : dict.gallery.copyOriginal}
-                        </button>
-                      </div>
-
-                      <div className="rounded-2xl bg-stone-50 p-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
-                          {dict.gallery.thumbnailUrl}
-                        </p>
-                        <p className="mt-2 break-all text-xs leading-5 text-stone-600">{image.thumbnail_url}</p>
-                        <button
-                          className="mt-3 rounded-full border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
-                          onClick={() => {
-                            void copyText(image.thumbnail_url);
-                          }}
-                          type="button"
-                        >
-                          {copiedValue === image.thumbnail_url ? dict.gallery.copied : dict.gallery.copyThumbnail}
-                        </button>
-                      </div>
-                    </div>
-
-                    <button
-                      className="rounded-full border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={busy === image.id}
-                      onClick={() => {
-                        void removeImage(image);
-                      }}
-                      type="button"
-                    >
-                      {dict.gallery.delete}
-                    </button>
                   </div>
                 </article>
               ))}

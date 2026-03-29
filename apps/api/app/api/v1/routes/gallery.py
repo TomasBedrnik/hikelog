@@ -12,7 +12,11 @@ from app.db.session import get_session
 from app.models.admin_user import AdminUser
 from app.models.gallery_image import GalleryImage
 from app.schemas.gallery_image import GalleryImageRead
-from app.services.image_uploads import create_uploaded_image, delete_uploaded_image_files
+from app.services.image_uploads import (
+    create_uploaded_image,
+    delete_uploaded_image_files,
+    rotate_uploaded_image,
+)
 
 router = APIRouter()
 def _delete_gallery_image_files(image: GalleryImage) -> None:
@@ -96,3 +100,30 @@ async def delete_gallery_image(
     await session.delete(image)
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.patch("/{image_id}/rotate", response_model=GalleryImageRead)
+async def rotate_gallery_image(
+    image_id: int,
+    _: Annotated[AdminUser, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> GalleryImageRead:
+    image = await session.get(GalleryImage, image_id)
+    if image is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Gallery image not found")
+
+    rotated = rotate_uploaded_image(
+        storage_path=image.storage_path,
+        thumbnail_storage_path=image.thumbnail_storage_path,
+        image_url=image.image_url,
+        thumbnail_url=image.thumbnail_url,
+        content_type=image.content_type,
+        original_filename=image.original_filename,
+    )
+
+    for field, value in asdict(rotated).items():
+        setattr(image, field, value)
+
+    await session.commit()
+    await session.refresh(image)
+    return GalleryImageRead.model_validate(image)

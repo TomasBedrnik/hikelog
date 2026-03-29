@@ -44,6 +44,9 @@ class FirebaseStorageService:
     def delete_object(self, path: str) -> None:
         self.bucket.blob(path).delete(if_generation_match=None)
 
+    def download_bytes(self, path: str) -> bytes:
+        return self.bucket.blob(path).download_as_bytes()
+
     def build_download_url(self, *, path: str, download_token: str) -> str:
         encoded_path = quote(path, safe="")
         return (

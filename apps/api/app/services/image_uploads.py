@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from io import BytesIO
+from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
 from fastapi import HTTPException, UploadFile, status
@@ -14,6 +15,7 @@ SUPPORTED_IMAGE_FORMATS = {
     "JPEG": ("jpg", "image/jpeg"),
     "PNG": ("png", "image/png"),
 }
+CONTENT_TYPE_TO_IMAGE_FORMAT = {content_type: image_format for image_format, (_, content_type) in SUPPORTED_IMAGE_FORMATS.items()}
 
 
 @dataclass(slots=True)
@@ -132,3 +134,67 @@ def delete_uploaded_image_files(*, storage_path: str, thumbnail_storage_path: st
             firebase_storage.delete_object(path)
         except Exception:
             continue
+
+
+def _extract_download_token(url: str) -> str:
+    token = parse_qs(urlparse(url).query).get("token", [None])[0]
+    return token or str(uuid4())
+
+
+def rotate_uploaded_image(
+    *,
+    storage_path: str,
+    thumbnail_storage_path: str,
+    image_url: str,
+    thumbnail_url: str,
+    content_type: str,
+    original_filename: str | None,
+) -> UploadedImagePayload:
+    image_format = CONTENT_TYPE_TO_IMAGE_FORMAT.get(content_type)
+    if image_format is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported image content type")
+
+    try:
+        original_image = Image.open(BytesIO(firebase_storage.download_bytes(storage_path)))
+        original_image.load()
+    except UnidentifiedImageError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported image file") from exc
+
+    rotated_image = _normalize_image_for_format(
+        original_image.transpose(Image.Transpose.ROTATE_270),
+        image_format,
+    )
+    thumbnail_image = rotated_image.copy()
+    thumbnail_image.thumbnail(THUMBNAIL_MAX_SIZE, Image.Resampling.LANCZOS)
+
+    rotated_bytes = _save_image_bytes(rotated_image, image_format)
+    thumbnail_bytes = _save_image_bytes(thumbnail_image, image_format)
+
+    image_token = _extract_download_token(image_url)
+    thumbnail_token = _extract_download_token(thumbnail_url)
+
+    next_image_url = firebase_storage.upload_bytes(
+        path=storage_path,
+        data=rotated_bytes,
+        content_type=content_type,
+        download_token=image_token,
+    )
+    next_thumbnail_url = firebase_storage.upload_bytes(
+        path=thumbnail_storage_path,
+        data=thumbnail_bytes,
+        content_type=content_type,
+        download_token=thumbnail_token,
+    )
+
+    return UploadedImagePayload(
+        storage_path=storage_path,
+        thumbnail_storage_path=thumbnail_storage_path,
+        image_url=next_image_url,
+        thumbnail_url=next_thumbnail_url,
+        width=rotated_image.width,
+        height=rotated_image.height,
+        thumbnail_width=thumbnail_image.width,
+        thumbnail_height=thumbnail_image.height,
+        content_type=content_type,
+        original_filename=original_filename,
+    )
