@@ -7,7 +7,6 @@ import {
   TripImageRead,
   TripRead,
   deleteTripImage,
-  reorderTripImages,
   rotateTripImage,
   uploadTripImages,
 } from "@/lib/trips";
@@ -125,46 +124,6 @@ export function TripImageManager({
       await deleteTripImage(token, trip.id, image.id);
       startTransition(() => {
         onImagesChange(images.filter((item) => item.id !== image.id));
-      });
-    } catch (e: unknown) {
-      if (handleAuthError(e)) {
-        return;
-      }
-      setError(e instanceof Error ? e.message : dict.common.unknownError);
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const handleMove = async (imageId: number, direction: -1 | 1) => {
-    if (!trip?.id) {
-      return;
-    }
-    const token = requireToken();
-    if (!token) {
-      return;
-    }
-
-    const index = images.findIndex((image) => image.id === imageId);
-    const targetIndex = index + direction;
-    if (index < 0 || targetIndex < 0 || targetIndex >= images.length) {
-      return;
-    }
-
-    const reordered = [...images];
-    const [item] = reordered.splice(index, 1);
-    reordered.splice(targetIndex, 0, item);
-
-    setBusy(`move-${imageId}`);
-    setError(null);
-    try {
-      const saved = await reorderTripImages(
-        token,
-        trip.id,
-        reordered.map((image) => image.id),
-      );
-      startTransition(() => {
-        onImagesChange(saved);
       });
     } catch (e: unknown) {
       if (handleAuthError(e)) {
@@ -332,26 +291,6 @@ export function TripImageManager({
                       <div className="flex gap-2">
                         <button
                           className="rounded-full bg-white/90 px-2.5 py-1.5 text-xs font-semibold text-stone-700 shadow-sm transition hover:bg-white disabled:opacity-50"
-                          disabled={busy !== null || index === 0}
-                          onClick={() => {
-                            void handleMove(image.id, -1);
-                          }}
-                          type="button"
-                        >
-                          {dict.tripImages.moveEarlierArrow}
-                        </button>
-                        <button
-                          className="rounded-full bg-white/90 px-2.5 py-1.5 text-xs font-semibold text-stone-700 shadow-sm transition hover:bg-white disabled:opacity-50"
-                          disabled={busy !== null || index === images.length - 1}
-                          onClick={() => {
-                            void handleMove(image.id, 1);
-                          }}
-                          type="button"
-                        >
-                          {dict.tripImages.moveLaterArrow}
-                        </button>
-                        <button
-                          className="rounded-full bg-white/90 px-2.5 py-1.5 text-xs font-semibold text-stone-700 shadow-sm transition hover:bg-white disabled:opacity-50"
                           disabled={busy !== null}
                           onClick={() => {
                             void handleRotate(image);
@@ -380,8 +319,7 @@ export function TripImageManager({
                         {image.original_filename ?? dict.tripImages.imageAlt}
                       </p>
                       <p className="mt-1 text-xs text-stone-500">
-                        {dict.tripImages.positionLabel} {index + 1} · {image.width} x {image.height} ·{" "}
-                        {new Date(image.created_at).toLocaleString(getDateLocale(locale))}
+                        {image.width} x {image.height} · {new Date(image.created_at).toLocaleString(getDateLocale(locale))}
                       </p>
                     </div>
                   </div>

@@ -83,3 +83,9 @@ def build_polylines_from_gpx(payload: bytes) -> tuple[str, str]:
     full_polyline = encode_polyline(points)
     summary_polyline = encode_polyline(_downsample_points(points))
     return full_polyline, summary_polyline
+
+
+def build_trip_polyline_from_gpx(payload: bytes, *, compress: bool) -> str:
+    points = parse_gpx_points(payload)
+    selected_points = _downsample_points(points) if compress else points
+    return encode_polyline(selected_points)

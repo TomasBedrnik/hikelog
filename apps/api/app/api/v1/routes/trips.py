@@ -15,6 +15,7 @@ from app.models.trip import Trip
 from app.models.trip_image import TripImage
 from app.schemas.trip import TripCreate, TripRead, TripUpdate
 from app.schemas.trip_image import TripImageOrderUpdate, TripImageRead
+from app.services.gpx_polylines import build_trip_polyline_from_gpx
 from app.services.image_uploads import create_uploaded_image, delete_uploaded_image_files, rotate_uploaded_image
 
 router = APIRouter()
@@ -77,6 +78,26 @@ async def update_trip(
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(trip, field, value)
 
+    await session.commit()
+    trip = await _get_trip_or_404(session, trip_id)
+    return _to_trip_read(trip)
+
+
+@router.post("/{trip_id}/gpx", response_model=TripRead)
+async def upload_trip_gpx(
+    trip_id: int,
+    _: Annotated[AdminUser, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+    file: Annotated[UploadFile, File(...)],
+    compress: Annotated[bool, Form()] = False,
+) -> TripRead:
+    trip = await _get_trip_or_404(session, trip_id)
+
+    payload = await file.read()
+    if not payload:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded GPX file is empty")
+
+    trip.planned_path_polyline = build_trip_polyline_from_gpx(payload, compress=compress)
     await session.commit()
     trip = await _get_trip_or_404(session, trip_id)
     return _to_trip_read(trip)

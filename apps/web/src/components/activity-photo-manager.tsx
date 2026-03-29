@@ -13,7 +13,6 @@ import {
 } from "@/lib/activities";
 import { ImageLightbox } from "@/components/image-lightbox";
 import { useI18n } from "@/components/i18n-provider";
-import { getDateLocale } from "@/lib/i18n";
 
 const DEFAULT_WIDTH = "1920";
 const DEFAULT_HEIGHT = "1080";
@@ -26,9 +25,16 @@ export function ActivityPhotoManager({
   onPhotosChange: (photos: ActivityPhotoRead[]) => void;
 }) {
   const router = useRouter();
-  const { dict, locale } = useI18n();
+  const { dict } = useI18n();
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"uploading" | `delete-${number}` | `move-${number}` | `rotate-${number}` | null>(null);
+  const [busy, setBusy] = useState<
+    | "uploading"
+    | `delete-${number}`
+    | `move-${number}`
+    | `rotate-left-${number}`
+    | `rotate-right-${number}`
+    | null
+  >(null);
   const [files, setFiles] = useState<File[]>([]);
   const [resizeMode, setResizeMode] = useState<"keep" | "resize">("keep");
   const [resizeWidth, setResizeWidth] = useState(DEFAULT_WIDTH);
@@ -176,7 +182,7 @@ export function ActivityPhotoManager({
     }
   };
 
-  const handleRotate = async (photo: ActivityPhotoRead) => {
+  const handleRotate = async (photo: ActivityPhotoRead, direction: "left" | "right") => {
     if (!activity?.id) {
       return;
     }
@@ -185,10 +191,10 @@ export function ActivityPhotoManager({
       return;
     }
 
-    setBusy(`rotate-${photo.id}`);
+    setBusy(`rotate-${direction}-${photo.id}`);
     setError(null);
     try {
-      const rotated = await rotateActivityPhoto(token, activity.id, photo.id);
+      const rotated = await rotateActivityPhoto(token, activity.id, photo.id, direction);
       startTransition(() => {
         onPhotosChange(photos.map((item) => (item.id === photo.id ? rotated : item)));
       });
@@ -305,7 +311,7 @@ export function ActivityPhotoManager({
           {photos.length === 0 ? (
             <p className="mt-4 rounded-2xl bg-white px-4 py-4 text-sm text-stone-500">{dict.activityPhotos.empty}</p>
           ) : (
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {photos.map((photo, index) => (
                 <article
                   key={photo.id}
@@ -328,61 +334,76 @@ export function ActivityPhotoManager({
                       />
                     </button>
 
-                    <div className="absolute inset-x-3 top-3 flex items-start justify-between">
-                      <div className="flex gap-2">
-                        <button
-                          className="rounded-full bg-white/90 px-2.5 py-1.5 text-xs font-semibold text-stone-700 shadow-sm transition hover:bg-white disabled:opacity-50"
-                          disabled={busy !== null || index === 0}
-                          onClick={() => {
-                            void handleMove(photo.id, -1);
-                          }}
-                          type="button"
-                        >
-                          {dict.activityPhotos.moveEarlierArrow}
-                        </button>
-                        <button
-                          className="rounded-full bg-white/90 px-2.5 py-1.5 text-xs font-semibold text-stone-700 shadow-sm transition hover:bg-white disabled:opacity-50"
-                          disabled={busy !== null || index === photos.length - 1}
-                          onClick={() => {
-                            void handleMove(photo.id, 1);
-                          }}
-                          type="button"
-                        >
-                          {dict.activityPhotos.moveLaterArrow}
-                        </button>
-                        <button
-                          className="rounded-full bg-white/90 px-2.5 py-1.5 text-xs font-semibold text-stone-700 shadow-sm transition hover:bg-white disabled:opacity-50"
-                          disabled={busy !== null}
-                          onClick={() => {
-                            void handleRotate(photo);
-                          }}
-                          type="button"
-                        >
-                          {dict.activityPhotos.rotate}
-                        </button>
-                      </div>
+                    <div className="absolute left-3 top-3 flex gap-2">
                       <button
-                        className="rounded-full bg-white/90 px-2.5 py-1.5 text-xs font-semibold text-red-700 shadow-sm transition hover:bg-white disabled:opacity-50"
+                        aria-label={dict.activityPhotos.moveEarlier}
+                        className="rounded-full bg-white/92 px-2.5 py-1.5 text-xs font-semibold text-stone-700 shadow-sm transition hover:bg-white disabled:opacity-50"
+                        disabled={busy !== null || index === 0}
+                        onClick={() => {
+                          void handleMove(photo.id, -1);
+                        }}
+                        type="button"
+                      >
+                        {dict.activityPhotos.moveEarlierArrow}
+                      </button>
+                      <button
+                        aria-label={dict.activityPhotos.moveLater}
+                        className="rounded-full bg-white/92 px-2.5 py-1.5 text-xs font-semibold text-stone-700 shadow-sm transition hover:bg-white disabled:opacity-50"
+                        disabled={busy !== null || index === photos.length - 1}
+                        onClick={() => {
+                          void handleMove(photo.id, 1);
+                        }}
+                        type="button"
+                      >
+                        {dict.activityPhotos.moveLaterArrow}
+                      </button>
+                      <button
+                        aria-label={dict.activityPhotos.rotateLeft}
+                        className="rounded-full bg-white/92 p-2 text-stone-700 shadow-sm transition hover:bg-white disabled:opacity-50"
+                        disabled={busy !== null}
+                        onClick={() => {
+                          void handleRotate(photo, "left");
+                        }}
+                        type="button"
+                      >
+                        <svg aria-hidden="true" className="size-4" fill="none" viewBox="0 0 24 24">
+                          <path d="M9 7H4v5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                          <path d="M20 11a8 8 0 1 0-2.34 5.66L20 14" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                        </svg>
+                      </button>
+                      <button
+                        aria-label={dict.activityPhotos.rotateRight}
+                        className="rounded-full bg-white/92 p-2 text-stone-700 shadow-sm transition hover:bg-white disabled:opacity-50"
+                        disabled={busy !== null}
+                        onClick={() => {
+                          void handleRotate(photo, "right");
+                        }}
+                        type="button"
+                      >
+                        <svg aria-hidden="true" className="size-4" fill="none" viewBox="0 0 24 24">
+                          <path d="M15 7h5v5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                          <path d="M4 11a8 8 0 1 1 2.34 5.66L4 14" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    <div className="absolute bottom-3 right-3">
+                      <button
+                        aria-label={dict.activityPhotos.delete}
+                        className="rounded-full bg-red-600 p-2 text-white shadow-sm transition hover:bg-red-700 disabled:opacity-50"
                         disabled={busy !== null}
                         onClick={() => {
                           void handleDelete(photo);
                         }}
                         type="button"
                       >
-                        {dict.activityPhotos.delete}
+                        <svg aria-hidden="true" className="size-4" fill="none" viewBox="0 0 24 24">
+                          <path d="M4 7h16" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+                          <path d="M9 7V5h6v2" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                          <path d="M8 7l1 11h6l1-11" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                          <path d="M10 11v4M14 11v4" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+                        </svg>
                       </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4 px-4 py-4">
-                    <div>
-                      <p className="truncate text-sm font-medium text-stone-900">
-                        {photo.original_filename ?? dict.activityPhotos.imageAlt}
-                      </p>
-                      <p className="mt-1 text-xs text-stone-500">
-                        {dict.activityPhotos.positionLabel} {index + 1} · {photo.width} x {photo.height} ·{" "}
-                        {new Date(photo.created_at).toLocaleString(getDateLocale(locale))}
-                      </p>
                     </div>
                   </div>
                 </article>

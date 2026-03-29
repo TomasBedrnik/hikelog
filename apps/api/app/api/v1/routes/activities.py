@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -274,6 +274,7 @@ async def rotate_activity_photo(
     photo_id: int,
     _: Annotated[AdminUser, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
+    direction: Annotated[str, Query(pattern="^(left|right)$")] = "right",
 ) -> ActivityPhotoRead:
     photo = await session.get(ActivityPhoto, photo_id)
     if photo is None or photo.activity_id != activity_id:
@@ -290,6 +291,7 @@ async def rotate_activity_photo(
         original_filename=photo.original_filename,
         gps_latitude=photo.gps_latitude,
         gps_longitude=photo.gps_longitude,
+        direction=direction,
     )
 
     for field, value in asdict(rotated).items():

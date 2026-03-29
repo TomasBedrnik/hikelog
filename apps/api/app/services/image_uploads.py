@@ -262,6 +262,7 @@ def rotate_uploaded_image(
     original_filename: str | None,
     gps_latitude: float | None,
     gps_longitude: float | None,
+    direction: str = "right",
 ) -> UploadedImagePayload:
     image_format = CONTENT_TYPE_TO_IMAGE_FORMAT.get(content_type)
     if image_format is None:
@@ -273,8 +274,9 @@ def rotate_uploaded_image(
     except UnidentifiedImageError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported image file") from exc
 
+    transpose_operation = Image.Transpose.ROTATE_270 if direction == "right" else Image.Transpose.ROTATE_90
     rotated_image = _normalize_image_for_format(
-        original_image.transpose(Image.Transpose.ROTATE_270),
+        original_image.transpose(transpose_operation),
         image_format,
     )
     thumbnail_image = rotated_image.copy()
@@ -286,9 +288,9 @@ def rotate_uploaded_image(
     thumbnail_bytes = _save_image_bytes(thumbnail_image, image_format)
     tiny_thumbnail_bytes = _save_image_bytes(tiny_thumbnail_image, image_format)
 
-    image_token = _extract_download_token(image_url)
-    thumbnail_token = _extract_download_token(thumbnail_url)
-    tiny_thumbnail_token = _extract_download_token(tiny_thumbnail_url)
+    image_token = str(uuid4())
+    thumbnail_token = str(uuid4())
+    tiny_thumbnail_token = str(uuid4())
 
     if tiny_thumbnail_storage_path is None:
         stem, _, extension = storage_path.rpartition('.')

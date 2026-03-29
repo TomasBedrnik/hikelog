@@ -23,7 +23,16 @@ import {
 import { getTripContentBlocks } from "@/lib/blocknote";
 import { formatMessage, getDateLocale } from "@/lib/i18n";
 import { getCountryOptions, getTimezoneOptions } from "@/lib/options";
-import { createTrip, deleteTrip, listTrips, TripImageRead, TripRead, TripWrite, updateTrip } from "@/lib/trips";
+import {
+  createTrip,
+  deleteTrip,
+  listTrips,
+  TripImageRead,
+  TripRead,
+  TripWrite,
+  updateTrip,
+  uploadTripGpx,
+} from "@/lib/trips";
 
 const EMPTY_BLOCKS: PartialBlock[] = [{ type: "paragraph" }];
 
@@ -212,8 +221,12 @@ export function AdminTripsPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<"saving" | "deleting" | null>(null);
   const [activityBusy, setActivityBusy] = useState<"saving" | "deleting" | "uploading-gpx" | null>(null);
+  const [tripGpxBusy, setTripGpxBusy] = useState<"uploading-gpx" | null>(null);
   const [activityGpxFile, setActivityGpxFile] = useState<File | null>(null);
   const [activityGpxInputKey, setActivityGpxInputKey] = useState(0);
+  const [tripGpxFile, setTripGpxFile] = useState<File | null>(null);
+  const [tripGpxInputKey, setTripGpxInputKey] = useState(0);
+  const [compressTripGpx, setCompressTripGpx] = useState(false);
   const [countriesExpanded, setCountriesExpanded] = useState(false);
   const [countryQuery, setCountryQuery] = useState("");
 
@@ -227,6 +240,31 @@ export function AdminTripsPage() {
         .map((country) => country.label)
         .join(", ")
     : dict.trips.countriesPlaceholder;
+
+  const resetActivityGpxSelection = () => {
+    setActivityGpxFile(null);
+    setActivityGpxInputKey((current) => current + 1);
+  };
+
+  const resetTripGpxSelection = () => {
+    setTripGpxFile(null);
+    setTripGpxInputKey((current) => current + 1);
+  };
+
+  const getActivitiesForTrip = (tripId: number) =>
+    sortActivitiesByStartDate((activities ?? []).filter((activity) => activity.trip_id === tripId));
+
+  const setCurrentActivity = (activity: ActivityRead) => {
+    setSelectedActivityId(activity.id);
+    setActivityDraft(toActivityDraft(activity));
+    resetActivityGpxSelection();
+  };
+
+  const showNewActivityForTrip = (tripId: number | null) => {
+    setSelectedActivityId("new");
+    setActivityDraft(createEmptyActivityDraft(tripId));
+    resetActivityGpxSelection();
+  };
 
   useEffect(() => {
     const token = getIdToken();
@@ -248,17 +286,13 @@ export function AdminTripsPage() {
         }
 
         const firstTrip = tripItems[0];
-        const firstTripActivities = sortActivitiesByStartDate(
-          activityItems.filter((activity) => activity.trip_id === firstTrip.id),
-        );
+        const firstTripActivities = sortActivitiesByStartDate(activityItems.filter((activity) => activity.trip_id === firstTrip.id));
         setSelectedTripId(firstTrip.id);
         setDraft(toDraft(firstTrip));
         if (firstTripActivities.length > 0) {
-          setSelectedActivityId(firstTripActivities[0].id);
-          setActivityDraft(toActivityDraft(firstTripActivities[0]));
+          setCurrentActivity(firstTripActivities[0]);
         } else {
-          setSelectedActivityId("new");
-          setActivityDraft(createEmptyActivityDraft(firstTrip.id));
+          showNewActivityForTrip(firstTrip.id);
         }
       })
       .catch((e: unknown) => {
@@ -277,17 +311,12 @@ export function AdminTripsPage() {
     setDraft(toDraft(trip));
     setCountriesExpanded(false);
     setCountryQuery("");
-    setActivityGpxFile(null);
-    setActivityGpxInputKey((current) => current + 1);
-    const nextActivities = sortActivitiesByStartDate((activities ?? []).filter((activity) => activity.trip_id === trip.id));
+    resetTripGpxSelection();
+    const nextActivities = getActivitiesForTrip(trip.id);
     if (nextActivities.length > 0) {
-      setSelectedActivityId(nextActivities[0].id);
-      setActivityDraft(toActivityDraft(nextActivities[0]));
+      setCurrentActivity(nextActivities[0]);
     } else {
-      setSelectedActivityId("new");
-      setActivityDraft(createEmptyActivityDraft(trip.id));
-      setActivityGpxFile(null);
-      setActivityGpxInputKey((current) => current + 1);
+      showNewActivityForTrip(trip.id);
     }
   };
 
@@ -297,8 +326,8 @@ export function AdminTripsPage() {
     setDraft(createEmptyDraft());
     setCountriesExpanded(false);
     setCountryQuery("");
-    setSelectedActivityId("new");
-    setActivityDraft(createEmptyActivityDraft(null));
+    resetTripGpxSelection();
+    showNewActivityForTrip(null);
   };
 
   const persistTrip = async () => {
@@ -370,8 +399,8 @@ export function AdminTripsPage() {
         });
         setSelectedTripId(saved.id);
         setDraft(toDraft(saved));
-        setSelectedActivityId("new");
-        setActivityDraft(createEmptyActivityDraft(saved.id));
+        resetTripGpxSelection();
+        showNewActivityForTrip(saved.id);
       });
     } catch (e: unknown) {
       if (e instanceof Error && e.message === "AUTH_REQUIRED") {
@@ -413,15 +442,12 @@ export function AdminTripsPage() {
 
           setSelectedTripId(next[0].id);
           setDraft(toDraft(next[0]));
-          const nextActivities = sortActivitiesByStartDate(
-            (activities ?? []).filter((activity) => activity.trip_id === next[0].id),
-          );
+          resetTripGpxSelection();
+          const nextActivities = getActivitiesForTrip(next[0].id);
           if (nextActivities.length > 0) {
-            setSelectedActivityId(nextActivities[0].id);
-            setActivityDraft(toActivityDraft(nextActivities[0]));
+            setCurrentActivity(nextActivities[0]);
           } else {
-            setSelectedActivityId("new");
-            setActivityDraft(createEmptyActivityDraft(next[0].id));
+            showNewActivityForTrip(next[0].id);
           }
           return next;
         });
@@ -438,15 +464,58 @@ export function AdminTripsPage() {
     }
   };
 
-  const visibleActivities = draft?.id
-    ? sortActivitiesByStartDate((activities ?? []).filter((activity) => activity.trip_id === draft.id))
-    : [];
-  const selectedPersistedTrip = draft?.id !== null ? (trips ?? []).find((trip) => trip.id === draft?.id) ?? null : null;
+  const visibleActivities = draft?.id ? getActivitiesForTrip(draft.id) : [];
+  const selectedPersistedTrip =
+    draft && draft.id !== null ? (trips ?? []).find((trip) => trip.id === draft.id) ?? null : null;
   const selectedActivity =
-    activityDraft?.id !== null ? visibleActivities.find((activity) => activity.id === activityDraft?.id) ?? null : null;
+    activityDraft && activityDraft.id !== null
+      ? visibleActivities.find((activity) => activity.id === activityDraft.id) ?? null
+      : null;
 
   const replaceTripImages = (tripId: number, images: TripImageRead[]) => {
     setTrips((current) => (current ?? []).map((trip) => (trip.id === tripId ? { ...trip, images } : trip)));
+  };
+
+  const uploadCurrentTripGpx = async () => {
+    const token = getIdToken();
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    if (!draft?.id) {
+      setError(dict.trips.saveTripFirstForGpx);
+      return;
+    }
+
+    if (!tripGpxFile) {
+      setError(dict.trips.gpxRequired);
+      return;
+    }
+
+    setTripGpxBusy("uploading-gpx");
+    setError(null);
+
+    try {
+      const saved = await uploadTripGpx(token, draft.id, {
+        file: tripGpxFile,
+        compress: compressTripGpx,
+      });
+      startTransition(() => {
+        setTrips((current) => (current ?? []).map((trip) => (trip.id === saved.id ? saved : trip)));
+        setDraft(toDraft(saved));
+        resetTripGpxSelection();
+      });
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === "AUTH_REQUIRED") {
+        clearIdToken();
+        router.push("/login");
+        return;
+      }
+      setError(e instanceof Error ? e.message : dict.common.unknownError);
+    } finally {
+      setTripGpxBusy(null);
+    }
   };
 
   const replaceActivityPhotos = (activityId: number, photos: ActivityPhotoRead[]) => {
@@ -457,18 +526,12 @@ export function AdminTripsPage() {
 
   const startNewActivity = () => {
     setError(null);
-    setSelectedActivityId("new");
-    setActivityDraft(createEmptyActivityDraft(draft?.id ?? null));
-    setActivityGpxFile(null);
-    setActivityGpxInputKey((current) => current + 1);
+    showNewActivityForTrip(draft?.id ?? null);
   };
 
   const selectActivity = (activity: ActivityRead) => {
     setError(null);
-    setSelectedActivityId(activity.id);
-    setActivityDraft(toActivityDraft(activity));
-    setActivityGpxFile(null);
-    setActivityGpxInputKey((current) => current + 1);
+    setCurrentActivity(activity);
   };
 
   const uploadCurrentActivityGpx = async () => {
@@ -495,10 +558,7 @@ export function AdminTripsPage() {
       const saved = await uploadActivityGpx(token, activityDraft.id, activityGpxFile);
       startTransition(() => {
         setActivities((current) => (current ?? []).map((activity) => (activity.id === saved.id ? saved : activity)));
-        setSelectedActivityId(saved.id);
-        setActivityDraft(toActivityDraft(saved));
-        setActivityGpxFile(null);
-        setActivityGpxInputKey((current) => current + 1);
+        setCurrentActivity(saved);
       });
     } catch (e: unknown) {
       if (e instanceof Error && e.message === "AUTH_REQUIRED") {
@@ -604,11 +664,9 @@ export function AdminTripsPage() {
         const nextItems = visibleActivities.filter((activity) => activity.id !== activityDraft.id);
         setActivities((current) => (current ?? []).filter((activity) => activity.id !== activityDraft.id));
         if (nextItems.length > 0) {
-          setSelectedActivityId(nextItems[0].id);
-          setActivityDraft(toActivityDraft(nextItems[0]));
+          setCurrentActivity(nextItems[0]);
         } else {
-          setSelectedActivityId("new");
-          setActivityDraft(createEmptyActivityDraft(draft.id));
+          showNewActivityForTrip(draft.id);
         }
       });
     } catch (e: unknown) {
@@ -840,58 +898,26 @@ export function AdminTripsPage() {
                       </div>
                     )}
                   </div>
-                </div>
 
-                <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-                  <div className="space-y-3">
-                    <div>
-                      <h2 className="text-lg font-semibold">{dict.trips.story}</h2>
-                      <p className="text-sm text-stone-500">{dict.trips.storyDescription}</p>
-                    </div>
-                    <TripContentEditor
-                      editorKey={draft.id === null ? "new" : String(draft.id)}
-                      initialBlocks={draft.contentBlocks}
-                      onChangeAction={(contentBlocks) => {
-                        setDraft((current) => (current ? { ...current, contentBlocks } : current));
-                      }}
-                    />
-                  </div>
-
-                  <div className="space-y-5">
-                    <label className="block">
-                      <span className="text-sm font-medium text-stone-700">{dict.trips.plannedDistance}</span>
-                      <input
+                  <label className="block">
+                    <span className="text-sm font-medium text-stone-700">{dict.trips.plannedDistance}</span>
+                    <input
                         className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
                         inputMode="numeric"
                         onChange={(event) => {
                           const value = event.target.value;
                           setDraft((current) =>
-                            current ? { ...current, plannedDistanceM: value } : current,
+                              current ? { ...current, plannedDistanceM: value } : current,
                           );
                         }}
                         placeholder={dict.trips.plannedDistancePlaceholder}
                         value={draft.plannedDistanceM}
-                      />
-                    </label>
+                    />
+                  </label>
 
-                    <label className="flex items-center gap-3 rounded-2xl border border-stone-300 px-4 py-3">
-                      <input
-                        checked={draft.showPlannedPath}
-                        className="size-4 accent-emerald-700"
-                        onChange={(event) => {
-                          const value = event.target.checked;
-                          setDraft((current) =>
-                            current ? { ...current, showPlannedPath: value } : current,
-                          );
-                        }}
-                        type="checkbox"
-                      />
-                      <span className="text-sm font-medium text-stone-700">{dict.trips.showPlannedPath}</span>
-                    </label>
-
-                    <label className="block">
-                      <span className="text-sm font-medium text-stone-700">{dict.trips.latitude}</span>
-                      <input
+                  <label className="block">
+                    <span className="text-sm font-medium text-stone-700">{dict.trips.latitude}</span>
+                    <input
                         className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
                         inputMode="decimal"
                         onChange={(event) => {
@@ -900,12 +926,12 @@ export function AdminTripsPage() {
                         }}
                         placeholder={dict.trips.latitudePlaceholder}
                         value={draft.latitude}
-                      />
-                    </label>
+                    />
+                  </label>
 
-                    <label className="block">
-                      <span className="text-sm font-medium text-stone-700">{dict.trips.longitude}</span>
-                      <input
+                  <label className="block">
+                    <span className="text-sm font-medium text-stone-700">{dict.trips.longitude}</span>
+                    <input
                         className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
                         inputMode="decimal"
                         onChange={(event) => {
@@ -914,12 +940,12 @@ export function AdminTripsPage() {
                         }}
                         placeholder={dict.trips.longitudePlaceholder}
                         value={draft.longitude}
-                      />
-                    </label>
+                    />
+                  </label>
 
-                    <label className="block">
-                      <span className="text-sm font-medium text-stone-700">{dict.trips.zoom}</span>
-                      <input
+                  <label className="block">
+                    <span className="text-sm font-medium text-stone-700">{dict.trips.zoom}</span>
+                    <input
                         className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
                         inputMode="numeric"
                         onChange={(event) => {
@@ -928,9 +954,86 @@ export function AdminTripsPage() {
                         }}
                         placeholder={dict.trips.zoomPlaceholder}
                         value={draft.zoom}
-                      />
-                    </label>
+                    />
+                  </label>
+                </div>
+
+                <div>
+                  <div className="space-y-3">
+                    <TripContentEditor
+                      editorKey={draft.id === null ? "new" : String(draft.id)}
+                      initialBlocks={draft.contentBlocks}
+                      onChangeAction={(contentBlocks) => {
+                        setDraft((current) => (current ? { ...current, contentBlocks } : current));
+                      }}
+                    />
                   </div>
+                </div>
+
+
+                <label className="flex items-center gap-3 rounded-2xl border border-stone-300 px-4 py-3">
+                  <input
+                      checked={draft?.showPlannedPath ?? false}
+                      className="size-4 accent-emerald-700"
+                      onChange={(event) => {
+                        const value = event.target.checked;
+                        setDraft((current) =>
+                            current ? { ...current, showPlannedPath: value } : current,
+                        );
+                      }}
+                      type="checkbox"
+                  />
+                  <span className="text-sm font-medium text-stone-700">{dict.trips.showPlannedPath}</span>
+                </label>
+
+                <div className="space-y-5 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4">
+                  <div>
+                    <p className="text-sm font-medium text-stone-700">{dict.trips.gpxFile}</p>
+                    <p className="mt-1 text-xs text-stone-500">{dict.trips.gpxHelp}</p>
+                    <input
+                      key={tripGpxInputKey}
+                      accept=".gpx,application/gpx+xml"
+                      className="mt-3 block w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm"
+                      onChange={(event) => {
+                        setTripGpxFile(event.target.files?.[0] ?? null);
+                      }}
+                      type="file"
+                    />
+                    <label className="mt-3 flex items-center gap-3 text-sm text-stone-700">
+                      <input
+                        checked={compressTripGpx}
+                        className="size-4 accent-emerald-700"
+                        onChange={(event) => {
+                          setCompressTripGpx(event.target.checked);
+                        }}
+                        type="checkbox"
+                      />
+                      <span>{dict.trips.gpxCompress}</span>
+                    </label>
+                    <button
+                      className="mt-3 rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={tripGpxBusy !== null}
+                      onClick={() => {
+                        void uploadCurrentTripGpx();
+                      }}
+                      type="button"
+                    >
+                      {tripGpxBusy === "uploading-gpx" ? dict.trips.gpxUploading : dict.trips.gpxUpload}
+                    </button>
+                  </div>
+
+                  <label className="block">
+                    <span className="text-sm font-medium text-stone-700">{dict.trips.plannedPathPolyline}</span>
+                    <input
+                      className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
+                      onChange={(event) => {
+                        setDraft((current) =>
+                          current ? { ...current, plannedPathPolyline: event.target.value } : current,
+                        );
+                      }}
+                      value={draft?.plannedPathPolyline ?? ""}
+                    />
+                  </label>
                 </div>
 
                 <TripImageManager
@@ -965,29 +1068,33 @@ export function AdminTripsPage() {
                       {dict.activities.tripRequired}
                     </p>
                   ) : (
-                    <div className="mt-5 grid gap-5 xl:grid-cols-[260px_minmax(0,1fr)]">
-                      <div className="space-y-2">
-                        {visibleActivities.length === 0 ? (
-                          <p className="rounded-2xl bg-white px-4 py-4 text-sm text-stone-500">
-                            {dict.activities.emptyPublic}
-                          </p>
-                        ) : (
-                          visibleActivities.map((activity) => (
-                            <button
-                              key={activity.id}
-                              className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
-                                selectedActivityId === activity.id
-                                  ? "border-emerald-600 bg-emerald-50"
-                                  : "border-stone-200 bg-white hover:border-stone-400 hover:bg-stone-50"
-                              }`}
-                              onClick={() => selectActivity(activity)}
-                              type="button"
-                            >
-                              <div className="truncate text-sm font-medium">{activity.name}</div>
-                              <div className="mt-1 text-xs text-stone-500">{activity.sport_type ?? activity.type ?? "—"}</div>
-                            </button>
-                          ))
-                        )}
+                    <div className="mt-5 space-y-5">
+                      <div className="overflow-x-auto pb-2">
+                        <div className="flex min-w-full gap-3">
+                          {visibleActivities.length === 0 ? (
+                            <p className="w-full rounded-2xl bg-white px-4 py-4 text-sm text-stone-500">
+                              {dict.activities.emptyPublic}
+                            </p>
+                          ) : (
+                            visibleActivities.map((activity) => (
+                              <button
+                                key={activity.id}
+                                className={`min-w-64 rounded-2xl border px-4 py-3 text-left transition ${
+                                  selectedActivityId === activity.id
+                                    ? "border-emerald-600 bg-emerald-50"
+                                    : "border-stone-200 bg-white hover:border-stone-400 hover:bg-stone-50"
+                                }`}
+                                onClick={() => selectActivity(activity)}
+                                type="button"
+                              >
+                                <div className="truncate text-sm font-medium">{activity.name}</div>
+                                <div className="mt-1 text-xs text-stone-500">
+                                  {activity.sport_type ?? activity.type ?? "—"}
+                                </div>
+                              </button>
+                            ))
+                          )}
+                        </div>
                       </div>
 
                       {!activityDraft ? null : (
@@ -1190,26 +1297,26 @@ export function AdminTripsPage() {
 
                               <label className="block">
                                 <span className="text-sm font-medium text-stone-700">{dict.activities.polyline}</span>
-                                <textarea
-                                  className="mt-2 min-h-32 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
+                                <input
+                                  className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
                                   onChange={(event) => {
                                     setActivityDraft((current) =>
                                       current ? { ...current, polyline: event.target.value } : current,
                                     );
                                   }}
-                                  value={activityDraft.polyline}
+                                  value={activityDraft?.polyline ?? ""}
                                 />
                               </label>
                               <label className="block">
                                 <span className="text-sm font-medium text-stone-700">{dict.activities.summaryPolyline}</span>
-                                <textarea
-                                  className="mt-2 min-h-32 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
+                                <input
+                                  className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
                                   onChange={(event) => {
                                     setActivityDraft((current) =>
                                       current ? { ...current, summaryPolyline: event.target.value } : current,
                                     );
                                   }}
-                                  value={activityDraft.summaryPolyline}
+                                  value={activityDraft?.summaryPolyline ?? ""}
                                 />
                               </label>
                             </div>
