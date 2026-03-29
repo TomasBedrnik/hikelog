@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { decodePolyline, ensureLeafletAssets } from "@/lib/leaflet";
 
 type PolylineStyle = {
@@ -17,6 +17,14 @@ type RouteStyle = {
   inner?: PolylineStyle;
 };
 
+type MapMarker = {
+  id: number | string;
+  latitude: number;
+  longitude: number;
+  title?: string | null;
+  thumbnailUrl?: string | null;
+};
+
 type MapyMapProps = {
   center?: {
     latitude: number;
@@ -24,6 +32,8 @@ type MapyMapProps = {
     zoom: number;
   } | null;
   polyline?: string | null;
+  markers?: MapMarker[];
+  onMarkerClick?: (markerId: number | string) => void;
   routeStyle?: RouteStyle;
   className?: string;
   onError?: (message: string | null) => void;
@@ -53,15 +63,53 @@ const DEFAULT_ROUTE_STYLE: Required<RouteStyle> = {
   },
 };
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function buildMarkerIcon(marker: MapMarker, leaflet: NonNullable<Window["L"]>) {
+  if (!marker.thumbnailUrl) {
+    return undefined;
+  }
+
+  const title = marker.title ? ` alt="${escapeHtml(marker.title)}"` : "";
+  return leaflet.divIcon({
+    className: "",
+    iconSize: [44, 56],
+    iconAnchor: [22, 56],
+    html: `
+      <div style="display:flex;flex-direction:column;align-items:center;">
+        <div style="height:40px;width:40px;overflow:hidden;border:2px solid white;border-radius:9999px;background:#e7e5e4;box-shadow:0 10px 24px -12px rgba(0,0,0,0.7);">
+          <img src="${escapeHtml(marker.thumbnailUrl)}"${title} style="display:block;height:100%;width:100%;object-fit:cover;" />
+        </div>
+        <div style="margin-top:-2px;height:0;width:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:14px solid white;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.35));"></div>
+      </div>
+    `,
+  });
+}
+
 export function MapyMap({
   center = null,
   polyline = null,
+  markers = [],
+  onMarkerClick,
   routeStyle,
   className = "h-full w-full",
   onError,
 }: MapyMapProps) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const [mounted, setMounted] = useState(false);
+  const emitError = useEffectEvent((message: string | null) => {
+    onError?.(message);
+  });
+  const emitMarkerClick = useEffectEvent((markerId: number | string) => {
+    onMarkerClick?.(markerId);
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -74,7 +122,7 @@ export function MapyMap({
 
     const apiKey = process.env.NEXT_PUBLIC_MAPYCOM_API_KEY;
     if (!apiKey) {
-      onError?.("missing_api_key");
+      emitError("missing_api_key");
       return;
     }
 
@@ -106,6 +154,21 @@ export function MapyMap({
         }
       }
 
+      for (const marker of markers) {
+        const leafletMarker = window.L.marker([marker.latitude, marker.longitude], {
+          icon: buildMarkerIcon(marker, window.L),
+          title: marker.title ?? undefined,
+        }).addTo(map);
+        leafletMarker.on("click", () => {
+          emitMarkerClick(marker.id);
+        });
+      }
+
+      const allPoints = [
+        ...routePoints,
+        ...markers.map((marker) => [marker.latitude, marker.longitude] as [number, number]),
+      ];
+
       if (routePoints.length > 0) {
         const styles = {
           outline: {
@@ -118,15 +181,20 @@ export function MapyMap({
           },
         };
 
-        const route = window.L.polyline(routePoints, styles.outline).addTo(map);
+        window.L.polyline(routePoints, styles.outline).addTo(map);
         window.L.polyline(routePoints, styles.inner).addTo(map);
-        map.fitBounds(route.getBounds(), { padding: [48, 48] });
+      }
+
+      if (allPoints.length > 1) {
+        map.fitBounds(window.L.latLngBounds(allPoints), { padding: [48, 48] });
+      } else if (allPoints.length === 1) {
+        map.setView(allPoints[0], 14);
       } else {
         const nextCenter = center ?? DEFAULT_CENTER;
         map.setView([nextCenter.latitude, nextCenter.longitude], nextCenter.zoom);
       }
 
-      onError?.(null);
+      emitError(null);
       mapInstance = map;
       return true;
     };
@@ -149,7 +217,7 @@ export function MapyMap({
       window.clearInterval(interval);
       mapInstance?.remove();
     };
-  }, [center, mounted, onError, polyline, routeStyle]);
+  }, [center, emitError, emitMarkerClick, markers, mounted, polyline, routeStyle]);
 
   return <div ref={mapRef} className={className} />;
 }

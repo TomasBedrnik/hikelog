@@ -4,6 +4,7 @@ import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearIdToken, getIdToken } from "@/lib/auth";
 import { AdminNav } from "@/components/admin-nav";
+import { ImageLightbox } from "@/components/image-lightbox";
 import { useI18n } from "@/components/i18n-provider";
 import { GalleryImageRead, deleteGalleryImage, listGalleryImages, rotateGalleryImage, uploadGalleryImages } from "@/lib/gallery";
 import { getDateLocale } from "@/lib/i18n";
@@ -22,6 +23,7 @@ export function AdminGalleryPage() {
   const [resizeWidth, setResizeWidth] = useState(DEFAULT_GALLERY_WIDTH);
   const [resizeHeight, setResizeHeight] = useState(DEFAULT_GALLERY_HEIGHT);
   const [inputKey, setInputKey] = useState(0);
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const token = getIdToken();
@@ -259,13 +261,21 @@ export function AdminGalleryPage() {
                   className="overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-sm"
                 >
                   <div className="relative">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      alt={image.original_filename ?? dict.gallery.imageAlt}
-                      className="h-56 w-full bg-stone-200 object-cover"
-                      loading="lazy"
-                      src={image.thumbnail_url}
-                    />
+                    <button
+                      className="block w-full"
+                      onClick={() => {
+                        setSelectedImageIndex(images.findIndex((item) => item.id === image.id));
+                      }}
+                      type="button"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        alt={image.original_filename ?? dict.gallery.imageAlt}
+                        className="h-56 w-full bg-stone-200 object-cover"
+                        loading="lazy"
+                        src={image.thumbnail_url}
+                      />
+                    </button>
 
                     <div className="absolute inset-x-3 top-3 flex items-start justify-between">
                       <button
@@ -307,6 +317,19 @@ export function AdminGalleryPage() {
           ) : null}
         </div>
       </div>
+
+      <ImageLightbox
+        items={(images ?? []).map((image) => ({
+          imageUrl: image.image_url,
+          alt: image.original_filename ?? dict.gallery.imageAlt,
+          label: image.original_filename,
+        }))}
+        onClose={() => {
+          setSelectedImageIndex(null);
+        }}
+        onSelect={setSelectedImageIndex}
+        selectedIndex={selectedImageIndex}
+      />
     </main>
   );
 }

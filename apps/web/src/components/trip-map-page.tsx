@@ -6,6 +6,24 @@ import { useI18n } from "@/components/i18n-provider";
 import { MapyMap } from "@/components/mapy-map";
 import { TripRead } from "@/lib/trips";
 
+const TRIP_ROUTE_STYLE = {
+  outline: {
+    color: "#55ffff",
+    weight: 6,
+    opacity: 1,
+    lineCap: "round" as const,
+    lineJoin: "round" as const,
+  },
+  inner: {
+    color: "white",
+    weight: 2,
+    opacity: 1,
+    dashArray: "6,6",
+    lineCap: "round" as const,
+    lineJoin: "round" as const,
+  },
+};
+
 export function TripMapPage({ trip }: { trip: TripRead }) {
   const { dict } = useI18n();
   const [error, setError] = useState<string | null>(null);
@@ -19,23 +37,7 @@ export function TripMapPage({ trip }: { trip: TripRead }) {
           zoom: trip.zoom ?? 7,
         }}
         polyline={trip.show_planned_path ? trip.planned_path_polyline : null}
-        routeStyle={{
-          outline: {
-            color: "#55ffff",
-            weight: 6,
-            opacity: 1,
-            lineCap: "round",
-            lineJoin: "round",
-          },
-          inner: {
-            color: "white",
-            weight: 2,
-            opacity: 1,
-            dashArray: "6,6",
-            lineCap: "round",
-            lineJoin: "round",
-          },
-        }}
+        routeStyle={TRIP_ROUTE_STYLE}
         onError={(message) => {
           setError(message === "missing_api_key" ? dict.publicSite.mapMissingApiKey : null);
         }}

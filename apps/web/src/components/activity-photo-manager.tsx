@@ -11,6 +11,7 @@ import {
   rotateActivityPhoto,
   uploadActivityPhotos,
 } from "@/lib/activities";
+import { ImageLightbox } from "@/components/image-lightbox";
 import { useI18n } from "@/components/i18n-provider";
 import { getDateLocale } from "@/lib/i18n";
 
@@ -33,6 +34,7 @@ export function ActivityPhotoManager({
   const [resizeWidth, setResizeWidth] = useState(DEFAULT_WIDTH);
   const [resizeHeight, setResizeHeight] = useState(DEFAULT_HEIGHT);
   const [inputKey, setInputKey] = useState(0);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
 
   const photos = useMemo(
     () => [...(activity?.photos ?? [])].sort((a, b) => a.position - b.position || a.id - b.id),
@@ -310,13 +312,21 @@ export function ActivityPhotoManager({
                   className="overflow-hidden rounded-[1.5rem] border border-stone-200 bg-white shadow-sm"
                 >
                   <div className="relative">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      alt={photo.original_filename ?? dict.activityPhotos.imageAlt}
-                      className="h-56 w-full bg-stone-200 object-cover"
-                      loading="lazy"
-                      src={photo.thumbnail_url}
-                    />
+                    <button
+                      className="block w-full"
+                      onClick={() => {
+                        setSelectedPhotoIndex(index);
+                      }}
+                      type="button"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        alt={photo.original_filename ?? dict.activityPhotos.imageAlt}
+                        className="h-56 w-full bg-stone-200 object-cover"
+                        loading="lazy"
+                        src={photo.thumbnail_url}
+                      />
+                    </button>
 
                     <div className="absolute inset-x-3 top-3 flex items-start justify-between">
                       <div className="flex gap-2">
@@ -381,6 +391,19 @@ export function ActivityPhotoManager({
           )}
         </>
       )}
+
+      <ImageLightbox
+        items={photos.map((photo) => ({
+          imageUrl: photo.image_url,
+          alt: photo.original_filename ?? dict.activityPhotos.imageAlt,
+          label: photo.original_filename,
+        }))}
+        onClose={() => {
+          setSelectedPhotoIndex(null);
+        }}
+        onSelect={setSelectedPhotoIndex}
+        selectedIndex={selectedPhotoIndex}
+      />
     </section>
   );
 }

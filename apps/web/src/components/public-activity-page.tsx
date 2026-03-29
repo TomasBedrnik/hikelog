@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ActivityRead } from "@/lib/activities";
 import { ActivityPhotoGallery } from "@/components/activity-photo-gallery";
 import { useI18n } from "@/components/i18n-provider";
@@ -9,6 +9,7 @@ import { getDateLocale } from "@/lib/i18n";
 import { getTripContentBlocks, hasTripContent } from "@/lib/blocknote";
 import { MapyMap } from "@/components/mapy-map";
 import { TripContentRenderer } from "@/components/trip-content-renderer";
+import { ImageLightbox } from "@/components/image-lightbox";
 
 function formatDateTime(value: string | null, locale: "en" | "cs") {
   if (!value) {
@@ -32,14 +33,36 @@ function formatDistance(value: number | null, locale: "en" | "cs") {
 export function PublicActivityPage({ activity }: { activity: ActivityRead }) {
   const { dict, locale } = useI18n();
   const [error, setError] = useState<string | null>(null);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
   const descriptionBlocks = getTripContentBlocks(activity.description);
   const hasDescription = hasTripContent(activity.description);
-  const photoItems = activity.photos.map((photo) => ({
-    id: photo.id,
-    imageUrl: photo.image_url,
-    thumbnailUrl: photo.thumbnail_url,
-    alt: photo.original_filename ?? activity.name,
-  }));
+  const photoItems = useMemo(
+    () =>
+      activity.photos.map((photo) => ({
+        id: photo.id,
+        imageUrl: photo.image_url,
+        thumbnailUrl: photo.thumbnail_url,
+        alt: photo.original_filename ?? activity.name,
+      })),
+    [activity.name, activity.photos],
+  );
+  const mapMarkers = useMemo(
+    () =>
+      activity.photos.flatMap((photo, index) =>
+        photo.gps_latitude === null || photo.gps_longitude === null
+          ? []
+          : [
+              {
+                id: index,
+                latitude: photo.gps_latitude,
+                longitude: photo.gps_longitude,
+                title: photo.original_filename ?? activity.name,
+                thumbnailUrl: photo.tiny_thumbnail_url ?? photo.thumbnail_url,
+              },
+            ],
+      ),
+    [activity.name, activity.photos],
+  );
 
   const infoItems = [
     {
@@ -72,6 +95,10 @@ export function PublicActivityPage({ activity }: { activity: ActivityRead }) {
     <main className="relative h-screen w-full overflow-hidden bg-stone-200">
       <MapyMap
         polyline={activity.polyline ?? activity.summary_polyline}
+        markers={mapMarkers}
+        onMarkerClick={(markerId) => {
+          setSelectedPhotoIndex(Number(markerId));
+        }}
         onError={(message) => {
           setError(message === "missing_api_key" ? dict.publicSite.mapMissingApiKey : null);
         }}
@@ -82,7 +109,13 @@ export function PublicActivityPage({ activity }: { activity: ActivityRead }) {
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
             {dict.activityPhotos.publicTitle}
           </p>
-          <ActivityPhotoGallery items={photoItems} layout="strip" />
+          <ActivityPhotoGallery
+            items={photoItems}
+            layout="strip"
+            onItemSelect={(index) => {
+              setSelectedPhotoIndex(index);
+            }}
+          />
         </div>
       ) : null}
 
@@ -121,6 +154,15 @@ export function PublicActivityPage({ activity }: { activity: ActivityRead }) {
           </div>
         ) : null}
       </div>
+
+      <ImageLightbox
+        items={photoItems}
+        onClose={() => {
+          setSelectedPhotoIndex(null);
+        }}
+        onSelect={setSelectedPhotoIndex}
+        selectedIndex={selectedPhotoIndex}
+      />
     </main>
   );
 }

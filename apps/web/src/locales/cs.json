@@ -3,7 +3,10 @@
     "loading": "Načítání…",
     "unknownError": "Neznámá chyba",
     "english": "Angličtina",
-    "czech": "Čeština"
+    "czech": "Čeština",
+    "close": "Zavřít",
+    "previous": "Předchozí",
+    "next": "Další"
   },
   "home": {
     "title": "HikeLog",

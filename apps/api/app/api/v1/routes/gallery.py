@@ -23,6 +23,7 @@ def _delete_gallery_image_files(image: GalleryImage) -> None:
     delete_uploaded_image_files(
         storage_path=image.storage_path,
         thumbnail_storage_path=image.thumbnail_storage_path,
+        tiny_thumbnail_storage_path=image.tiny_thumbnail_storage_path,
     )
 
 
@@ -115,10 +116,14 @@ async def rotate_gallery_image(
     rotated = rotate_uploaded_image(
         storage_path=image.storage_path,
         thumbnail_storage_path=image.thumbnail_storage_path,
+        tiny_thumbnail_storage_path=image.tiny_thumbnail_storage_path,
         image_url=image.image_url,
         thumbnail_url=image.thumbnail_url,
+        tiny_thumbnail_url=image.tiny_thumbnail_url,
         content_type=image.content_type,
         original_filename=image.original_filename,
+        gps_latitude=image.gps_latitude,
+        gps_longitude=image.gps_longitude,
     )
 
     for field, value in asdict(rotated).items():

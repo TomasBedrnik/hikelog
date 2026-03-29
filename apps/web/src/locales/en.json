@@ -3,7 +3,10 @@
     "loading": "Loading…",
     "unknownError": "Unknown error",
     "english": "English",
-    "czech": "Czech"
+    "czech": "Czech",
+    "close": "Close",
+    "previous": "Previous",
+    "next": "Next"
   },
   "home": {
     "title": "HikeLog",

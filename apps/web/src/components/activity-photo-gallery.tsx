@@ -14,9 +14,11 @@ export type ActivityPhotoGalleryItem = {
 export function ActivityPhotoGallery({
   items,
   layout,
+  onItemSelect,
 }: {
   items: ActivityPhotoGalleryItem[];
   layout: "grid" | "strip";
+  onItemSelect?: (index: number) => void;
 }) {
   if (items.length === 0) {
     return null;
@@ -26,7 +28,7 @@ export function ActivityPhotoGallery({
     return (
       <div className="overflow-x-auto">
         <div className="flex min-w-max gap-3">
-          {items.map((item) => {
+          {items.map((item, index) => {
             const content = (
               <>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -44,6 +46,17 @@ export function ActivityPhotoGallery({
               <Link key={item.id} className="block" href={item.href}>
                 {content}
               </Link>
+            ) : onItemSelect ? (
+              <button
+                key={item.id}
+                className="block text-left cursor-pointer"
+                onClick={() => {
+                  onItemSelect(index);
+                }}
+                type="button"
+              >
+                {content}
+              </button>
             ) : (
               <a key={item.id} className="block" href={item.imageUrl} rel="noreferrer" target="_blank">
                 {content}
@@ -57,7 +70,7 @@ export function ActivityPhotoGallery({
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {items.map((item) => {
+      {items.map((item, index) => {
         const content = (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -79,6 +92,17 @@ export function ActivityPhotoGallery({
           >
             {content}
           </Link>
+        ) : onItemSelect ? (
+          <button
+            key={item.id}
+            className="overflow-hidden rounded-[1.5rem] border border-stone-200 bg-white text-left transition hover:border-emerald-600 hover:bg-emerald-50"
+            onClick={() => {
+              onItemSelect(index);
+            }}
+            type="button"
+          >
+            {content}
+          </button>
         ) : (
           <a
             key={item.id}

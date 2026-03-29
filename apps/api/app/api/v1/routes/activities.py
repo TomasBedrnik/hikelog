@@ -131,6 +131,7 @@ def _delete_activity_photo_files(photo: ActivityPhoto) -> None:
     delete_uploaded_image_files(
         storage_path=photo.storage_path,
         thumbnail_storage_path=photo.thumbnail_storage_path,
+        tiny_thumbnail_storage_path=photo.tiny_thumbnail_storage_path,
     )
 
 
@@ -258,10 +259,14 @@ async def rotate_activity_photo(
     rotated = rotate_uploaded_image(
         storage_path=photo.storage_path,
         thumbnail_storage_path=photo.thumbnail_storage_path,
+        tiny_thumbnail_storage_path=photo.tiny_thumbnail_storage_path,
         image_url=photo.image_url,
         thumbnail_url=photo.thumbnail_url,
+        tiny_thumbnail_url=photo.tiny_thumbnail_url,
         content_type=photo.content_type,
         original_filename=photo.original_filename,
+        gps_latitude=photo.gps_latitude,
+        gps_longitude=photo.gps_longitude,
     )
 
     for field, value in asdict(rotated).items():
