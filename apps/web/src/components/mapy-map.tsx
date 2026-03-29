@@ -18,6 +18,7 @@ type RouteStyle = {
 };
 
 type MapRoute = {
+  id?: number | string;
   polyline: string;
   style?: RouteStyle;
 };
@@ -40,6 +41,8 @@ type MapyMapProps = {
   routes?: MapRoute[];
   markers?: MapMarker[];
   onMarkerClick?: (markerId: number | string) => void;
+  onRouteClick?: (routeId: number | string) => void;
+  onMapClick?: () => void;
   routeStyle?: RouteStyle;
   className?: string;
   onError?: (message: string | null) => void;
@@ -105,6 +108,8 @@ export function MapyMap({
   routes = [],
   markers = [],
   onMarkerClick,
+  onRouteClick,
+  onMapClick,
   routeStyle,
   className = "h-full w-full",
   onError,
@@ -114,6 +119,7 @@ export function MapyMap({
   const routeLayersRef = useRef<Array<{ remove: () => void }>>([]);
   const markerLayersRef = useRef<Array<{ remove: () => void }>>([]);
   const previousViewSignatureRef = useRef<string | null>(null);
+  const ignoreNextMapClickRef = useRef(false);
   const [mounted, setMounted] = useState(false);
   const [mapReadyVersion, setMapReadyVersion] = useState(0);
   const apiKey = process.env.NEXT_PUBLIC_MAPYCOM_API_KEY;
@@ -122,6 +128,12 @@ export function MapyMap({
   });
   const emitMarkerClick = useEffectEvent((markerId: number | string) => {
     onMarkerClick?.(markerId);
+  });
+  const emitRouteClick = useEffectEvent((routeId: number | string) => {
+    onRouteClick?.(routeId);
+  });
+  const emitMapClick = useEffectEvent(() => {
+    onMapClick?.();
   });
 
   useEffect(() => {
@@ -155,6 +167,13 @@ export function MapyMap({
         attribution:
           '<a href="https://api.mapy.com/copyright" target="_blank" rel="noreferrer">&copy; Seznam.cz a.s. and others</a>',
       }).addTo(map);
+      map.on("click", () => {
+        if (ignoreNextMapClickRef.current) {
+          ignoreNextMapClickRef.current = false;
+          return;
+        }
+        emitMapClick();
+      });
 
       mapInstanceRef.current = map;
       setMapReadyVersion((current) => current + 1);
@@ -214,6 +233,7 @@ export function MapyMap({
           {
             points: decodePolyline(route.polyline),
             style: route.style,
+            id: route.id,
             polyline: route.polyline,
           },
         ];
@@ -273,9 +293,25 @@ export function MapyMap({
           : null,
       };
 
-      routeLayersRef.current.push(window.L.polyline(route.points, styles.outline).addTo(map));
+      const outlineLayer = window.L.polyline(route.points, styles.outline).addTo(map);
+      if (route.id !== undefined) {
+        outlineLayer.on("click", (event) => {
+          ignoreNextMapClickRef.current = true;
+          event.originalEvent?.stopPropagation?.();
+          emitRouteClick(route.id!);
+        });
+      }
+      routeLayersRef.current.push(outlineLayer);
       if (styles.inner) {
-        routeLayersRef.current.push(window.L.polyline(route.points, styles.inner).addTo(map));
+        const innerLayer = window.L.polyline(route.points, styles.inner).addTo(map);
+        if (route.id !== undefined) {
+          innerLayer.on("click", (event) => {
+            ignoreNextMapClickRef.current = true;
+            event.originalEvent?.stopPropagation?.();
+            emitRouteClick(route.id!);
+          });
+        }
+        routeLayersRef.current.push(innerLayer);
       }
     }
 

@@ -47,26 +47,28 @@ export function TripMapPage({
   const { dict } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [hoveredActivityId, setHoveredActivityId] = useState<number | null>(null);
+  const [selectedActivityId, setSelectedActivityId] = useState<number | null>(null);
   const activityRoutes = activities.flatMap((activity, index) => {
     if (!activity.summary_polyline) {
       return [];
     }
 
-    const isHovered = hoveredActivityId === activity.id;
+    const isActive = selectedActivityId === activity.id || hoveredActivityId === activity.id;
     return [
       {
+        id: activity.id,
         polyline: activity.summary_polyline,
         style: {
           outline: {
             color: ACTIVITY_ROUTE_COLORS[index % ACTIVITY_ROUTE_COLORS.length],
-            weight: isHovered ? 10 : 6,
+            weight: isActive ? 10 : 6,
             opacity: 0.95,
             lineCap: "round" as const,
             lineJoin: "round" as const,
           },
           inner: {
             color: "black",
-            weight: isHovered ? 0 : 2,
+            weight: isActive ? 0 : 2,
             opacity: 1,
             dashArray: "6,6",
             lineCap: "round" as const,
@@ -88,6 +90,12 @@ export function TripMapPage({
         polyline={trip.show_planned_path ? trip.planned_path_polyline : null}
         routeStyle={TRIP_ROUTE_STYLE}
         routes={activityRoutes}
+        onMapClick={() => {
+          setSelectedActivityId(null);
+        }}
+        onRouteClick={(routeId) => {
+          setSelectedActivityId(Number(routeId));
+        }}
         onError={(message) => {
           setError(message === "missing_api_key" ? dict.publicSite.mapMissingApiKey : null);
         }}
@@ -114,7 +122,11 @@ export function TripMapPage({
             activities.map((activity) => (
               <Link
                 key={activity.id}
-                className="block rounded-[1.25rem] border border-stone-200 bg-stone-50 px-4 py-3 transition hover:border-emerald-700 hover:bg-emerald-50"
+                className={`block rounded-[1.25rem] border px-4 py-3 transition ${
+                  selectedActivityId === activity.id
+                    ? "border-emerald-700 bg-emerald-100"
+                    : "border-stone-200 bg-stone-50 hover:border-emerald-700 hover:bg-emerald-50"
+                }`}
                 href={`/activities/${activity.id}`}
                 onMouseEnter={() => {
                   setHoveredActivityId(activity.id);
