@@ -17,6 +17,7 @@ import {
   listActivities,
   sortActivitiesByStartDate,
   updateActivity,
+  uploadActivityGpx,
 } from "@/lib/activities";
 import { getTripContentBlocks } from "@/lib/blocknote";
 import { formatMessage, getDateLocale } from "@/lib/i18n";
@@ -209,7 +210,9 @@ export function AdminTripsPage() {
   const [activityDraft, setActivityDraft] = useState<ActivityDraft | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<"saving" | "deleting" | null>(null);
-  const [activityBusy, setActivityBusy] = useState<"saving" | "deleting" | null>(null);
+  const [activityBusy, setActivityBusy] = useState<"saving" | "deleting" | "uploading-gpx" | null>(null);
+  const [activityGpxFile, setActivityGpxFile] = useState<File | null>(null);
+  const [activityGpxInputKey, setActivityGpxInputKey] = useState(0);
   const [countriesExpanded, setCountriesExpanded] = useState(false);
   const [countryQuery, setCountryQuery] = useState("");
 
@@ -273,6 +276,8 @@ export function AdminTripsPage() {
     setDraft(toDraft(trip));
     setCountriesExpanded(false);
     setCountryQuery("");
+    setActivityGpxFile(null);
+    setActivityGpxInputKey((current) => current + 1);
     const nextActivities = sortActivitiesByStartDate((activities ?? []).filter((activity) => activity.trip_id === trip.id));
     if (nextActivities.length > 0) {
       setSelectedActivityId(nextActivities[0].id);
@@ -280,6 +285,8 @@ export function AdminTripsPage() {
     } else {
       setSelectedActivityId("new");
       setActivityDraft(createEmptyActivityDraft(trip.id));
+      setActivityGpxFile(null);
+      setActivityGpxInputKey((current) => current + 1);
     }
   };
 
@@ -446,12 +453,57 @@ export function AdminTripsPage() {
     setError(null);
     setSelectedActivityId("new");
     setActivityDraft(createEmptyActivityDraft(draft?.id ?? null));
+    setActivityGpxFile(null);
+    setActivityGpxInputKey((current) => current + 1);
   };
 
   const selectActivity = (activity: ActivityRead) => {
     setError(null);
     setSelectedActivityId(activity.id);
     setActivityDraft(toActivityDraft(activity));
+    setActivityGpxFile(null);
+    setActivityGpxInputKey((current) => current + 1);
+  };
+
+  const uploadCurrentActivityGpx = async () => {
+    const token = getIdToken();
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    if (!activityDraft?.id) {
+      setError(dict.activities.saveActivityFirstForGpx);
+      return;
+    }
+
+    if (!activityGpxFile) {
+      setError(dict.activities.gpxRequired);
+      return;
+    }
+
+    setActivityBusy("uploading-gpx");
+    setError(null);
+
+    try {
+      const saved = await uploadActivityGpx(token, activityDraft.id, activityGpxFile);
+      startTransition(() => {
+        setActivities((current) => (current ?? []).map((activity) => (activity.id === saved.id ? saved : activity)));
+        setSelectedActivityId(saved.id);
+        setActivityDraft(toActivityDraft(saved));
+        setActivityGpxFile(null);
+        setActivityGpxInputKey((current) => current + 1);
+      });
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === "AUTH_REQUIRED") {
+        clearIdToken();
+        router.push("/login");
+        return;
+      }
+      setError(e instanceof Error ? e.message : dict.common.unknownError);
+    } finally {
+      setActivityBusy(null);
+    }
   };
 
   const persistActivity = async () => {
@@ -1103,6 +1155,30 @@ export function AdminTripsPage() {
                             </div>
 
                             <div className="space-y-5">
+                              <div className="rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4">
+                                <p className="text-sm font-medium text-stone-700">{dict.activities.gpxFile}</p>
+                                <p className="mt-1 text-xs text-stone-500">{dict.activities.gpxHelp}</p>
+                                <input
+                                  key={activityGpxInputKey}
+                                  accept=".gpx,application/gpx+xml"
+                                  className="mt-3 block w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm"
+                                  onChange={(event) => {
+                                    setActivityGpxFile(event.target.files?.[0] ?? null);
+                                  }}
+                                  type="file"
+                                />
+                                <button
+                                  className="mt-3 rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                  disabled={activityBusy !== null}
+                                  onClick={() => {
+                                    void uploadCurrentActivityGpx();
+                                  }}
+                                  type="button"
+                                >
+                                  {activityBusy === "uploading-gpx" ? dict.activities.gpxUploading : dict.activities.gpxUpload}
+                                </button>
+                              </div>
+
                               <label className="block">
                                 <span className="text-sm font-medium text-stone-700">{dict.activities.polyline}</span>
                                 <textarea

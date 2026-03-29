@@ -16,6 +16,7 @@ from app.models.admin_user import AdminUser
 from app.models.trip import Trip
 from app.schemas.activity import ActivityCreate, ActivityRead, ActivityUpdate
 from app.schemas.activity_photo import ActivityPhotoOrderUpdate, ActivityPhotoRead
+from app.services.gpx_polylines import build_polylines_from_gpx
 from app.services.image_uploads import (
     create_uploaded_image,
     delete_uploaded_image_files,
@@ -106,6 +107,28 @@ async def update_activity(
 
     for field, value in values.items():
         setattr(activity, field, value)
+
+    await session.commit()
+    activity = await _get_activity_or_404(session, activity_id)
+    return _to_activity_read(activity)
+
+
+@router.post("/{activity_id}/gpx", response_model=ActivityRead)
+async def upload_activity_gpx(
+    activity_id: int,
+    _: Annotated[AdminUser, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+    file: Annotated[UploadFile, File(...)],
+) -> ActivityRead:
+    activity = await _get_activity_or_404(session, activity_id)
+
+    payload = await file.read()
+    if not payload:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded GPX file is empty")
+
+    polyline, summary_polyline = build_polylines_from_gpx(payload)
+    activity.polyline = polyline
+    activity.summary_polyline = summary_polyline
 
     await session.commit()
     activity = await _get_activity_or_404(session, activity_id)
