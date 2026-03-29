@@ -71,7 +71,7 @@ export function PublicActivityPage({ activity }: { activity: ActivityRead }) {
   return (
     <main className="relative h-screen w-full overflow-hidden bg-stone-200">
       <MapyMap
-        polyline={activity.summary_polyline ?? activity.polyline}
+        polyline={activity.polyline ?? activity.summary_polyline}
         onError={(message) => {
           setError(message === "missing_api_key" ? dict.publicSite.mapMissingApiKey : null);
         }}

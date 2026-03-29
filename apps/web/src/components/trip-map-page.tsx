@@ -18,6 +18,24 @@ export function TripMapPage({ trip }: { trip: TripRead }) {
           longitude: trip.longitude ?? 15.473,
           zoom: trip.zoom ?? 7,
         }}
+        polyline={trip.show_planned_path ? trip.planned_path_polyline : null}
+        routeStyle={{
+          outline: {
+            color: "#55ffff",
+            weight: 6,
+            opacity: 1,
+            lineCap: "round",
+            lineJoin: "round",
+          },
+          inner: {
+            color: "white",
+            weight: 2,
+            opacity: 1,
+            dashArray: "6,6",
+            lineCap: "round",
+            lineJoin: "round",
+          },
+        }}
         onError={(message) => {
           setError(message === "missing_api_key" ? dict.publicSite.mapMissingApiKey : null);
         }}

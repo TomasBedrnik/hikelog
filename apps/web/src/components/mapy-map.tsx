@@ -3,6 +3,20 @@
 import { useEffect, useRef, useState } from "react";
 import { decodePolyline, ensureLeafletAssets } from "@/lib/leaflet";
 
+type PolylineStyle = {
+  color?: string;
+  weight?: number;
+  opacity?: number;
+  dashArray?: string;
+  lineCap?: "butt" | "round" | "square";
+  lineJoin?: "miter" | "round" | "bevel";
+};
+
+type RouteStyle = {
+  outline?: PolylineStyle;
+  inner?: PolylineStyle;
+};
+
 type MapyMapProps = {
   center?: {
     latitude: number;
@@ -10,6 +24,7 @@ type MapyMapProps = {
     zoom: number;
   } | null;
   polyline?: string | null;
+  routeStyle?: RouteStyle;
   className?: string;
   onError?: (message: string | null) => void;
 };
@@ -20,9 +35,28 @@ const DEFAULT_CENTER = {
   zoom: 7,
 };
 
+const DEFAULT_ROUTE_STYLE: Required<RouteStyle> = {
+  outline: {
+    color: "#7f49f1",
+    weight: 6,
+    opacity: 1,
+    lineCap: "round",
+    lineJoin: "round",
+  },
+  inner: {
+    color: "black",
+    weight: 2,
+    opacity: 1,
+    dashArray: "6,6",
+    lineCap: "round",
+    lineJoin: "round",
+  },
+};
+
 export function MapyMap({
   center = null,
   polyline = null,
+  routeStyle,
   className = "h-full w-full",
   onError,
 }: MapyMapProps) {
@@ -73,10 +107,19 @@ export function MapyMap({
       }
 
       if (routePoints.length > 0) {
-        const route = window.L.polyline(routePoints, {
-          color: "#0f766e",
-          weight: 4,
-        }).addTo(map);
+        const styles = {
+          outline: {
+            ...DEFAULT_ROUTE_STYLE.outline,
+            ...routeStyle?.outline,
+          },
+          inner: {
+            ...DEFAULT_ROUTE_STYLE.inner,
+            ...routeStyle?.inner,
+          },
+        };
+
+        const route = window.L.polyline(routePoints, styles.outline).addTo(map);
+        window.L.polyline(routePoints, styles.inner).addTo(map);
         map.fitBounds(route.getBounds(), { padding: [48, 48] });
       } else {
         const nextCenter = center ?? DEFAULT_CENTER;
@@ -106,7 +149,7 @@ export function MapyMap({
       window.clearInterval(interval);
       mapInstance?.remove();
     };
-  }, [center, mounted, onError, polyline]);
+  }, [center, mounted, onError, polyline, routeStyle]);
 
   return <div ref={mapRef} className={className} />;
 }
