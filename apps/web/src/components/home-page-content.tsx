@@ -114,9 +114,7 @@ export function HomePageContent({
                 {hasGlobalHeroContent ? (
                   <TripContentRenderer
                     blocks={heroBlocks}
-                    chrome="plain"
-                    className="mt-5 max-w-2xl text-base leading-7 text-stone-700 sm:text-lg [&_.bn-block-content]:text-stone-700 [&_.bn-inline-content]:text-stone-700"
-                    editorKey={globalContent?.updated_at ?? "home-hero"}
+                    className="mt-5 max-w-2xl text-base leading-7 text-stone-700 sm:text-lg"
                   />
                 ) : (
                   <p className="mt-5 max-w-2xl text-base leading-7 text-stone-700 sm:text-lg">

@@ -82,13 +82,11 @@ export function PublicTripPage({
             </h1>
             <div>
               {tripHasContent ? (
-                  <div className="mt-4">
-                    <TripContentRenderer blocks={contentBlocks} editorKey={`trip-${trip.id}-content`} />
-                  </div>
+                <div className="mt-4">
+                  <TripContentRenderer blocks={contentBlocks} />
+                </div>
               ) : (
-                  <p className="mt-4 rounded-2xl bg-stone-50 px-4 py-5 text-sm leading-6 text-stone-500">
-                    {dict.publicSite.contentEmpty}
-                  </p>
+                <p className="mt-4 text-sm leading-6 text-stone-500">{dict.publicSite.contentEmpty}</p>
               )}
             </div>
             <Link

@@ -148,9 +148,7 @@ export function PublicActivityPage({ activity }: { activity: ActivityRead }) {
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
               {dict.activities.descriptionTitle}
             </p>
-            <div className="mt-3 overflow-hidden rounded-2xl border border-stone-200 bg-white">
-              <TripContentRenderer blocks={descriptionBlocks} editorKey={`activity-${activity.id}-description`} />
-            </div>
+            <TripContentRenderer blocks={descriptionBlocks} className="mt-3" />
           </div>
         ) : null}
       </div>
