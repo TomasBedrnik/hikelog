@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db.session import get_session
 from app.models.trip import Trip
@@ -21,7 +22,7 @@ def _to_trip_read(trip: Trip) -> TripRead:
 async def list_public_trips(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> list[TripRead]:
-    stmt = select(Trip).order_by(Trip.start_date.desc().nullslast(), Trip.created_at.desc())
+    stmt = select(Trip).options(selectinload(Trip.images)).order_by(Trip.start_date.desc().nullslast(), Trip.created_at.desc())
     trips = (await session.scalars(stmt)).all()
     return [_to_trip_read(trip) for trip in trips]
 
@@ -31,7 +32,8 @@ async def get_public_trip(
     trip_id: int,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> TripRead:
-    trip = await session.get(Trip, trip_id)
+    stmt = select(Trip).options(selectinload(Trip.images)).where(Trip.id == trip_id)
+    trip = (await session.scalars(stmt)).first()
     if trip is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
     return _to_trip_read(trip)

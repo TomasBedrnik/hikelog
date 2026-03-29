@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { clearIdToken, getIdToken } from "@/lib/auth";
 import { AdminNav } from "@/components/admin-nav";
 import { ActivityPhotoManager } from "@/components/activity-photo-manager";
+import { TripImageManager } from "@/components/trip-image-manager";
 import { useI18n } from "@/components/i18n-provider";
 import { TripContentEditor } from "@/components/trip-content-editor";
 import {
@@ -22,7 +23,7 @@ import {
 import { getTripContentBlocks } from "@/lib/blocknote";
 import { formatMessage, getDateLocale } from "@/lib/i18n";
 import { getCountryOptions, getTimezoneOptions } from "@/lib/options";
-import { createTrip, deleteTrip, listTrips, TripRead, TripWrite, updateTrip } from "@/lib/trips";
+import { createTrip, deleteTrip, listTrips, TripImageRead, TripRead, TripWrite, updateTrip } from "@/lib/trips";
 
 const EMPTY_BLOCKS: PartialBlock[] = [{ type: "paragraph" }];
 
@@ -440,8 +441,13 @@ export function AdminTripsPage() {
   const visibleActivities = draft?.id
     ? sortActivitiesByStartDate((activities ?? []).filter((activity) => activity.trip_id === draft.id))
     : [];
+  const selectedPersistedTrip = draft?.id !== null ? (trips ?? []).find((trip) => trip.id === draft?.id) ?? null : null;
   const selectedActivity =
     activityDraft?.id !== null ? visibleActivities.find((activity) => activity.id === activityDraft?.id) ?? null : null;
+
+  const replaceTripImages = (tripId: number, images: TripImageRead[]) => {
+    setTrips((current) => (current ?? []).map((trip) => (trip.id === tripId ? { ...trip, images } : trip)));
+  };
 
   const replaceActivityPhotos = (activityId: number, photos: ActivityPhotoRead[]) => {
     setActivities((current) =>
@@ -926,6 +932,16 @@ export function AdminTripsPage() {
                     </label>
                   </div>
                 </div>
+
+                <TripImageManager
+                  trip={selectedPersistedTrip}
+                  onImagesChange={(images) => {
+                    if (!selectedPersistedTrip) {
+                      return;
+                    }
+                    replaceTripImages(selectedPersistedTrip.id, images);
+                  }}
+                />
 
                 <section className="rounded-[2rem] border border-stone-200 bg-stone-50/70 p-5">
                   <div className="flex flex-col gap-4 border-b border-stone-200 pb-5 sm:flex-row sm:items-center sm:justify-between">

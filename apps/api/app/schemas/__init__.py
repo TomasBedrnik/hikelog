@@ -4,6 +4,7 @@ from app.schemas.admin_user import AdminUserCreate, AdminUserRead
 from app.schemas.gallery_image import GalleryImageRead
 from app.schemas.stage import StageCreate, StageRead, StageUpdate
 from app.schemas.trip import TripCreate, TripRead, TripUpdate
+from app.schemas.trip_image import TripImageOrderUpdate, TripImageRead
 
 __all__ = [
     "ActivityPhotoOrderUpdate",
@@ -15,6 +16,8 @@ __all__ = [
     "TripCreate",
     "TripRead",
     "TripUpdate",
+    "TripImageOrderUpdate",
+    "TripImageRead",
     "GalleryImageRead",
     "StageCreate",
     "StageRead",
