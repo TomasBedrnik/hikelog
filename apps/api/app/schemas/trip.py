@@ -48,5 +48,9 @@ class TripRead(TripBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    map_card_image_url: str | None = None
+    map_card_width: int | None = Field(default=None, ge=1)
+    map_card_height: int | None = Field(default=None, ge=1)
+    map_card_content_type: str | None = None
     created_at: datetime
     images: list[TripImageRead] = Field(default_factory=list)

@@ -1,11 +1,13 @@
 "use client";
 
 import { PartialBlock } from "@blocknote/core";
+import Image from "next/image";
 import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearIdToken, getIdToken } from "@/lib/auth";
 import { AdminNav } from "@/components/admin-nav";
 import { ActivityPhotoManager } from "@/components/activity-photo-manager";
+import { ImageLightbox } from "@/components/image-lightbox";
 import { TripImageManager } from "@/components/trip-image-manager";
 import { useI18n } from "@/components/i18n-provider";
 import { TripContentEditor } from "@/components/trip-content-editor";
@@ -25,16 +27,21 @@ import { formatMessage, getDateLocale } from "@/lib/i18n";
 import { getCountryOptions, getTimezoneOptions } from "@/lib/options";
 import {
   createTrip,
+  deleteTripMapCardImage,
   deleteTrip,
   listTrips,
+  rotateTripMapCardImage,
   TripImageRead,
   TripRead,
   TripWrite,
   updateTrip,
   uploadTripGpx,
+  uploadTripMapCardImage,
 } from "@/lib/trips";
 
 const EMPTY_BLOCKS: PartialBlock[] = [{ type: "paragraph" }];
+const DEFAULT_MAP_CARD_WIDTH = "1600";
+const DEFAULT_MAP_CARD_HEIGHT = "900";
 
 type TripDraft = {
   id: number | null;
@@ -227,6 +234,13 @@ export function AdminTripsPage() {
   const [tripGpxFile, setTripGpxFile] = useState<File | null>(null);
   const [tripGpxInputKey, setTripGpxInputKey] = useState(0);
   const [compressTripGpx, setCompressTripGpx] = useState(false);
+  const [tripMapCardFile, setTripMapCardFile] = useState<File | null>(null);
+  const [tripMapCardInputKey, setTripMapCardInputKey] = useState(0);
+  const [tripMapCardResizeMode, setTripMapCardResizeMode] = useState<"keep" | "resize">("keep");
+  const [tripMapCardResizeWidth, setTripMapCardResizeWidth] = useState(DEFAULT_MAP_CARD_WIDTH);
+  const [tripMapCardResizeHeight, setTripMapCardResizeHeight] = useState(DEFAULT_MAP_CARD_HEIGHT);
+  const [tripMapCardBusy, setTripMapCardBusy] = useState<"uploading" | "rotating" | "deleting" | null>(null);
+  const [tripMapCardLightboxOpen, setTripMapCardLightboxOpen] = useState(false);
   const [countriesExpanded, setCountriesExpanded] = useState(false);
   const [countryQuery, setCountryQuery] = useState("");
 
@@ -249,6 +263,11 @@ export function AdminTripsPage() {
   const resetTripGpxSelection = () => {
     setTripGpxFile(null);
     setTripGpxInputKey((current) => current + 1);
+  };
+
+  const resetTripMapCardSelection = () => {
+    setTripMapCardFile(null);
+    setTripMapCardInputKey((current) => current + 1);
   };
 
   const getActivitiesForTrip = (tripId: number) =>
@@ -312,6 +331,8 @@ export function AdminTripsPage() {
     setCountriesExpanded(false);
     setCountryQuery("");
     resetTripGpxSelection();
+    resetTripMapCardSelection();
+    setTripMapCardLightboxOpen(false);
     const nextActivities = getActivitiesForTrip(trip.id);
     if (nextActivities.length > 0) {
       setCurrentActivity(nextActivities[0]);
@@ -327,6 +348,8 @@ export function AdminTripsPage() {
     setCountriesExpanded(false);
     setCountryQuery("");
     resetTripGpxSelection();
+    resetTripMapCardSelection();
+    setTripMapCardLightboxOpen(false);
     showNewActivityForTrip(null);
   };
 
@@ -400,6 +423,7 @@ export function AdminTripsPage() {
         setSelectedTripId(saved.id);
         setDraft(toDraft(saved));
         resetTripGpxSelection();
+        resetTripMapCardSelection();
         showNewActivityForTrip(saved.id);
       });
     } catch (e: unknown) {
@@ -443,6 +467,8 @@ export function AdminTripsPage() {
           setSelectedTripId(next[0].id);
           setDraft(toDraft(next[0]));
           resetTripGpxSelection();
+          resetTripMapCardSelection();
+          setTripMapCardLightboxOpen(false);
           const nextActivities = getActivitiesForTrip(next[0].id);
           if (nextActivities.length > 0) {
             setCurrentActivity(nextActivities[0]);
@@ -474,6 +500,11 @@ export function AdminTripsPage() {
 
   const replaceTripImages = (tripId: number, images: TripImageRead[]) => {
     setTrips((current) => (current ?? []).map((trip) => (trip.id === tripId ? { ...trip, images } : trip)));
+  };
+
+  const replaceTrip = (saved: TripRead) => {
+    setTrips((current) => (current ?? []).map((trip) => (trip.id === saved.id ? saved : trip)));
+    setDraft((current) => (current?.id === saved.id ? toDraft(saved) : current));
   };
 
   const uploadCurrentTripGpx = async () => {
@@ -515,6 +546,125 @@ export function AdminTripsPage() {
       setError(e instanceof Error ? e.message : dict.common.unknownError);
     } finally {
       setTripGpxBusy(null);
+    }
+  };
+
+  const uploadCurrentTripMapCardImage = async () => {
+    const token = getIdToken();
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    if (!draft?.id) {
+      setError(dict.trips.saveTripFirstForMapCardImage);
+      return;
+    }
+
+    if (!tripMapCardFile) {
+      setError(dict.trips.mapCardImageRequired);
+      return;
+    }
+
+    let resizeWidth: number | null = null;
+    let resizeHeight: number | null = null;
+    if (tripMapCardResizeMode === "resize") {
+      resizeWidth = Number(tripMapCardResizeWidth);
+      resizeHeight = Number(tripMapCardResizeHeight);
+      if (
+        !Number.isInteger(resizeWidth) ||
+        resizeWidth <= 0 ||
+        !Number.isInteger(resizeHeight) ||
+        resizeHeight <= 0
+      ) {
+        setError(dict.trips.mapCardImageResizeInvalid);
+        return;
+      }
+    }
+
+    setTripMapCardBusy("uploading");
+    setError(null);
+    try {
+      const saved = await uploadTripMapCardImage(token, draft.id, {
+        file: tripMapCardFile,
+        resizeMode: tripMapCardResizeMode,
+        resizeWidth,
+        resizeHeight,
+      });
+      startTransition(() => {
+        replaceTrip(saved);
+        resetTripMapCardSelection();
+      });
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === "AUTH_REQUIRED") {
+        clearIdToken();
+        router.push("/login");
+        return;
+      }
+      setError(e instanceof Error ? e.message : dict.common.unknownError);
+    } finally {
+      setTripMapCardBusy(null);
+    }
+  };
+
+  const rotateCurrentTripMapCardImage = async () => {
+    const token = getIdToken();
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    if (!draft?.id) {
+      return;
+    }
+
+    setTripMapCardBusy("rotating");
+    setError(null);
+    try {
+      const saved = await rotateTripMapCardImage(token, draft.id);
+      startTransition(() => {
+        replaceTrip(saved);
+      });
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === "AUTH_REQUIRED") {
+        clearIdToken();
+        router.push("/login");
+        return;
+      }
+      setError(e instanceof Error ? e.message : dict.common.unknownError);
+    } finally {
+      setTripMapCardBusy(null);
+    }
+  };
+
+  const deleteCurrentTripMapCardImage = async () => {
+    const token = getIdToken();
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    if (!draft?.id) {
+      return;
+    }
+
+    setTripMapCardBusy("deleting");
+    setError(null);
+    try {
+      const saved = await deleteTripMapCardImage(token, draft.id);
+      startTransition(() => {
+        replaceTrip(saved);
+        setTripMapCardLightboxOpen(false);
+      });
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === "AUTH_REQUIRED") {
+        clearIdToken();
+        router.push("/login");
+        return;
+      }
+      setError(e instanceof Error ? e.message : dict.common.unknownError);
+    } finally {
+      setTripMapCardBusy(null);
     }
   };
 
@@ -1047,6 +1197,155 @@ export function AdminTripsPage() {
                 />
 
                 <section className="rounded-[2rem] border border-stone-200 bg-stone-50/70 p-5">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h2 className="text-lg font-semibold">{dict.trips.mapCardImage}</h2>
+                      <p className="text-sm text-stone-500">{dict.trips.mapCardImageHelp}</p>
+                    </div>
+                    {selectedPersistedTrip?.map_card_image_url ? (
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={tripMapCardBusy !== null}
+                          onClick={() => {
+                            void rotateCurrentTripMapCardImage();
+                          }}
+                          type="button"
+                        >
+                          {tripMapCardBusy === "rotating" ? dict.trips.rotatingMapCardImage : dict.gallery.rotate}
+                        </button>
+                        <button
+                          className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={tripMapCardBusy !== null}
+                          onClick={() => {
+                            void deleteCurrentTripMapCardImage();
+                          }}
+                          type="button"
+                        >
+                          {tripMapCardBusy === "deleting" ? dict.trips.deletingMapCardImage : dict.gallery.delete}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {draft.id === null ? (
+                    <p className="mt-4 rounded-2xl bg-white px-4 py-4 text-sm text-stone-500">
+                      {dict.trips.saveTripFirstForMapCardImage}
+                    </p>
+                  ) : (
+                    <>
+                      <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+                        <label className="block">
+                          <span className="text-sm font-medium text-stone-700">{dict.trips.mapCardImageFile}</span>
+                          <input
+                            key={tripMapCardInputKey}
+                            accept="image/jpeg,image/png"
+                            className="mt-2 block w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm"
+                            onChange={(event) => {
+                              setTripMapCardFile(event.target.files?.[0] ?? null);
+                            }}
+                            type="file"
+                          />
+                          <p className="mt-2 text-xs text-stone-500">{dict.trips.mapCardImageFormats}</p>
+                        </label>
+
+                        <div className="space-y-4 rounded-[1.5rem] border border-stone-200 bg-white p-4">
+                          <div>
+                            <p className="text-sm font-medium text-stone-700">{dict.trips.mapCardImageResizeMode}</p>
+                            <div className="mt-3 flex flex-wrap gap-3">
+                              <label className="flex items-center gap-2 text-sm text-stone-700">
+                                <input
+                                  checked={tripMapCardResizeMode === "keep"}
+                                  className="size-4 accent-emerald-700"
+                                  onChange={() => {
+                                    setTripMapCardResizeMode("keep");
+                                  }}
+                                  type="radio"
+                                />
+                                <span>{dict.trips.mapCardImageKeepOriginal}</span>
+                              </label>
+                              <label className="flex items-center gap-2 text-sm text-stone-700">
+                                <input
+                                  checked={tripMapCardResizeMode === "resize"}
+                                  className="size-4 accent-emerald-700"
+                                  onChange={() => {
+                                    setTripMapCardResizeMode("resize");
+                                  }}
+                                  type="radio"
+                                />
+                                <span>{dict.trips.mapCardImageResizeTo}</span>
+                              </label>
+                            </div>
+                          </div>
+
+                          {tripMapCardResizeMode === "resize" ? (
+                            <div className="grid gap-4 sm:grid-cols-2">
+                              <label className="block">
+                                <span className="text-sm font-medium text-stone-700">{dict.trips.mapCardImageWidth}</span>
+                                <input
+                                  className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
+                                  inputMode="numeric"
+                                  onChange={(event) => {
+                                    setTripMapCardResizeWidth(event.target.value);
+                                  }}
+                                  value={tripMapCardResizeWidth}
+                                />
+                              </label>
+                              <label className="block">
+                                <span className="text-sm font-medium text-stone-700">{dict.trips.mapCardImageHeight}</span>
+                                <input
+                                  className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
+                                  inputMode="numeric"
+                                  onChange={(event) => {
+                                    setTripMapCardResizeHeight(event.target.value);
+                                  }}
+                                  value={tripMapCardResizeHeight}
+                                />
+                              </label>
+                            </div>
+                          ) : null}
+
+                          <button
+                            className="rounded-full bg-stone-900 px-5 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            disabled={tripMapCardBusy !== null}
+                            onClick={() => {
+                              void uploadCurrentTripMapCardImage();
+                            }}
+                            type="button"
+                          >
+                            {tripMapCardBusy === "uploading" ? dict.trips.uploadingMapCardImage : dict.trips.uploadMapCardImage}
+                          </button>
+                        </div>
+                      </div>
+
+                      {selectedPersistedTrip?.map_card_image_url ? (
+                        <div className="mt-5">
+                          <button
+                            className="group block w-full overflow-hidden rounded-[1.5rem] border border-stone-200 bg-white shadow-sm"
+                            onClick={() => {
+                              setTripMapCardLightboxOpen(true);
+                            }}
+                            type="button"
+                          >
+                            <Image
+                              alt={dict.trips.mapCardImage}
+                              className="h-72 w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+                              height={720}
+                              src={selectedPersistedTrip.map_card_image_url}
+                              width={1280}
+                            />
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="mt-5 rounded-2xl bg-white px-4 py-4 text-sm text-stone-500">
+                          {dict.trips.mapCardImageEmpty}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </section>
+
+                <section className="rounded-[2rem] border border-stone-200 bg-stone-50/70 p-5">
                   <div className="flex flex-col gap-4 border-b border-stone-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <h2 className="text-lg font-semibold">{dict.activities.title}</h2>
@@ -1341,6 +1640,22 @@ export function AdminTripsPage() {
           </section>
         </div>
       </div>
+
+      {selectedPersistedTrip?.map_card_image_url ? (
+        <ImageLightbox
+          items={[
+            {
+              imageUrl: selectedPersistedTrip.map_card_image_url,
+              alt: dict.trips.mapCardImage,
+            },
+          ]}
+          onClose={() => {
+            setTripMapCardLightboxOpen(false);
+          }}
+          onSelect={() => {}}
+          selectedIndex={tripMapCardLightboxOpen ? 0 : null}
+        />
+      ) : null}
     </main>
   );
 }

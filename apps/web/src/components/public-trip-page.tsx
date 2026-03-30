@@ -33,6 +33,7 @@ export function PublicTripPage({
   const tripHasContent = hasTripContent(trip.content);
   const sortedActivities = sortActivitiesByStartDate(activities);
   const heroImageUrl = trip.images[0]?.image_url ?? "/home-hero-theme.png";
+  const mapCardImageUrl = trip.map_card_image_url ?? "/default_map.jpg";
   const activityPhotoItems = sortedActivities.flatMap((activity) =>
     activity.photos.map((photo) => ({
       id: photo.id,
@@ -84,10 +85,19 @@ export function PublicTripPage({
           <div className="relative px-8 py-12 sm:px-10 lg:px-12">
             <div className="flex justify-end">
               <Link
-                className="rounded-full border border-stone-300/80 bg-white/80 px-4 py-2 text-sm font-medium text-stone-700 shadow-[0_18px_40px_-28px_rgba(41,37,36,0.7)] backdrop-blur transition hover:bg-white"
+                className="group relative overflow-hidden rounded-[1.75rem] border border-stone-300/80 bg-[#f4efe3] shadow-[0_24px_60px_-40px_rgba(41,37,36,0.65)] transition hover:-translate-y-0.5 hover:shadow-[0_28px_70px_-40px_rgba(41,37,36,0.8)]"
                 href={`/trips/${trip.id}/map`}
               >
-                {dict.publicSite.openMap}
+                <div
+                  className="absolute inset-0 bg-cover bg-center transition duration-300 group-hover:scale-[1.03]"
+                  style={{ backgroundImage: `url('${mapCardImageUrl}')` }}
+                />
+                <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(3,94,36,0.8),rgba(3,94,36,0.62)_45%,rgba(3,94,36,0.52)_100%)]" />
+                <div className="relative flex min-h-40 min-w-72 items-end p-6 sm:min-h-44 sm:min-w-80">
+                  <span className="max-w-44 text-3xl font-bold leading-tight tracking-tight text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.35)] sm:max-w-52">
+                    {dict.publicSite.mapWithRoute}
+                  </span>
+                </div>
               </Link>
             </div>
 

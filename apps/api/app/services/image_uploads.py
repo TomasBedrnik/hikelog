@@ -147,6 +147,7 @@ async def create_uploaded_image(
     resize_width: int | None,
     resize_height: int | None,
     storage_prefix: str,
+    create_thumbnails: bool = True,
 ) -> UploadedImagePayload:
     payload = await upload.read()
     if not payload:
@@ -175,52 +176,64 @@ async def create_uploaded_image(
         resized_image.thumbnail((resize_width, resize_height), Image.Resampling.LANCZOS)
         original_image = resized_image
 
-    thumbnail_image = original_image.copy()
-    thumbnail_image.thumbnail(THUMBNAIL_MAX_SIZE, Image.Resampling.LANCZOS)
-    tiny_thumbnail_image = original_image.copy()
-    tiny_thumbnail_image.thumbnail(TINY_THUMBNAIL_MAX_SIZE, Image.Resampling.LANCZOS)
-
     original_bytes = _save_image_bytes(original_image, image_format)
-    thumbnail_bytes = _save_image_bytes(thumbnail_image, image_format)
-    tiny_thumbnail_bytes = _save_image_bytes(tiny_thumbnail_image, image_format)
 
     object_id = uuid4().hex
     storage_path = _build_storage_path(storage_prefix, object_id, "", extension)
-    thumbnail_storage_path = _build_storage_path(storage_prefix, object_id, "_thumb", extension)
-    tiny_thumbnail_storage_path = _build_storage_path(storage_prefix, object_id, "_tiny", extension)
-
     image_url = firebase_storage.upload_bytes(
         path=storage_path,
         data=original_bytes,
         content_type=content_type,
         download_token=str(uuid4()),
     )
-    thumbnail_url = firebase_storage.upload_bytes(
-        path=thumbnail_storage_path,
-        data=thumbnail_bytes,
-        content_type=content_type,
-        download_token=str(uuid4()),
-    )
-    tiny_thumbnail_url = firebase_storage.upload_bytes(
-        path=tiny_thumbnail_storage_path,
-        data=tiny_thumbnail_bytes,
-        content_type=content_type,
-        download_token=str(uuid4()),
-    )
+    thumbnail_storage_path: str | None = None
+    tiny_thumbnail_storage_path: str | None = None
+    thumbnail_url: str | None = None
+    tiny_thumbnail_url: str | None = None
+    thumbnail_width: int | None = None
+    thumbnail_height: int | None = None
+    tiny_thumbnail_width: int | None = None
+    tiny_thumbnail_height: int | None = None
+
+    if create_thumbnails:
+        thumbnail_image = original_image.copy()
+        thumbnail_image.thumbnail(THUMBNAIL_MAX_SIZE, Image.Resampling.LANCZOS)
+        tiny_thumbnail_image = original_image.copy()
+        tiny_thumbnail_image.thumbnail(TINY_THUMBNAIL_MAX_SIZE, Image.Resampling.LANCZOS)
+        thumbnail_bytes = _save_image_bytes(thumbnail_image, image_format)
+        tiny_thumbnail_bytes = _save_image_bytes(tiny_thumbnail_image, image_format)
+        thumbnail_storage_path = _build_storage_path(storage_prefix, object_id, "_thumb", extension)
+        tiny_thumbnail_storage_path = _build_storage_path(storage_prefix, object_id, "_tiny", extension)
+        thumbnail_url = firebase_storage.upload_bytes(
+            path=thumbnail_storage_path,
+            data=thumbnail_bytes,
+            content_type=content_type,
+            download_token=str(uuid4()),
+        )
+        tiny_thumbnail_url = firebase_storage.upload_bytes(
+            path=tiny_thumbnail_storage_path,
+            data=tiny_thumbnail_bytes,
+            content_type=content_type,
+            download_token=str(uuid4()),
+        )
+        thumbnail_width = thumbnail_image.width
+        thumbnail_height = thumbnail_image.height
+        tiny_thumbnail_width = tiny_thumbnail_image.width
+        tiny_thumbnail_height = tiny_thumbnail_image.height
 
     return UploadedImagePayload(
         storage_path=storage_path,
-        thumbnail_storage_path=thumbnail_storage_path,
+        thumbnail_storage_path=thumbnail_storage_path or "",
         tiny_thumbnail_storage_path=tiny_thumbnail_storage_path,
         image_url=image_url,
-        thumbnail_url=thumbnail_url,
+        thumbnail_url=thumbnail_url or "",
         tiny_thumbnail_url=tiny_thumbnail_url,
         width=original_image.width,
         height=original_image.height,
-        thumbnail_width=thumbnail_image.width,
-        thumbnail_height=thumbnail_image.height,
-        tiny_thumbnail_width=tiny_thumbnail_image.width,
-        tiny_thumbnail_height=tiny_thumbnail_image.height,
+        thumbnail_width=thumbnail_width or original_image.width,
+        thumbnail_height=thumbnail_height or original_image.height,
+        tiny_thumbnail_width=tiny_thumbnail_width,
+        tiny_thumbnail_height=tiny_thumbnail_height,
         content_type=content_type,
         original_filename=upload.filename,
         gps_latitude=gps_latitude,
@@ -253,16 +266,17 @@ def _extract_download_token(url: str | None) -> str:
 def rotate_uploaded_image(
     *,
     storage_path: str,
-    thumbnail_storage_path: str,
+    thumbnail_storage_path: str | None,
     tiny_thumbnail_storage_path: str | None,
     image_url: str,
-    thumbnail_url: str,
+    thumbnail_url: str | None,
     tiny_thumbnail_url: str | None,
     content_type: str,
     original_filename: str | None,
     gps_latitude: float | None,
     gps_longitude: float | None,
     direction: str = "right",
+    create_thumbnails: bool = True,
 ) -> UploadedImagePayload:
     image_format = CONTENT_TYPE_TO_IMAGE_FORMAT.get(content_type)
     if image_format is None:
@@ -279,22 +293,9 @@ def rotate_uploaded_image(
         original_image.transpose(transpose_operation),
         image_format,
     )
-    thumbnail_image = rotated_image.copy()
-    thumbnail_image.thumbnail(THUMBNAIL_MAX_SIZE, Image.Resampling.LANCZOS)
-    tiny_thumbnail_image = rotated_image.copy()
-    tiny_thumbnail_image.thumbnail(TINY_THUMBNAIL_MAX_SIZE, Image.Resampling.LANCZOS)
-
     rotated_bytes = _save_image_bytes(rotated_image, image_format)
-    thumbnail_bytes = _save_image_bytes(thumbnail_image, image_format)
-    tiny_thumbnail_bytes = _save_image_bytes(tiny_thumbnail_image, image_format)
 
     image_token = str(uuid4())
-    thumbnail_token = str(uuid4())
-    tiny_thumbnail_token = str(uuid4())
-
-    if tiny_thumbnail_storage_path is None:
-        stem, _, extension = storage_path.rpartition('.')
-        tiny_thumbnail_storage_path = f"{stem}_tiny.{extension}" if extension else f"{storage_path}_tiny"
 
     next_image_url = firebase_storage.upload_bytes(
         path=storage_path,
@@ -302,32 +303,61 @@ def rotate_uploaded_image(
         content_type=content_type,
         download_token=image_token,
     )
-    next_thumbnail_url = firebase_storage.upload_bytes(
-        path=thumbnail_storage_path,
-        data=thumbnail_bytes,
-        content_type=content_type,
-        download_token=thumbnail_token,
-    )
-    next_tiny_thumbnail_url = firebase_storage.upload_bytes(
-        path=tiny_thumbnail_storage_path,
-        data=tiny_thumbnail_bytes,
-        content_type=content_type,
-        download_token=tiny_thumbnail_token,
-    )
+    next_thumbnail_url: str | None = None
+    next_tiny_thumbnail_url: str | None = None
+    thumbnail_width: int | None = None
+    thumbnail_height: int | None = None
+    tiny_thumbnail_width: int | None = None
+    tiny_thumbnail_height: int | None = None
+
+    if create_thumbnails:
+        thumbnail_image = rotated_image.copy()
+        thumbnail_image.thumbnail(THUMBNAIL_MAX_SIZE, Image.Resampling.LANCZOS)
+        tiny_thumbnail_image = rotated_image.copy()
+        tiny_thumbnail_image.thumbnail(TINY_THUMBNAIL_MAX_SIZE, Image.Resampling.LANCZOS)
+        thumbnail_bytes = _save_image_bytes(thumbnail_image, image_format)
+        tiny_thumbnail_bytes = _save_image_bytes(tiny_thumbnail_image, image_format)
+        thumbnail_token = str(uuid4())
+        tiny_thumbnail_token = str(uuid4())
+
+        if not thumbnail_storage_path:
+            stem, _, extension = storage_path.rpartition(".")
+            thumbnail_storage_path = f"{stem}_thumb.{extension}" if extension else f"{storage_path}_thumb"
+
+        if tiny_thumbnail_storage_path is None:
+            stem, _, extension = storage_path.rpartition(".")
+            tiny_thumbnail_storage_path = f"{stem}_tiny.{extension}" if extension else f"{storage_path}_tiny"
+
+        next_thumbnail_url = firebase_storage.upload_bytes(
+            path=thumbnail_storage_path,
+            data=thumbnail_bytes,
+            content_type=content_type,
+            download_token=thumbnail_token,
+        )
+        next_tiny_thumbnail_url = firebase_storage.upload_bytes(
+            path=tiny_thumbnail_storage_path,
+            data=tiny_thumbnail_bytes,
+            content_type=content_type,
+            download_token=tiny_thumbnail_token,
+        )
+        thumbnail_width = thumbnail_image.width
+        thumbnail_height = thumbnail_image.height
+        tiny_thumbnail_width = tiny_thumbnail_image.width
+        tiny_thumbnail_height = tiny_thumbnail_image.height
 
     return UploadedImagePayload(
         storage_path=storage_path,
-        thumbnail_storage_path=thumbnail_storage_path,
+        thumbnail_storage_path=thumbnail_storage_path or "",
         tiny_thumbnail_storage_path=tiny_thumbnail_storage_path,
         image_url=next_image_url,
-        thumbnail_url=next_thumbnail_url,
+        thumbnail_url=next_thumbnail_url or "",
         tiny_thumbnail_url=next_tiny_thumbnail_url,
         width=rotated_image.width,
         height=rotated_image.height,
-        thumbnail_width=thumbnail_image.width,
-        thumbnail_height=thumbnail_image.height,
-        tiny_thumbnail_width=tiny_thumbnail_image.width,
-        tiny_thumbnail_height=tiny_thumbnail_image.height,
+        thumbnail_width=thumbnail_width or rotated_image.width,
+        thumbnail_height=thumbnail_height or rotated_image.height,
+        tiny_thumbnail_width=tiny_thumbnail_width,
+        tiny_thumbnail_height=tiny_thumbnail_height,
         content_type=content_type,
         original_filename=original_filename,
         gps_latitude=gps_latitude,

@@ -16,7 +16,11 @@ from app.models.trip_image import TripImage
 from app.schemas.trip import TripCreate, TripRead, TripUpdate
 from app.schemas.trip_image import TripImageOrderUpdate, TripImageRead
 from app.services.gpx_polylines import build_trip_polyline_from_gpx
-from app.services.image_uploads import create_uploaded_image, delete_uploaded_image_files, rotate_uploaded_image
+from app.services.image_uploads import (
+    create_uploaded_image,
+    delete_uploaded_image_files,
+    rotate_uploaded_image,
+)
 
 router = APIRouter()
 
@@ -126,6 +130,16 @@ def _delete_trip_image_files(image: TripImage) -> None:
     )
 
 
+def _delete_trip_map_card_files(trip: Trip) -> None:
+    if not trip.map_card_storage_path:
+        return
+
+    delete_uploaded_image_files(
+        storage_path=trip.map_card_storage_path,
+        thumbnail_storage_path="",
+    )
+
+
 @router.post("/{trip_id}/images", response_model=list[TripImageRead], status_code=status.HTTP_201_CREATED)
 async def upload_trip_images(
     trip_id: int,
@@ -178,6 +192,114 @@ async def upload_trip_images(
         await session.refresh(image)
 
     return [TripImageRead.model_validate(image) for image in created_images]
+
+
+@router.post("/{trip_id}/map-card-image", response_model=TripRead, status_code=status.HTTP_201_CREATED)
+async def upload_trip_map_card_image(
+    trip_id: int,
+    _: Annotated[AdminUser, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+    file: Annotated[UploadFile, File(...)],
+    resize_mode: Annotated[str, Form()] = "keep",
+    resize_width: Annotated[int | None, Form()] = None,
+    resize_height: Annotated[int | None, Form()] = None,
+) -> TripRead:
+    trip = await _get_trip_or_404(session, trip_id)
+
+    if resize_mode not in {"keep", "resize"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid resize mode")
+
+    if resize_mode == "resize" and (
+        resize_width is None or resize_height is None or resize_width <= 0 or resize_height <= 0
+    ):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Resize width and height must be positive integers")
+
+    previous_storage_path = trip.map_card_storage_path
+    uploaded = await create_uploaded_image(
+        upload=file,
+        resize_mode=resize_mode,
+        resize_width=resize_width,
+        resize_height=resize_height,
+        storage_prefix=f"trips/{trip_id}/map-card",
+        create_thumbnails=False,
+    )
+
+    try:
+        trip.map_card_storage_path = uploaded.storage_path
+        trip.map_card_image_url = uploaded.image_url
+        trip.map_card_width = uploaded.width
+        trip.map_card_height = uploaded.height
+        trip.map_card_content_type = uploaded.content_type
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        delete_uploaded_image_files(
+            storage_path=uploaded.storage_path,
+            thumbnail_storage_path="",
+        )
+        raise
+
+    if previous_storage_path:
+        delete_uploaded_image_files(
+            storage_path=previous_storage_path,
+            thumbnail_storage_path="",
+        )
+
+    trip = await _get_trip_or_404(session, trip_id)
+    return _to_trip_read(trip)
+
+
+@router.delete("/{trip_id}/map-card-image", response_model=TripRead)
+async def delete_trip_map_card_image(
+    trip_id: int,
+    _: Annotated[AdminUser, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> TripRead:
+    trip = await _get_trip_or_404(session, trip_id)
+    _delete_trip_map_card_files(trip)
+    trip.map_card_storage_path = None
+    trip.map_card_image_url = None
+    trip.map_card_width = None
+    trip.map_card_height = None
+    trip.map_card_content_type = None
+    await session.commit()
+    trip = await _get_trip_or_404(session, trip_id)
+    return _to_trip_read(trip)
+
+
+@router.patch("/{trip_id}/map-card-image/rotate", response_model=TripRead)
+async def rotate_trip_map_card_image(
+    trip_id: int,
+    _: Annotated[AdminUser, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> TripRead:
+    trip = await _get_trip_or_404(session, trip_id)
+    if not trip.map_card_storage_path:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip map card image not found")
+
+    rotated = rotate_uploaded_image(
+        storage_path=trip.map_card_storage_path,
+        thumbnail_storage_path=None,
+        tiny_thumbnail_storage_path=None,
+        image_url=trip.map_card_image_url or "",
+        thumbnail_url=None,
+        tiny_thumbnail_url=None,
+        content_type=trip.map_card_content_type or "image/jpeg",
+        original_filename=None,
+        gps_latitude=None,
+        gps_longitude=None,
+        create_thumbnails=False,
+    )
+
+    trip.map_card_storage_path = rotated.storage_path
+    trip.map_card_image_url = rotated.image_url
+    trip.map_card_width = rotated.width
+    trip.map_card_height = rotated.height
+    trip.map_card_content_type = rotated.content_type
+
+    await session.commit()
+    trip = await _get_trip_or_404(session, trip_id)
+    return _to_trip_read(trip)
 
 
 @router.delete("/{trip_id}/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT)
