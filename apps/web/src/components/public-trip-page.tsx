@@ -32,6 +32,7 @@ export function PublicTripPage({
   const contentBlocks = getTripContentBlocks(trip.content);
   const tripHasContent = hasTripContent(trip.content);
   const sortedActivities = sortActivitiesByStartDate(activities);
+  const heroImageUrl = trip.images[0]?.image_url ?? "/home-hero-theme.png";
   const activityPhotoItems = sortedActivities.flatMap((activity) =>
     activity.photos.map((photo) => ({
       id: photo.id,
@@ -72,43 +73,54 @@ export function PublicTripPage({
   return (
     <main className="min-h-screen bg-[#ece3cf] bg-[url('/topo_seamless_contours.svg')] bg-[length:3000px_3000px] bg-[position:0_0] bg-repeat px-6 py-8 text-stone-900 sm:px-10 lg:px-16">
       <div className="mx-auto max-w-6xl">
-        <section className="grid gap-8 rounded-[2rem] border border-stone-200 bg-white/90 px-8 py-12 shadow-[0_24px_80px_-48px_rgba(41,37,36,0.45)] backdrop-blur lg:grid-cols-[minmax(0,2fr)_20rem]">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-stone-400">
-              {dict.publicSite.tripEyebrow}
-            </p>
-            <h1 className="mt-4 text-4xl font-semibold tracking-tight text-stone-950 sm:text-5xl">
-              {trip.name || dict.publicSite.untitledTrip}
-            </h1>
-            <div>
+        <section className="relative overflow-hidden rounded-[2.5rem] border border-stone-300/70 shadow-[0_30px_120px_-60px_rgba(55,43,23,0.55)]">
+          <div
+            className="absolute inset-0 bg-cover bg-[right_center]"
+            style={{ backgroundImage: `url('${heroImageUrl}')` }}
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(270deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.08)_34%,rgba(245,239,227,0.72)_66%,rgba(245,239,227,0.94)_100%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.62),transparent_36%),radial-gradient(circle_at_bottom,rgba(116,92,54,0.12),transparent_45%)]" />
+
+          <div className="relative px-8 py-12 sm:px-10 lg:px-12">
+            <div className="flex justify-end">
+              <Link
+                className="rounded-full border border-stone-300/80 bg-white/80 px-4 py-2 text-sm font-medium text-stone-700 shadow-[0_18px_40px_-28px_rgba(41,37,36,0.7)] backdrop-blur transition hover:bg-white"
+                href={`/trips/${trip.id}/map`}
+              >
+                {dict.publicSite.openMap}
+              </Link>
+            </div>
+
+            <div className="max-w-3xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-stone-500">
+                {dict.publicSite.tripEyebrow}
+              </p>
+              <h1 className="mt-4 text-4xl font-semibold tracking-tight text-stone-950 sm:text-5xl lg:text-6xl">
+                {trip.name || dict.publicSite.untitledTrip}
+              </h1>
+
               {tripHasContent ? (
-                <div className="mt-4">
-                  <TripContentRenderer blocks={contentBlocks} />
+                <div className="mt-5 max-w-2xl">
+                  <TripContentRenderer blocks={contentBlocks} className="text-stone-700" />
                 </div>
               ) : (
-                <p className="mt-4 text-sm leading-6 text-stone-500">{dict.publicSite.contentEmpty}</p>
+                <p className="mt-5 max-w-2xl text-sm leading-6 text-stone-600">{dict.publicSite.contentEmpty}</p>
               )}
             </div>
-            <Link
-              className="mt-6 inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
-              href={`/trips/${trip.id}/map`}
-            >
-              {dict.publicSite.openMap}
-            </Link>
           </div>
+        </section>
 
-          <div className="rounded-[1.5rem] bg-stone-50 p-6">
-            <dl className="mt-4 space-y-4">
-              {metaItems.map((item) => (
-                <div key={item.label}>
-                  <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
-                    {item.label}
-                  </dt>
-                  <dd className="mt-1 text-sm text-stone-700">{item.value}</dd>
-                </div>
-              ))}
-            </dl>
-          </div>
+        <section className="mt-6 rounded-[2rem] border border-stone-200 bg-white/90 p-6 shadow-[0_24px_80px_-48px_rgba(41,37,36,0.45)] backdrop-blur">
+          <dl className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {metaItems.map((item) => (
+              <div key={item.label} className="rounded-[1.25rem] bg-stone-50 px-5 py-4">
+                <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
+                  {item.label}
+                </dt>
+                <dd className="mt-1 text-sm text-stone-700">{item.value}</dd>
+              </div>
+            ))}
+          </dl>
         </section>
 
         <section className="mt-10 rounded-[2rem] border border-stone-200 bg-white p-6">
