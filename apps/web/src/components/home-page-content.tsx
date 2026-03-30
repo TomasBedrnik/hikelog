@@ -74,16 +74,7 @@ export function HomePageContent({
         }));
 
   return (
-    <main className="
-          min-h-screen
-          bg-[#ece3cf]
-          bg-[url('/topo_seamless_contours.svg')]
-          bg-repeat
-          bg-[length:3000px_3000px]
-          bg-[position:0_0]
-          px-5 py-6
-          text-stone-900
-          sm:px-8 lg:px-12">
+    <main className="min-h-screen bg-[#ece3cf] bg-[url('/topo_seamless_contours.svg')] bg-repeat bg-[length:3000px_3000px] bg-[position:0_0] px-5 py-6 text-stone-900 sm:px-8 lg:px-12">
       <div className="mx-auto max-w-7xl">
         <section className="relative overflow-hidden rounded-[2.5rem] border border-stone-300/70 shadow-[0_30px_120px_-60px_rgba(55,43,23,0.55)]">
           <div
