@@ -3,7 +3,17 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+    status,
+)
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -11,11 +21,13 @@ from sqlalchemy.orm import selectinload
 from app.auth.admin import require_admin
 from app.db.session import get_session
 from app.models.activity import Activity
+from app.models.activity_comment import ActivityComment
 from app.models.activity_photo import ActivityPhoto
 from app.models.admin_user import AdminUser
 from app.models.trip import Trip
 from app.schemas.activity import ActivityCreate, ActivityRead, ActivityUpdate
 from app.schemas.activity_photo import ActivityPhotoOrderUpdate, ActivityPhotoRead
+from app.schemas.comment import CommentRead
 from app.services.gpx_polylines import build_polylines_from_gpx
 from app.services.image_uploads import (
     create_uploaded_image,
@@ -45,7 +57,7 @@ async def _get_trip_or_404(session: AsyncSession, trip_id: int) -> Trip:
 async def _get_activity_or_404(session: AsyncSession, activity_id: int) -> Activity:
     stmt = (
         select(Activity)
-        .options(selectinload(Activity.trip), selectinload(Activity.photos))
+        .options(selectinload(Activity.trip), selectinload(Activity.comments), selectinload(Activity.photos))
         .where(Activity.id == activity_id)
     )
     activity = (await session.scalars(stmt)).first()
@@ -59,10 +71,14 @@ async def list_activities(
     _: Annotated[AdminUser, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> list[ActivityRead]:
-    stmt = select(Activity).options(selectinload(Activity.trip), selectinload(Activity.photos)).order_by(
-        Activity.start_date.desc().nullslast(),
-        Activity.created_at.desc(),
-        Activity.id.desc(),
+    stmt = (
+        select(Activity)
+        .options(selectinload(Activity.trip), selectinload(Activity.comments), selectinload(Activity.photos))
+        .order_by(
+            Activity.start_date.desc().nullslast(),
+            Activity.created_at.desc(),
+            Activity.id.desc(),
+        )
     )
     activities = (await session.scalars(stmt)).all()
     return [_to_activity_read(activity) for activity in activities]
@@ -300,3 +316,20 @@ async def rotate_activity_photo(
     await session.commit()
     await session.refresh(photo)
     return ActivityPhotoRead.model_validate(photo)
+
+
+@router.delete("/{activity_id}/comments/{comment_id}", response_model=CommentRead)
+async def delete_activity_comment(
+    activity_id: int,
+    comment_id: int,
+    _: Annotated[AdminUser, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> CommentRead:
+    comment = await session.get(ActivityComment, comment_id)
+    if comment is None or comment.activity_id != activity_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Activity comment not found")
+
+    payload = CommentRead.model_validate(comment)
+    await session.delete(comment)
+    await session.commit()
+    return payload

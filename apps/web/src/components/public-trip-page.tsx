@@ -1,13 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import { PublicFooter } from "@/components/public-footer";
 import { ActivityPhotoGallery } from "@/components/activity-photo-gallery";
+import { CommentsSection } from "@/components/comments-section";
 import { TripContentRenderer } from "@/components/trip-content-renderer";
 import { TripList } from "@/components/trip-list";
 import { useI18n } from "@/components/i18n-provider";
 import { getTripContentBlocks, hasTripContent } from "@/lib/blocknote";
 import { getDateLocale } from "@/lib/i18n";
 import { ActivitySummaryRead, sortActivitiesByStartDate } from "@/lib/activities";
+import { createPublicTripComment } from "@/lib/comments";
 import { TripRead } from "@/lib/trips";
 import Link from "next/link";
 
@@ -29,6 +32,7 @@ export function PublicTripPage({
   activities: ActivitySummaryRead[];
 }) {
   const { dict, locale } = useI18n();
+  const [comments, setComments] = useState(trip.comments);
   const contentBlocks = getTripContentBlocks(trip.content);
   const tripHasContent = hasTripContent(trip.content);
   const sortedActivities = sortActivitiesByStartDate(activities);
@@ -165,6 +169,25 @@ export function PublicTripPage({
               </div>
           )}
         </section>
+
+        <CommentsSection
+          comments={comments}
+          emptyText={dict.comments.emptyTrip}
+          locale={locale}
+          nameLabel={dict.comments.name}
+          namePlaceholder={dict.comments.namePlaceholder}
+          onCreate={async (payload) => {
+            const created = await createPublicTripComment(trip.id, payload);
+            setComments((current) => [created, ...current]);
+          }}
+          submitLabel={dict.comments.submit}
+          submittingLabel={dict.comments.submitting}
+          textLabel={dict.comments.text}
+          textPlaceholder={dict.comments.textPlaceholder}
+          title={dict.comments.tripTitle}
+          unknownError={dict.common.unknownError}
+          validationError={dict.comments.validationError}
+        />
 
         <section className="mt-10 rounded-[2rem] border border-stone-200 bg-white p-6">
           <div className="flex items-center justify-between gap-4">

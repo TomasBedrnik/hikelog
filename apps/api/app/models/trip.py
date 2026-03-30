@@ -11,6 +11,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.activity import Activity
+    from app.models.trip_comment import TripComment
     from app.models.trip_image import TripImage
 
 
@@ -59,4 +60,9 @@ class Trip(Base):
         back_populates="trip",
         cascade="all, delete-orphan",
         order_by="TripImage.position.asc(), TripImage.created_at.asc(), TripImage.id.asc()",
+    )
+    comments: Mapped[list["TripComment"]] = relationship(
+        back_populates="trip",
+        cascade="all, delete-orphan",
+        order_by="TripComment.created_at.desc(), TripComment.id.desc()",
     )

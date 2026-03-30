@@ -252,6 +252,21 @@
     "copied": "Zkopírováno",
     "rotate": "Otočit"
   },
+  "comments": {
+    "tripTitle": "Komentáře",
+    "activityTitle": "Komentáře",
+    "emptyTrip": "K této trase zatím nejsou žádné komentáře.",
+    "emptyActivity": "K této aktivitě zatím nejsou žádné komentáře.",
+    "name": "Jméno",
+    "text": "Komentář",
+    "namePlaceholder": "Vaše jméno",
+    "textPlaceholder": "Napište svůj komentář",
+    "submit": "Přidat komentář",
+    "submitting": "Odesílání…",
+    "delete": "Smazat",
+    "deleting": "Mazání…",
+    "validationError": "Jméno i text komentáře jsou povinné."
+  },
   "tripImages": {
     "title": "Obrázky trasy",
     "description": "Nahrajte JPG nebo PNG obrázky pro tuto trasu, měňte jejich pořadí a použijte je na úvodní stránce nebo stránkách tras.",

@@ -252,6 +252,21 @@
     "copied": "Copied",
     "rotate": "Rotate"
   },
+  "comments": {
+    "tripTitle": "Comments",
+    "activityTitle": "Comments",
+    "emptyTrip": "No comments for this trip yet.",
+    "emptyActivity": "No comments for this activity yet.",
+    "name": "Name",
+    "text": "Comment",
+    "namePlaceholder": "Your name",
+    "textPlaceholder": "Write your comment here",
+    "submit": "Add comment",
+    "submitting": "Sending…",
+    "delete": "Delete",
+    "deleting": "Deleting…",
+    "validationError": "Name and comment text are required."
+  },
   "tripImages": {
     "title": "Trip Images",
     "description": "Upload JPG or PNG images for this trip, reorder them, and use them on the homepage or trip pages.",

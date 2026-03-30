@@ -5,6 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.comment import CommentRead
 from app.schemas.trip_image import TripImageRead
 
 
@@ -53,4 +54,5 @@ class TripRead(TripBase):
     map_card_height: int | None = Field(default=None, ge=1)
     map_card_content_type: str | None = None
     created_at: datetime
+    comments: list[CommentRead] = Field(default_factory=list)
     images: list[TripImageRead] = Field(default_factory=list)

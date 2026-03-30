@@ -12,7 +12,9 @@ from app.auth.admin import require_admin
 from app.db.session import get_session
 from app.models.admin_user import AdminUser
 from app.models.trip import Trip
+from app.models.trip_comment import TripComment
 from app.models.trip_image import TripImage
+from app.schemas.comment import CommentRead
 from app.schemas.trip import TripCreate, TripRead, TripUpdate
 from app.schemas.trip_image import TripImageOrderUpdate, TripImageRead
 from app.services.gpx_polylines import build_trip_polyline_from_gpx
@@ -30,7 +32,7 @@ def _to_trip_read(trip: Trip) -> TripRead:
 
 
 async def _get_trip_or_404(session: AsyncSession, trip_id: int) -> Trip:
-    stmt = select(Trip).options(selectinload(Trip.images)).where(Trip.id == trip_id)
+    stmt = select(Trip).options(selectinload(Trip.comments), selectinload(Trip.images)).where(Trip.id == trip_id)
     trip = (await session.scalars(stmt)).first()
     if trip is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
@@ -42,7 +44,11 @@ async def list_trips(
     _: Annotated[AdminUser, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> list[TripRead]:
-    stmt = select(Trip).options(selectinload(Trip.images)).order_by(Trip.start_date.desc().nullslast(), Trip.created_at.desc())
+    stmt = (
+        select(Trip)
+        .options(selectinload(Trip.comments), selectinload(Trip.images))
+        .order_by(Trip.start_date.desc().nullslast(), Trip.created_at.desc())
+    )
     trips = (await session.scalars(stmt)).all()
     return [_to_trip_read(trip) for trip in trips]
 
@@ -300,6 +306,23 @@ async def rotate_trip_map_card_image(
     await session.commit()
     trip = await _get_trip_or_404(session, trip_id)
     return _to_trip_read(trip)
+
+
+@router.delete("/{trip_id}/comments/{comment_id}", response_model=CommentRead)
+async def delete_trip_comment(
+    trip_id: int,
+    comment_id: int,
+    _: Annotated[AdminUser, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> CommentRead:
+    comment = await session.get(TripComment, comment_id)
+    if comment is None or comment.trip_id != trip_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip comment not found")
+
+    payload = CommentRead.model_validate(comment)
+    await session.delete(comment)
+    await session.commit()
+    return payload
 
 
 @router.delete("/{trip_id}/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT)

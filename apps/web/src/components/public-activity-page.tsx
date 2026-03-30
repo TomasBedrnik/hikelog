@@ -4,12 +4,14 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ActivityRead } from "@/lib/activities";
 import { ActivityPhotoGallery } from "@/components/activity-photo-gallery";
+import { CommentsSection } from "@/components/comments-section";
 import { useI18n } from "@/components/i18n-provider";
 import { getDateLocale } from "@/lib/i18n";
 import { getTripContentBlocks, hasTripContent } from "@/lib/blocknote";
 import { MapyMap } from "@/components/mapy-map";
 import { TripContentRenderer } from "@/components/trip-content-renderer";
 import { ImageLightbox } from "@/components/image-lightbox";
+import { createPublicActivityComment } from "@/lib/comments";
 
 function formatDateTime(value: string | null, locale: "en" | "cs") {
   if (!value) {
@@ -34,6 +36,7 @@ export function PublicActivityPage({ activity }: { activity: ActivityRead }) {
   const { dict, locale } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
+  const [comments, setComments] = useState(activity.comments);
   const descriptionBlocks = getTripContentBlocks(activity.description);
   const hasDescription = hasTripContent(activity.description);
   const photoItems = useMemo(
@@ -151,6 +154,25 @@ export function PublicActivityPage({ activity }: { activity: ActivityRead }) {
             <TripContentRenderer blocks={descriptionBlocks} className="mt-3" />
           </div>
         ) : null}
+
+        <CommentsSection
+          comments={comments}
+          emptyText={dict.comments.emptyActivity}
+          locale={locale}
+          nameLabel={dict.comments.name}
+          namePlaceholder={dict.comments.namePlaceholder}
+          onCreate={async (payload) => {
+            const created = await createPublicActivityComment(activity.id, payload);
+            setComments((current) => [created, ...current]);
+          }}
+          submitLabel={dict.comments.submit}
+          submittingLabel={dict.comments.submitting}
+          textLabel={dict.comments.text}
+          textPlaceholder={dict.comments.textPlaceholder}
+          title={dict.comments.activityTitle}
+          unknownError={dict.common.unknownError}
+          validationError={dict.comments.validationError}
+        />
       </div>
 
       <ImageLightbox

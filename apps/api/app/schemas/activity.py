@@ -6,6 +6,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.activity_photo import ActivityPhotoRead
+from app.schemas.comment import CommentRead
 
 
 class ActivityBase(BaseModel):
@@ -56,6 +57,7 @@ class ActivityRead(ActivityBase):
     id: int
     created_at: datetime
     trip_name: str | None = None
+    comments: list[CommentRead] = Field(default_factory=list)
     photos: list[ActivityPhotoRead] = Field(default_factory=list)
 
 

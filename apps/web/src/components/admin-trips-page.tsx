@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { clearIdToken, getIdToken } from "@/lib/auth";
 import { AdminNav } from "@/components/admin-nav";
 import { ActivityPhotoManager } from "@/components/activity-photo-manager";
+import { CommentsSection } from "@/components/comments-section";
 import { ImageLightbox } from "@/components/image-lightbox";
 import { TripImageManager } from "@/components/trip-image-manager";
 import { useI18n } from "@/components/i18n-provider";
@@ -16,6 +17,7 @@ import {
   ActivityRead,
   ActivityWrite,
   createActivity,
+  deleteActivityComment,
   deleteActivity,
   listActivities,
   sortActivitiesByStartDate,
@@ -27,6 +29,7 @@ import { formatMessage, getDateLocale } from "@/lib/i18n";
 import { getCountryOptions, getTimezoneOptions } from "@/lib/options";
 import {
   createTrip,
+  deleteTripComment,
   deleteTripMapCardImage,
   deleteTrip,
   listTrips,
@@ -507,6 +510,11 @@ export function AdminTripsPage() {
     setDraft((current) => (current?.id === saved.id ? toDraft(saved) : current));
   };
 
+  const replaceActivity = (saved: ActivityRead) => {
+    setActivities((current) => (current ?? []).map((activity) => (activity.id === saved.id ? saved : activity)));
+    setActivityDraft((current) => (current?.id === saved.id ? toActivityDraft(saved) : current));
+  };
+
   const uploadCurrentTripGpx = async () => {
     const token = getIdToken();
     if (!token) {
@@ -828,6 +836,50 @@ export function AdminTripsPage() {
       setError(e instanceof Error ? e.message : dict.common.unknownError);
     } finally {
       setActivityBusy(null);
+    }
+  };
+
+  const deleteCurrentTripComment = async (commentId: number) => {
+    const token = getIdToken();
+    if (!token || !selectedPersistedTrip) {
+      return;
+    }
+
+    try {
+      await deleteTripComment(token, selectedPersistedTrip.id, commentId);
+      replaceTrip({
+        ...selectedPersistedTrip,
+        comments: selectedPersistedTrip.comments.filter((comment) => comment.id !== commentId),
+      });
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === "AUTH_REQUIRED") {
+        clearIdToken();
+        router.push("/login");
+        return;
+      }
+      throw e;
+    }
+  };
+
+  const deleteCurrentActivityComment = async (commentId: number) => {
+    const token = getIdToken();
+    if (!token || !selectedActivity) {
+      return;
+    }
+
+    try {
+      await deleteActivityComment(token, selectedActivity.id, commentId);
+      replaceActivity({
+        ...selectedActivity,
+        comments: selectedActivity.comments.filter((comment) => comment.id !== commentId),
+      });
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === "AUTH_REQUIRED") {
+        clearIdToken();
+        router.push("/login");
+        return;
+      }
+      throw e;
     }
   };
 
@@ -1345,6 +1397,21 @@ export function AdminTripsPage() {
                   )}
                 </section>
 
+                {selectedPersistedTrip ? (
+                  <CommentsSection
+                    comments={selectedPersistedTrip.comments}
+                    deletingLabel={dict.comments.deleting}
+                    deleteLabel={dict.comments.delete}
+                    emptyText={dict.comments.emptyTrip}
+                    locale={locale}
+                    nameLabel={dict.comments.name}
+                    onDelete={deleteCurrentTripComment}
+                    textLabel={dict.comments.text}
+                    title={dict.comments.tripTitle}
+                    unknownError={dict.common.unknownError}
+                  />
+                ) : null}
+
                 <section className="rounded-[2rem] border border-stone-200 bg-stone-50/70 p-5">
                   <div className="flex flex-col gap-4 border-b border-stone-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -1630,6 +1697,21 @@ export function AdminTripsPage() {
                               replaceActivityPhotos(selectedActivity.id, photos);
                             }}
                           />
+
+                          {selectedActivity ? (
+                            <CommentsSection
+                              comments={selectedActivity.comments}
+                              deletingLabel={dict.comments.deleting}
+                              deleteLabel={dict.comments.delete}
+                              emptyText={dict.comments.emptyActivity}
+                              locale={locale}
+                              nameLabel={dict.comments.name}
+                              onDelete={deleteCurrentActivityComment}
+                              textLabel={dict.comments.text}
+                              title={dict.comments.activityTitle}
+                              unknownError={dict.common.unknownError}
+                            />
+                          ) : null}
                         </div>
                       )}
                     </div>
