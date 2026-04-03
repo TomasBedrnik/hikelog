@@ -11,12 +11,16 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0",
     "alembic>=1.13",
     "psycopg[binary]>=3.1",
+    "google-auth>=2.38",
+    "requests>=2.31",
+    "email-validator>=2.1",
 ]
 
 [project.optional-dependencies]
 dev = [
     "ruff>=0.4",
-    "pytest>=8.0"
+    "pytest>=8.0",
+    "python-dotenv>=1.0",
 ]
 
 # ----------------------------

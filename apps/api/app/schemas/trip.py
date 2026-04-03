@@ -58,7 +58,7 @@ class TripUpdate(BaseModel):
     metrics_config: dict[str, Any] | None = None
 
 
-class TripOut(TripBase):
+class TripRead(TripBase):
     """Response model."""
 
     model_config = ConfigDict(from_attributes=True)
