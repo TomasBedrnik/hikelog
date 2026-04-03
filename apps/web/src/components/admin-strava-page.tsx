@@ -3,14 +3,17 @@
 import Image from "next/image";
 import { startTransition, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { listActivities } from "@/lib/activities";
 import { clearIdToken, getIdToken } from "@/lib/auth";
 import { AdminNav } from "@/components/admin-nav";
 import { useI18n } from "@/components/i18n-provider";
 import { getDateLocale } from "@/lib/i18n";
+import { listTrips, TripRead } from "@/lib/trips";
 import {
   createStravaAuthorization,
   disconnectStrava,
   getStravaConnection,
+  importStravaActivity,
   listRecentStravaActivities,
   StravaConnectionRead,
   StravaRecentActivityRead,
@@ -63,8 +66,11 @@ export function AdminStravaPage() {
   const { dict, locale } = useI18n();
   const [connection, setConnection] = useState<StravaConnectionRead | null>(null);
   const [activities, setActivities] = useState<StravaRecentActivityRead[] | null>(null);
+  const [trips, setTrips] = useState<TripRead[] | null>(null);
+  const [selectedTripId, setSelectedTripId] = useState<string>("");
+  const [importedStravaIds, setImportedStravaIds] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"connecting" | "disconnecting" | "refreshing" | null>(null);
+  const [busy, setBusy] = useState<"connecting" | "disconnecting" | "refreshing" | `import-${number}` | null>(null);
 
   const requireToken = () => {
     const token = getIdToken();
@@ -94,12 +100,27 @@ export function AdminStravaPage() {
     setError(null);
 
     try {
-      const loadedConnection = await getStravaConnection(token);
+      const [loadedConnection, loadedTrips, loadedLocalActivities] = await Promise.all([
+        getStravaConnection(token),
+        listTrips(token),
+        listActivities(token),
+      ]);
       const loadedActivities = loadedConnection.connected ? await listRecentStravaActivities(token) : [];
+      const loadedImportedStravaIds = loadedLocalActivities
+        .map((activity) => activity.strava_activity_id)
+        .filter((activityId): activityId is number => activityId !== null);
 
       startTransition(() => {
         setConnection(loadedConnection);
+        setTrips(loadedTrips);
         setActivities(loadedActivities);
+        setImportedStravaIds(loadedImportedStravaIds);
+        setSelectedTripId((current) => {
+          if (current && loadedTrips.some((trip) => String(trip.id) === current)) {
+            return current;
+          }
+          return loadedTrips[0] ? String(loadedTrips[0].id) : "";
+        });
       });
     } catch (e: unknown) {
       if (handleAuthError(e)) {
@@ -176,6 +197,32 @@ export function AdminStravaPage() {
       }
       setError(e instanceof Error ? e.message : dict.common.unknownError);
     } finally {
+      setBusy(null);
+    }
+  };
+
+  const addToTrip = async (activity: StravaRecentActivityRead) => {
+    const token = requireToken();
+    if (!token) {
+      return;
+    }
+
+    const tripId = Number(selectedTripId);
+    if (!Number.isInteger(tripId) || tripId <= 0) {
+      setError(dict.strava.tripRequired);
+      return;
+    }
+
+    setBusy(`import-${activity.id}`);
+    setError(null);
+    try {
+      await importStravaActivity(token, activity.id, tripId);
+      void load();
+    } catch (e: unknown) {
+      if (handleAuthError(e)) {
+        return;
+      }
+      setError(e instanceof Error ? e.message : dict.common.unknownError);
       setBusy(null);
     }
   };
@@ -295,6 +342,30 @@ export function AdminStravaPage() {
               <h2 className="text-lg font-semibold text-stone-900">{dict.strava.recentActivitiesTitle}</h2>
               <p className="mt-2 text-sm text-stone-500">{dict.strava.recentActivitiesDescription}</p>
 
+              <div className="mt-5 rounded-[24px] border border-stone-200 bg-white p-4">
+                <label className="block">
+                  <span className="text-sm font-medium text-stone-700">{dict.strava.tripSelect}</span>
+                  <select
+                    className="mt-2 w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={!trips || trips.length === 0 || busy !== null}
+                    onChange={(event) => {
+                      setSelectedTripId(event.target.value);
+                    }}
+                    value={selectedTripId}
+                  >
+                    {trips && trips.length > 0 ? (
+                      trips.map((trip) => (
+                        <option key={trip.id} value={trip.id}>
+                          {trip.name}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="">{dict.strava.noTrips}</option>
+                    )}
+                  </select>
+                </label>
+              </div>
+
               {activities && activities.length === 0 ? (
                 <p className="mt-5 rounded-2xl border border-dashed border-stone-300 bg-white px-4 py-6 text-sm text-stone-500">
                   {dict.strava.emptyActivities}
@@ -303,40 +374,61 @@ export function AdminStravaPage() {
 
               {activities && activities.length > 0 ? (
                 <div className="mt-5 space-y-3">
-                  {activities.map((activity) => (
-                    <article key={activity.id} className="rounded-[24px] border border-stone-200 bg-white p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <h3 className="text-base font-semibold text-stone-900">{activity.name}</h3>
-                          <p className="mt-1 text-sm text-stone-500">{activity.sport_type ?? "—"}</p>
-                        </div>
-                        <div className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-600">
-                          #{activity.id}
-                        </div>
-                      </div>
+                  {activities.map((activity) => {
+                    const alreadyImported = importedStravaIds.includes(activity.id);
 
-                      <dl className="mt-4 grid gap-3 text-sm text-stone-700 sm:grid-cols-2">
-                        <div className="rounded-2xl bg-stone-50 px-3 py-2">
-                          <dt className="font-medium">{dict.strava.started}</dt>
-                          <dd className="mt-1 text-stone-600">
-                            {new Date(activity.start_date).toLocaleString(getDateLocale(locale))}
-                          </dd>
+                    return (
+                      <article key={activity.id} className="rounded-[24px] border border-stone-200 bg-white p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <h3 className="text-base font-semibold text-stone-900">{activity.name}</h3>
+                            <p className="mt-1 text-sm text-stone-500">{activity.sport_type ?? "—"}</p>
+                          </div>
+                          <div className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-600">
+                            #{activity.id}
+                          </div>
                         </div>
-                        <div className="rounded-2xl bg-stone-50 px-3 py-2">
-                          <dt className="font-medium">{dict.strava.distance}</dt>
-                          <dd className="mt-1 text-stone-600">{formatDistance(locale, activity.distance)}</dd>
+
+                        <dl className="mt-4 grid gap-3 text-sm text-stone-700 sm:grid-cols-2">
+                          <div className="rounded-2xl bg-stone-50 px-3 py-2">
+                            <dt className="font-medium">{dict.strava.started}</dt>
+                            <dd className="mt-1 text-stone-600">
+                              {new Date(activity.start_date).toLocaleString(getDateLocale(locale))}
+                            </dd>
+                          </div>
+                          <div className="rounded-2xl bg-stone-50 px-3 py-2">
+                            <dt className="font-medium">{dict.strava.distance}</dt>
+                            <dd className="mt-1 text-stone-600">{formatDistance(locale, activity.distance)}</dd>
+                          </div>
+                          <div className="rounded-2xl bg-stone-50 px-3 py-2">
+                            <dt className="font-medium">{dict.strava.movingTime}</dt>
+                            <dd className="mt-1 text-stone-600">{formatMovingTime(activity.moving_time)}</dd>
+                          </div>
+                          <div className="rounded-2xl bg-stone-50 px-3 py-2">
+                            <dt className="font-medium">{dict.strava.elevation}</dt>
+                            <dd className="mt-1 text-stone-600">{formatElevation(locale, activity.total_elevation_gain)}</dd>
+                          </div>
+                        </dl>
+
+                        <div className="mt-4 flex justify-end">
+                          <button
+                            className="rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            disabled={alreadyImported || busy !== null || !selectedTripId || !trips || trips.length === 0}
+                            onClick={() => {
+                              void addToTrip(activity);
+                            }}
+                            type="button"
+                          >
+                            {alreadyImported
+                              ? dict.strava.alreadyAdded
+                              : busy === `import-${activity.id}`
+                                ? dict.strava.addingToTrip
+                                : dict.strava.addToTrip}
+                          </button>
                         </div>
-                        <div className="rounded-2xl bg-stone-50 px-3 py-2">
-                          <dt className="font-medium">{dict.strava.movingTime}</dt>
-                          <dd className="mt-1 text-stone-600">{formatMovingTime(activity.moving_time)}</dd>
-                        </div>
-                        <div className="rounded-2xl bg-stone-50 px-3 py-2">
-                          <dt className="font-medium">{dict.strava.elevation}</dt>
-                          <dd className="mt-1 text-stone-600">{formatElevation(locale, activity.total_elevation_gain)}</dd>
-                        </div>
-                      </dl>
-                    </article>
-                  ))}
+                      </article>
+                    );
+                  })}
                 </div>
               ) : null}
             </section>

@@ -7,14 +7,20 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.auth.admin import require_admin
 from app.db.session import get_session
+from app.models.activity import Activity
 from app.models.admin_user import AdminUser
 from app.models.strava_connection import StravaConnection
+from app.models.trip import Trip
+from app.schemas.activity import ActivityRead
 from app.schemas.strava import (
+    StravaActivityImport,
     StravaAuthorizationRead,
     StravaConnectionRead,
     StravaRecentActivityRead,
@@ -24,6 +30,7 @@ from app.services.strava import (
     StravaTokenPayload,
     build_authorization_url,
     exchange_code_for_token,
+    get_activity,
     list_recent_activities,
     refresh_access_token,
     require_strava_settings,
@@ -80,6 +87,34 @@ async def _get_or_create_connection(session: AsyncSession) -> StravaConnection:
     await session.commit()
     await session.refresh(connection)
     return connection
+
+
+async def _get_trip_or_404(session: AsyncSession, trip_id: int) -> Trip:
+    trip = await session.get(Trip, trip_id)
+    if trip is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
+    return trip
+
+
+async def _get_activity_with_relations(session: AsyncSession, activity_id: int) -> Activity:
+    stmt = (
+        select(Activity)
+        .options(selectinload(Activity.trip), selectinload(Activity.comments), selectinload(Activity.photos))
+        .where(Activity.id == activity_id)
+    )
+    activity = (await session.scalars(stmt)).first()
+    if activity is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Activity not found")
+    return activity
+
+
+def _to_activity_read(activity: Activity) -> ActivityRead:
+    return ActivityRead.model_validate(
+        {
+            **ActivityRead.model_validate(activity).model_dump(),
+            "trip_name": activity.trip.name if activity.trip else None,
+        }
+    )
 
 
 def _apply_token_payload(
@@ -281,3 +316,102 @@ async def get_recent_strava_activities(
         for activity in activities
         if isinstance(activity, dict) and activity.get("id") is not None and activity.get("start_date") is not None
     ]
+
+
+@router.post("/activities/{activity_id}/import", response_model=ActivityRead, status_code=status.HTTP_201_CREATED)
+async def import_strava_activity(
+    activity_id: int,
+    payload: StravaActivityImport,
+    _: Annotated[AdminUser, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> ActivityRead:
+    try:
+        require_strava_settings()
+    except StravaServiceError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+    await _get_trip_or_404(session, payload.trip_id)
+
+    existing_stmt = select(Activity).where(Activity.strava_activity_id == activity_id)
+    existing = await session.scalar(existing_stmt)
+    if existing is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Activity already imported")
+
+    connection = await _get_connection(session)
+    if connection is None or not connection.refresh_token:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Strava account is not connected")
+
+    connection = await _ensure_fresh_token(session, connection)
+
+    try:
+        strava_activity = get_activity(connection.access_token or "", activity_id)
+    except StravaServiceError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+    map_payload = strava_activity.get("map") if isinstance(strava_activity.get("map"), dict) else {}
+    local_activity = Activity(
+        trip_id=payload.trip_id,
+        strava_activity_id=activity_id,
+        user_id=connection.athlete_id,
+        upload_id=_int_or_none(strava_activity.get("upload_id")),
+        external_id=_str_or_none(strava_activity.get("external_id")),
+        type=_str_or_none(strava_activity.get("type")),
+        sport_type=_str_or_none(strava_activity.get("sport_type")),
+        start_date=_datetime_or_none(strava_activity.get("start_date")),
+        name=_str_or_none(strava_activity.get("name")) or f"Strava activity {activity_id}",
+        distance=_float_or_none(strava_activity.get("distance")),
+        moving_time=_int_or_none(strava_activity.get("moving_time")),
+        elapsed_time=_int_or_none(strava_activity.get("elapsed_time")),
+        total_elevation_gain=_float_or_none(strava_activity.get("total_elevation_gain")),
+        polyline=_str_or_none(map_payload.get("polyline")),
+        summary_polyline=_str_or_none(map_payload.get("summary_polyline")),
+        description=None,
+    )
+    session.add(local_activity)
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Activity already imported") from None
+
+    local_activity = await _get_activity_with_relations(session, local_activity.id)
+    return _to_activity_read(local_activity)
+
+
+def _int_or_none(value: object) -> int | None:
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _float_or_none(value: object) -> float | None:
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _str_or_none(value: object) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _datetime_or_none(value: object) -> datetime | None:
+    text = _str_or_none(value)
+    if not text:
+        return None
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None

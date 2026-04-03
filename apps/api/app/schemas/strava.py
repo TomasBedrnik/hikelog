@@ -28,3 +28,7 @@ class StravaRecentActivityRead(BaseModel):
     distance: float | None
     moving_time: int | None
     total_elevation_gain: float | None
+
+
+class StravaActivityImport(BaseModel):
+    trip_id: int
