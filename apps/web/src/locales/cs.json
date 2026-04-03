@@ -244,6 +244,8 @@
     "addToTrip": "Přidat k trase",
     "addingToTrip": "Přidávám…",
     "alreadyAdded": "Už přidáno",
+    "loadOlder": "Načíst starší aktivity",
+    "loadingOlder": "Načítám starší aktivity…",
     "loadFailed": "Nepodařilo se načíst stav Stravy.",
     "distance": "Vzdálenost",
     "movingTime": "Čas v pohybu",

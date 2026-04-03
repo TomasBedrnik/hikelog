@@ -91,12 +91,12 @@ def refresh_access_token(refresh_token: str) -> StravaTokenPayload:
     return _parse_token_response(response)
 
 
-def list_recent_activities(access_token: str, *, per_page: int = 10) -> list[dict[str, Any]]:
+def list_recent_activities(access_token: str, *, page: int = 1, per_page: int = 10) -> list[dict[str, Any]]:
     try:
         response = requests.get(
             f"{STRAVA_API_URL}/athlete/activities",
             headers={"Authorization": f"Bearer {access_token}"},
-            params={"page": 1, "per_page": per_page},
+            params={"page": page, "per_page": per_page},
             timeout=30,
         )
     except requests.RequestException as exc:

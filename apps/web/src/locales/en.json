@@ -244,6 +244,8 @@
     "addToTrip": "Add to Trip",
     "addingToTrip": "Adding…",
     "alreadyAdded": "Already Added",
+    "loadOlder": "Load older activities",
+    "loadingOlder": "Loading older activities…",
     "loadFailed": "Unable to load Strava status.",
     "distance": "Distance",
     "movingTime": "Moving time",

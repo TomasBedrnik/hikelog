@@ -282,6 +282,8 @@ async def delete_strava_connection(
 async def get_recent_strava_activities(
     _: Annotated[AdminUser, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
+    page: Annotated[int, Query(ge=1)] = 1,
+    per_page: Annotated[int, Query(ge=1, le=50)] = 10,
 ) -> list[StravaRecentActivityRead]:
     try:
         require_strava_settings()
@@ -295,7 +297,7 @@ async def get_recent_strava_activities(
     connection = await _ensure_fresh_token(session, connection)
 
     try:
-        activities = list_recent_activities(connection.access_token or "")
+        activities = list_recent_activities(connection.access_token or "", page=page, per_page=per_page)
     except StravaServiceError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 

@@ -70,7 +70,11 @@ export function AdminStravaPage() {
   const [selectedTripId, setSelectedTripId] = useState<string>("");
   const [importedStravaIds, setImportedStravaIds] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"connecting" | "disconnecting" | "refreshing" | `import-${number}` | null>(null);
+  const [busy, setBusy] = useState<
+    "connecting" | "disconnecting" | "refreshing" | "loading-more" | `import-${number}` | null
+  >(null);
+  const [activitiesPage, setActivitiesPage] = useState(1);
+  const [hasMoreActivities, setHasMoreActivities] = useState(false);
 
   const requireToken = () => {
     const token = getIdToken();
@@ -105,7 +109,7 @@ export function AdminStravaPage() {
         listTrips(token),
         listActivities(token),
       ]);
-      const loadedActivities = loadedConnection.connected ? await listRecentStravaActivities(token) : [];
+      const loadedActivities = loadedConnection.connected ? await listRecentStravaActivities(token, 1) : [];
       const loadedImportedStravaIds = loadedLocalActivities
         .map((activity) => activity.strava_activity_id)
         .filter((activityId): activityId is number => activityId !== null);
@@ -115,6 +119,8 @@ export function AdminStravaPage() {
         setTrips(loadedTrips);
         setActivities(loadedActivities);
         setImportedStravaIds(loadedImportedStravaIds);
+        setActivitiesPage(1);
+        setHasMoreActivities(loadedConnection.connected && loadedActivities.length > 0);
         setSelectedTripId((current) => {
           if (current && loadedTrips.some((trip) => String(trip.id) === current)) {
             return current;
@@ -223,6 +229,36 @@ export function AdminStravaPage() {
         return;
       }
       setError(e instanceof Error ? e.message : dict.common.unknownError);
+      setBusy(null);
+    }
+  };
+
+  const loadOlderActivities = async () => {
+    const token = requireToken();
+    if (!token) {
+      return;
+    }
+
+    const nextPage = activitiesPage + 1;
+    setBusy("loading-more");
+    setError(null);
+
+    try {
+      const olderActivities = await listRecentStravaActivities(token, nextPage);
+      startTransition(() => {
+        setActivities((current) => {
+          const existing = new Set((current ?? []).map((item) => item.id));
+          return [...(current ?? []), ...olderActivities.filter((item) => !existing.has(item.id))];
+        });
+        setActivitiesPage(nextPage);
+        setHasMoreActivities(olderActivities.length > 0);
+      });
+    } catch (e: unknown) {
+      if (handleAuthError(e)) {
+        return;
+      }
+      setError(e instanceof Error ? e.message : dict.strava.loadFailed);
+    } finally {
       setBusy(null);
     }
   };
@@ -429,6 +465,19 @@ export function AdminStravaPage() {
                       </article>
                     );
                   })}
+
+                  <div className="flex justify-center pt-2">
+                    <button
+                      className="rounded-full border border-stone-300 bg-white px-5 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={!hasMoreActivities || busy !== null}
+                      onClick={() => {
+                        void loadOlderActivities();
+                      }}
+                      type="button"
+                    >
+                      {busy === "loading-more" ? dict.strava.loadingOlder : dict.strava.loadOlder}
+                    </button>
+                  </div>
                 </div>
               ) : null}
             </section>
