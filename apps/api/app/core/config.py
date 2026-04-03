@@ -21,6 +21,10 @@ class Settings(BaseModel):
     firebase_client_x509_cert_url: str = Field(..., alias="FIREBASE_CLIENT_X509_CERT_URL")
     firebase_storage_bucket: str = Field(..., alias="FIREBASE_STORAGE_BUCKET")
     cors_allowed_origins_raw: str | None = Field(default=None, alias="CORS_ALLOWED_ORIGINS")
+    strava_client_id: str | None = Field(default=None, alias="STRAVA_CLIENT_ID")
+    strava_client_secret: str | None = Field(default=None, alias="STRAVA_CLIENT_SECRET")
+    strava_redirect_uri: str | None = Field(default=None, alias="STRAVA_REDIRECT_URI")
+    strava_admin_redirect_url: str | None = Field(default=None, alias="STRAVA_ADMIN_REDIRECT_URL")
 
     def firebase_private_key_value(self) -> str:
         return self.firebase_private_key.replace("\\n", "\n")
@@ -30,6 +34,19 @@ class Settings(BaseModel):
         if not raw:
             return []
         return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+    def strava_enabled(self) -> bool:
+        return bool(self.strava_client_id and self.strava_client_secret and self.strava_redirect_uri)
+
+    def strava_admin_redirect_url_value(self) -> str | None:
+        if self.strava_admin_redirect_url:
+            return self.strava_admin_redirect_url
+
+        origins = self.cors_allowed_origins()
+        if not origins:
+            return None
+
+        return f"{origins[0].rstrip('/')}/admin/strava"
 
 
 def load_settings() -> Settings:

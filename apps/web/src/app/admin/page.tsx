@@ -23,6 +23,11 @@ export default function AdminPage() {
       description: dict.adminHome.tripsDescription,
     },
     {
+      href: "/admin/strava",
+      title: dict.adminHome.stravaTitle,
+      description: dict.adminHome.stravaDescription,
+    },
+    {
       href: "/admin/gallery",
       title: dict.adminHome.galleryTitle,
       description: dict.adminHome.galleryDescription,

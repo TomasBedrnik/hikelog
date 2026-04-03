@@ -14,6 +14,7 @@ export function AdminNav() {
     { href: "/admin/users", label: dict.nav.users },
     { href: "/admin/site", label: dict.nav.site },
     { href: "/admin/trips", label: dict.nav.trips },
+    { href: "/admin/strava", label: dict.nav.strava },
     { href: "/admin/gallery", label: dict.nav.gallery },
   ];
 
