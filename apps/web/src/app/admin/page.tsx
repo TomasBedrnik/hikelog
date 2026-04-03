@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AdminFooter } from "@/components/admin-footer";
 import { AdminNav } from "@/components/admin-nav";
 import { useI18n } from "@/components/i18n-provider";
 
@@ -21,6 +22,11 @@ export default function AdminPage() {
       href: "/admin/trips",
       title: dict.adminHome.tripsTitle,
       description: dict.adminHome.tripsDescription,
+    },
+    {
+      href: "/admin/activities",
+      title: dict.adminHome.activitiesTitle,
+      description: dict.adminHome.activitiesDescription,
     },
     {
       href: "/admin/strava",
@@ -56,6 +62,8 @@ export default function AdminPage() {
             ))}
           </div>
         </div>
+
+        <AdminFooter />
       </div>
     </main>
   );

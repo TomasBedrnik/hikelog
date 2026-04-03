@@ -5,6 +5,7 @@ import { startTransition, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { listActivities } from "@/lib/activities";
 import { clearIdToken, getIdToken } from "@/lib/auth";
+import { AdminFooter } from "@/components/admin-footer";
 import { AdminNav } from "@/components/admin-nav";
 import { useI18n } from "@/components/i18n-provider";
 import { getDateLocale } from "@/lib/i18n";
@@ -483,6 +484,8 @@ export function AdminStravaPage() {
             </section>
           </div>
         </div>
+
+        <AdminFooter />
       </div>
     </main>
   );

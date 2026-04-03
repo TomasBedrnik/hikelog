@@ -5,6 +5,7 @@ import Image from "next/image";
 import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearIdToken, getIdToken } from "@/lib/auth";
+import { AdminFooter } from "@/components/admin-footer";
 import {
   deleteGlobalHeroImage,
   getGlobalContent,
@@ -385,6 +386,8 @@ export function AdminGlobalContentPage() {
             )}
           </section>
         </div>
+
+        <AdminFooter />
       </div>
 
       {content?.hero_image_url ? (

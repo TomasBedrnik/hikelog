@@ -118,8 +118,16 @@
   "adminUsers": {
     "title": "Administrátoři",
     "subtitle": "Google účty, které mají povolený přístup do administrace.",
+    "email": "E-mail administrátora",
+    "emailPlaceholder": "jmeno@example.com",
+    "emailRequired": "E-mail je povinný.",
+    "add": "Přidat uživatele",
+    "adding": "Přidávám…",
+    "remove": "Odebrat",
+    "removing": "Odebírám…",
     "sub": "sub",
-    "created": "vytvořeno"
+    "created": "vytvořeno",
+    "lastLogin": "poslední přihlášení"
   },
   "gallery": {
     "title": "Globální galerie obrázků",
@@ -176,6 +184,7 @@
     "title": "Aktivity",
     "publicTitle": "Aktivity",
     "emptyPublic": "K této trase zatím nejsou přiřazené žádné aktivity.",
+    "noTrips": "Nejdřív vytvořte trasu, teprve potom spravujte aktivity.",
     "newActivity": "Nová aktivita",
     "createNew": "Vytvořit nový záznam aktivity",
     "unknownTrip": "Neznámá trasa",

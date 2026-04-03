@@ -118,8 +118,16 @@
   "adminUsers": {
     "title": "Admin Users",
     "subtitle": "Authorized Google accounts that can access administration pages.",
+    "email": "Admin email",
+    "emailPlaceholder": "name@example.com",
+    "emailRequired": "Email is required.",
+    "add": "Add user",
+    "adding": "Adding…",
+    "remove": "Remove",
+    "removing": "Removing…",
     "sub": "sub",
-    "created": "created"
+    "created": "created",
+    "lastLogin": "last login"
   },
   "gallery": {
     "title": "Global Image Gallery",
@@ -176,6 +184,7 @@
     "title": "Activities",
     "publicTitle": "Activities",
     "emptyPublic": "No activities are linked to this trip yet.",
+    "noTrips": "Create a trip first before managing activities.",
     "newActivity": "New activity",
     "createNew": "Create a new activity record",
     "unknownTrip": "Unknown trip",

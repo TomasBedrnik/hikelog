@@ -3,6 +3,7 @@
 import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearIdToken, getIdToken } from "@/lib/auth";
+import { AdminFooter } from "@/components/admin-footer";
 import { AdminNav } from "@/components/admin-nav";
 import { ImageLightbox } from "@/components/image-lightbox";
 import { useI18n } from "@/components/i18n-provider";
@@ -316,6 +317,8 @@ export function AdminGalleryPage() {
             </div>
           ) : null}
         </div>
+
+        <AdminFooter />
       </div>
 
       <ImageLightbox

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
@@ -61,10 +62,16 @@ async def require_admin(
             detail="Not an admin",
         )
 
-    # Optional: bind google_sub on first successful login
+    should_commit = False
+
     if admin.google_sub is None:
         admin.google_sub = str(sub)
-        # you can also update last_login_at here if you want
+        should_commit = True
+
+    admin.last_login_at = datetime.now(timezone.utc)
+    should_commit = True
+
+    if should_commit:
         await session.commit()
         await session.refresh(admin)
 
