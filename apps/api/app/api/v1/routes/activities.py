@@ -57,7 +57,11 @@ async def _get_trip_or_404(session: AsyncSession, trip_id: int) -> Trip:
 async def _get_activity_or_404(session: AsyncSession, activity_id: int) -> Activity:
     stmt = (
         select(Activity)
-        .options(selectinload(Activity.trip), selectinload(Activity.comments), selectinload(Activity.photos))
+        .options(
+            selectinload(Activity.trip),
+            selectinload(Activity.comments),
+            selectinload(Activity.photos),
+        )
         .where(Activity.id == activity_id)
     )
     activity = (await session.scalars(stmt)).first()
@@ -73,7 +77,11 @@ async def list_activities(
 ) -> list[ActivityRead]:
     stmt = (
         select(Activity)
-        .options(selectinload(Activity.trip), selectinload(Activity.comments), selectinload(Activity.photos))
+        .options(
+            selectinload(Activity.trip),
+            selectinload(Activity.comments),
+            selectinload(Activity.photos),
+        )
         .order_by(
             Activity.start_date.desc().nullslast(),
             Activity.created_at.desc(),
@@ -140,7 +148,9 @@ async def upload_activity_gpx(
 
     payload = await file.read()
     if not payload:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded GPX file is empty")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded GPX file is empty"
+        )
 
     polyline, summary_polyline = build_polylines_from_gpx(payload)
     activity.polyline = polyline
@@ -174,7 +184,11 @@ def _delete_activity_photo_files(photo: ActivityPhoto) -> None:
     )
 
 
-@router.post("/{activity_id}/photos", response_model=list[ActivityPhotoRead], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{activity_id}/photos",
+    response_model=list[ActivityPhotoRead],
+    status_code=status.HTTP_201_CREATED,
+)
 async def upload_activity_photos(
     activity_id: int,
     _: Annotated[AdminUser, Depends(require_admin)],
@@ -187,7 +201,9 @@ async def upload_activity_photos(
     await _get_activity_or_404(session, activity_id)
 
     if not files:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No files were uploaded")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="No files were uploaded"
+        )
 
     if resize_mode not in {"keep", "resize"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid resize mode")
@@ -246,7 +262,9 @@ async def delete_activity_photo(
 ) -> Response:
     photo = await session.get(ActivityPhoto, photo_id)
     if photo is None or photo.activity_id != activity_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Activity photo not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Activity photo not found"
+        )
 
     _delete_activity_photo_files(photo)
     await session.delete(photo)
@@ -264,7 +282,9 @@ async def reorder_activity_photos(
     stmt = (
         select(ActivityPhoto)
         .where(ActivityPhoto.activity_id == activity_id)
-        .order_by(ActivityPhoto.position.asc(), ActivityPhoto.created_at.asc(), ActivityPhoto.id.asc())
+        .order_by(
+            ActivityPhoto.position.asc(), ActivityPhoto.created_at.asc(), ActivityPhoto.id.asc()
+        )
     )
     photos = list((await session.scalars(stmt)).all())
     if not photos:
@@ -273,7 +293,10 @@ async def reorder_activity_photos(
     current_ids = [photo.id for photo in photos]
     ordered_ids = payload.ordered_photo_ids
     if len(ordered_ids) != len(current_ids) or set(ordered_ids) != set(current_ids):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Photo order does not match activity photos")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Photo order does not match activity photos",
+        )
 
     photos_by_id = {photo.id: photo for photo in photos}
     for index, photo_id in enumerate(ordered_ids):
@@ -294,7 +317,9 @@ async def rotate_activity_photo(
 ) -> ActivityPhotoRead:
     photo = await session.get(ActivityPhoto, photo_id)
     if photo is None or photo.activity_id != activity_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Activity photo not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Activity photo not found"
+        )
 
     rotated = rotate_uploaded_image(
         storage_path=photo.storage_path,
@@ -327,7 +352,9 @@ async def delete_activity_comment(
 ) -> CommentRead:
     comment = await session.get(ActivityComment, comment_id)
     if comment is None or comment.activity_id != activity_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Activity comment not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Activity comment not found"
+        )
 
     payload = CommentRead.model_validate(comment)
     await session.delete(comment)

@@ -103,7 +103,9 @@ export function ImageLightbox({
           className="max-h-[calc(100vh-7rem)] max-w-full rounded-[1.5rem] object-contain shadow-[0_30px_100px_-40px_rgba(0,0,0,0.85)]"
           src={item.imageUrl}
         />
-        {item.label ? <p className="max-w-3xl text-center text-sm text-stone-200">{item.label}</p> : null}
+        {item.label ? (
+          <p className="max-w-3xl text-center text-sm text-stone-200">{item.label}</p>
+        ) : null}
       </div>
 
       {items.length > 1 ? (

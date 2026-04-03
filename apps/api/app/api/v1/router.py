@@ -15,7 +15,9 @@ router = APIRouter()
 
 router.include_router(health_router, prefix="/health", tags=["health"])
 router.include_router(public_activities_router, prefix="/public", tags=["public"])
-router.include_router(public_global_content_router, prefix="/public/global-content", tags=["public"])
+router.include_router(
+    public_global_content_router, prefix="/public/global-content", tags=["public"]
+)
 router.include_router(public_trips_router, prefix="/public/trips", tags=["public"])
 router.include_router(admin_users_router, prefix="/admin-users", tags=["admin"])
 router.include_router(activities_router, prefix="/activities", tags=["activities"])

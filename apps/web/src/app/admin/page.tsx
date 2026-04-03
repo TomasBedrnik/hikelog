@@ -1,8 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { AdminFooter } from "@/components/admin-footer";
-import { AdminNav } from "@/components/admin-nav";
 import { useI18n } from "@/components/i18n-provider";
 
 export default function AdminPage() {
@@ -41,30 +39,22 @@ export default function AdminPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#f5f1e8_0%,#f8fafc_30%,#ffffff_100%)] p-6 text-stone-900">
-      <div className="mx-auto max-w-5xl">
-        <AdminNav />
+    <div className="mx-auto mt-6 max-w-5xl border-t border-stone-300 pt-6">
+      <h1 className="text-4xl font-semibold tracking-tight">{dict.adminHome.title}</h1>
+      <p className="mt-3 max-w-2xl text-sm text-stone-600">{dict.adminHome.subtitle}</p>
 
-        <div className="mt-8 rounded-4xl border border-stone-300/80 bg-white p-6 shadow-sm">
-          <h1 className="text-4xl font-semibold tracking-tight">{dict.adminHome.title}</h1>
-          <p className="mt-3 max-w-2xl text-sm text-stone-600">{dict.adminHome.subtitle}</p>
-
-          <div className="mt-8 grid gap-4 md:grid-cols-2">
-            {sections.map((section) => (
-              <Link
-                key={section.href}
-                className="rounded-3xl border border-stone-300 bg-stone-50 p-6 transition hover:border-emerald-600 hover:bg-emerald-50"
-                href={section.href}
-              >
-                <div className="text-xl font-semibold">{section.title}</div>
-                <p className="mt-2 text-sm text-stone-600">{section.description}</p>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        <AdminFooter />
+      <div className="mt-8 divide-y border-y border-stone-200">
+        {sections.map((section) => (
+          <Link
+            key={section.href}
+            className="block px-1 py-5 transition hover:bg-stone-50"
+            href={section.href}
+          >
+            <div className="text-xl font-semibold">{section.title}</div>
+            <p className="mt-2 text-sm text-stone-600">{section.description}</p>
+          </Link>
+        ))}
       </div>
-    </main>
+    </div>
   );
 }

@@ -31,7 +31,9 @@ class Trip(Base):
     )
     planned_distance_m: Mapped[int | None] = mapped_column(Integer, nullable=True)
     planned_path_polyline: Mapped[str | None] = mapped_column(String, nullable=True)
-    show_planned_path: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    show_planned_path: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
     map_card_storage_path: Mapped[str | None] = mapped_column(String, nullable=True)
     map_card_image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     map_card_width: Mapped[int | None] = mapped_column(Integer, nullable=True)

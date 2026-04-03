@@ -5,8 +5,9 @@ Revises: 2026_03_30_200000
 Create Date: 2026-04-03 12:00:00.000000
 """
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "2026_04_03_120000"
@@ -30,8 +31,18 @@ def upgrade() -> None:
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("oauth_state", sa.String(length=128), nullable=True),
         sa.Column("oauth_state_created_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_strava_connections")),
         sa.UniqueConstraint("athlete_id", name=op.f("uq_strava_connections_athlete_id")),
         sa.UniqueConstraint("oauth_state", name=op.f("uq_strava_connections_oauth_state")),

@@ -38,7 +38,9 @@ export function ActivityPhotoGallery({
                   loading="lazy"
                   src={item.thumbnailUrl}
                 />
-                {item.label ? <p className="mt-2 max-w-48 truncate text-xs text-stone-600">{item.label}</p> : null}
+                {item.label ? (
+                  <p className="mt-2 max-w-48 truncate text-xs text-stone-600">{item.label}</p>
+                ) : null}
               </>
             );
 
@@ -58,7 +60,13 @@ export function ActivityPhotoGallery({
                 {content}
               </button>
             ) : (
-              <a key={item.id} className="block" href={item.imageUrl} rel="noreferrer" target="_blank">
+              <a
+                key={item.id}
+                className="block"
+                href={item.imageUrl}
+                rel="noreferrer"
+                target="_blank"
+              >
                 {content}
               </a>
             );
@@ -80,7 +88,9 @@ export function ActivityPhotoGallery({
               loading="lazy"
               src={item.thumbnailUrl}
             />
-            {item.label ? <p className="truncate px-4 py-3 text-sm text-stone-700">{item.label}</p> : null}
+            {item.label ? (
+              <p className="truncate px-4 py-3 text-sm text-stone-700">{item.label}</p>
+            ) : null}
           </>
         );
 

@@ -20,3 +20,13 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 For Firebase Storage, flatten the service account JSON into `apps/api/.env`.
 Keep `FIREBASE_PRIVATE_KEY` quoted and preserve newlines as `\n`.
+
+## Ngrok
+Setup ngrok, create permanent url,
+add key to local ngrok,
+add permanent url to Google OAuth client settings: https://console.cloud.google.com/auth/clients/
+
+run:
+```bash
+ngrok http 3000 --url https://your-url.ngrok-free.dev
+```

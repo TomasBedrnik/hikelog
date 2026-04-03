@@ -16,12 +16,6 @@ export function AdminFooter() {
     <footer className="mt-8 border-t border-stone-300 pt-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-stone-900">{dict.nav.brand}</p>
-          <p className="mt-1 text-sm text-stone-500">{dict.adminHome.subtitle}</p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <LocaleSwitcher />
           <Link
             className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
               usersActive
@@ -32,6 +26,10 @@ export function AdminFooter() {
           >
             {dict.nav.users}
           </Link>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <LocaleSwitcher />
           <button
             className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
             onClick={() => {

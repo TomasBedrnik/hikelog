@@ -36,7 +36,9 @@ class Settings(BaseModel):
         return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
     def strava_enabled(self) -> bool:
-        return bool(self.strava_client_id and self.strava_client_secret and self.strava_redirect_uri)
+        return bool(
+            self.strava_client_id and self.strava_client_secret and self.strava_redirect_uri
+        )
 
     def strava_admin_redirect_url_value(self) -> str | None:
         if self.strava_admin_redirect_url:

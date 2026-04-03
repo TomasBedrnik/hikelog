@@ -22,7 +22,9 @@ class StravaConnection(Base):
     scopes: Mapped[str | None] = mapped_column(Text, nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     oauth_state: Mapped[str | None] = mapped_column(String(128), unique=True, nullable=True)
-    oauth_state_created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    oauth_state_created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

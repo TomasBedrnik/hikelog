@@ -102,7 +102,9 @@ export function ActivityPhotoManager({
         resizeHeight: height,
       });
       startTransition(() => {
-        onPhotosChange([...photos, ...uploaded].sort((a, b) => a.position - b.position || a.id - b.id));
+        onPhotosChange(
+          [...photos, ...uploaded].sort((a, b) => a.position - b.position || a.id - b.id),
+        );
       });
       setFiles([]);
       setInputKey((current) => current + 1);
@@ -215,16 +217,22 @@ export function ActivityPhotoManager({
         <p className="text-sm text-stone-500">{dict.activityPhotos.description}</p>
       </div>
 
-      {error ? <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
+      {error ? (
+        <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
+      ) : null}
 
       {!activity?.id ? (
-        <p className="mt-4 rounded-2xl bg-white px-4 py-4 text-sm text-stone-500">{dict.activityPhotos.saveActivityFirst}</p>
+        <p className="mt-4 rounded-2xl bg-white px-4 py-4 text-sm text-stone-500">
+          {dict.activityPhotos.saveActivityFirst}
+        </p>
       ) : (
         <>
           <div className="mt-5 rounded-[1.5rem] border border-stone-200 bg-white p-4">
             <div className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
               <label className="block">
-                <span className="text-sm font-medium text-stone-700">{dict.activityPhotos.files}</span>
+                <span className="text-sm font-medium text-stone-700">
+                  {dict.activityPhotos.files}
+                </span>
                 <input
                   key={inputKey}
                   accept="image/jpeg,image/png"
@@ -240,7 +248,9 @@ export function ActivityPhotoManager({
 
               <div className="space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4">
                 <div>
-                  <p className="text-sm font-medium text-stone-700">{dict.activityPhotos.resizeMode}</p>
+                  <p className="text-sm font-medium text-stone-700">
+                    {dict.activityPhotos.resizeMode}
+                  </p>
                   <div className="mt-3 flex flex-wrap gap-3">
                     <label className="flex items-center gap-2 text-sm text-stone-700">
                       <input
@@ -270,7 +280,9 @@ export function ActivityPhotoManager({
                 {resizeMode === "resize" ? (
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label className="block">
-                      <span className="text-sm font-medium text-stone-700">{dict.activityPhotos.width}</span>
+                      <span className="text-sm font-medium text-stone-700">
+                        {dict.activityPhotos.width}
+                      </span>
                       <input
                         className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
                         inputMode="numeric"
@@ -281,7 +293,9 @@ export function ActivityPhotoManager({
                       />
                     </label>
                     <label className="block">
-                      <span className="text-sm font-medium text-stone-700">{dict.activityPhotos.height}</span>
+                      <span className="text-sm font-medium text-stone-700">
+                        {dict.activityPhotos.height}
+                      </span>
                       <input
                         className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
                         inputMode="numeric"
@@ -302,14 +316,18 @@ export function ActivityPhotoManager({
                   }}
                   type="button"
                 >
-                  {busy === "uploading" ? dict.activityPhotos.uploading : dict.activityPhotos.upload}
+                  {busy === "uploading"
+                    ? dict.activityPhotos.uploading
+                    : dict.activityPhotos.upload}
                 </button>
               </div>
             </div>
           </div>
 
           {photos.length === 0 ? (
-            <p className="mt-4 rounded-2xl bg-white px-4 py-4 text-sm text-stone-500">{dict.activityPhotos.empty}</p>
+            <p className="mt-4 rounded-2xl bg-white px-4 py-4 text-sm text-stone-500">
+              {dict.activityPhotos.empty}
+            </p>
           ) : (
             <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {photos.map((photo, index) => (
@@ -367,8 +385,20 @@ export function ActivityPhotoManager({
                         type="button"
                       >
                         <svg aria-hidden="true" className="size-4" fill="none" viewBox="0 0 24 24">
-                          <path d="M9 7H4v5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-                          <path d="M20 11a8 8 0 1 0-2.34 5.66L20 14" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                          <path
+                            d="M9 7H4v5"
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                          />
+                          <path
+                            d="M20 11a8 8 0 1 0-2.34 5.66L20 14"
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                          />
                         </svg>
                       </button>
                       <button
@@ -381,8 +411,20 @@ export function ActivityPhotoManager({
                         type="button"
                       >
                         <svg aria-hidden="true" className="size-4" fill="none" viewBox="0 0 24 24">
-                          <path d="M15 7h5v5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-                          <path d="M4 11a8 8 0 1 1 2.34 5.66L4 14" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                          <path
+                            d="M15 7h5v5"
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                          />
+                          <path
+                            d="M4 11a8 8 0 1 1 2.34 5.66L4 14"
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                          />
                         </svg>
                       </button>
                     </div>
@@ -398,10 +440,32 @@ export function ActivityPhotoManager({
                         type="button"
                       >
                         <svg aria-hidden="true" className="size-4" fill="none" viewBox="0 0 24 24">
-                          <path d="M4 7h16" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
-                          <path d="M9 7V5h6v2" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-                          <path d="M8 7l1 11h6l1-11" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-                          <path d="M10 11v4M14 11v4" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+                          <path
+                            d="M4 7h16"
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeWidth="2"
+                          />
+                          <path
+                            d="M9 7V5h6v2"
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                          />
+                          <path
+                            d="M8 7l1 11h6l1-11"
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                          />
+                          <path
+                            d="M10 11v4M14 11v4"
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeWidth="2"
+                          />
                         </svg>
                       </button>
                     </div>

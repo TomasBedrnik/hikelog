@@ -21,7 +21,10 @@ SUPPORTED_IMAGE_FORMATS = {
     "JPEG": ("jpg", "image/jpeg"),
     "PNG": ("png", "image/png"),
 }
-CONTENT_TYPE_TO_IMAGE_FORMAT = {content_type: image_format for image_format, (_, content_type) in SUPPORTED_IMAGE_FORMATS.items()}
+CONTENT_TYPE_TO_IMAGE_FORMAT = {
+    content_type: image_format
+    for image_format, (_, content_type) in SUPPORTED_IMAGE_FORMATS.items()
+}
 
 
 @dataclass(slots=True)
@@ -132,7 +135,9 @@ def _extract_gps_coordinates(image: Image.Image) -> tuple[float | None, float | 
         return None, None
 
     latitude = _convert_gps_to_decimal(gps_info.get(GPS_LATITUDE), gps_info.get(GPS_LATITUDE_REF))
-    longitude = _convert_gps_to_decimal(gps_info.get(GPS_LONGITUDE), gps_info.get(GPS_LONGITUDE_REF))
+    longitude = _convert_gps_to_decimal(
+        gps_info.get(GPS_LONGITUDE), gps_info.get(GPS_LONGITUDE_REF)
+    )
     return latitude, longitude
 
 
@@ -151,13 +156,17 @@ async def create_uploaded_image(
 ) -> UploadedImagePayload:
     payload = await upload.read()
     if not payload:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file is empty")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file is empty"
+        )
 
     try:
         source_image = Image.open(BytesIO(payload))
         source_image.load()
     except UnidentifiedImageError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported image file") from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported image file"
+        ) from exc
 
     image_format = (source_image.format or "").upper()
     if image_format not in SUPPORTED_IMAGE_FORMATS:
@@ -203,7 +212,9 @@ async def create_uploaded_image(
         thumbnail_bytes = _save_image_bytes(thumbnail_image, image_format)
         tiny_thumbnail_bytes = _save_image_bytes(tiny_thumbnail_image, image_format)
         thumbnail_storage_path = _build_storage_path(storage_prefix, object_id, "_thumb", extension)
-        tiny_thumbnail_storage_path = _build_storage_path(storage_prefix, object_id, "_tiny", extension)
+        tiny_thumbnail_storage_path = _build_storage_path(
+            storage_prefix, object_id, "_tiny", extension
+        )
         thumbnail_url = firebase_storage.upload_bytes(
             path=thumbnail_storage_path,
             data=thumbnail_bytes,
@@ -280,15 +291,21 @@ def rotate_uploaded_image(
 ) -> UploadedImagePayload:
     image_format = CONTENT_TYPE_TO_IMAGE_FORMAT.get(content_type)
     if image_format is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported image content type")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported image content type"
+        )
 
     try:
         original_image = Image.open(BytesIO(firebase_storage.download_bytes(storage_path)))
         original_image.load()
     except UnidentifiedImageError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported image file") from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported image file"
+        ) from exc
 
-    transpose_operation = Image.Transpose.ROTATE_270 if direction == "right" else Image.Transpose.ROTATE_90
+    transpose_operation = (
+        Image.Transpose.ROTATE_270 if direction == "right" else Image.Transpose.ROTATE_90
+    )
     rotated_image = _normalize_image_for_format(
         original_image.transpose(transpose_operation),
         image_format,
@@ -322,11 +339,15 @@ def rotate_uploaded_image(
 
         if not thumbnail_storage_path:
             stem, _, extension = storage_path.rpartition(".")
-            thumbnail_storage_path = f"{stem}_thumb.{extension}" if extension else f"{storage_path}_thumb"
+            thumbnail_storage_path = (
+                f"{stem}_thumb.{extension}" if extension else f"{storage_path}_thumb"
+            )
 
         if tiny_thumbnail_storage_path is None:
             stem, _, extension = storage_path.rpartition(".")
-            tiny_thumbnail_storage_path = f"{stem}_tiny.{extension}" if extension else f"{storage_path}_tiny"
+            tiny_thumbnail_storage_path = (
+                f"{stem}_tiny.{extension}" if extension else f"{storage_path}_tiny"
+            )
 
         next_thumbnail_url = firebase_storage.upload_bytes(
             path=thumbnail_storage_path,

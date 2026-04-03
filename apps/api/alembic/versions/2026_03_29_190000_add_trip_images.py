@@ -8,6 +8,7 @@ Create Date: 2026-03-29 19:00:00.000000
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "1d4f5c6f9e02"
@@ -38,7 +39,12 @@ def upgrade() -> None:
         sa.Column("original_filename", sa.String(length=255), nullable=True),
         sa.Column("gps_latitude", sa.Float(), nullable=True),
         sa.Column("gps_longitude", sa.Float(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["trip_id"], ["trips.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )

@@ -5,11 +5,7 @@ import { getPublicTrip } from "@/lib/public-trips";
 
 export const dynamic = "force-dynamic";
 
-export default async function TripMapRoute({
-  params,
-}: {
-  params: Promise<{ tripId: string }>;
-}) {
+export default async function TripMapRoute({ params }: { params: Promise<{ tripId: string }> }) {
   const { tripId } = await params;
   const id = Number(tripId);
 

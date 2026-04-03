@@ -26,7 +26,10 @@ type InlineContent =
       content?: InlineContent[];
     };
 
-function renderInlineContent(content: InlineContent[] | string | undefined, keyPrefix: string): ReactNode {
+function renderInlineContent(
+  content: InlineContent[] | string | undefined,
+  keyPrefix: string,
+): ReactNode {
   if (!content) {
     return null;
   }
@@ -81,16 +84,20 @@ function renderInlineContent(content: InlineContent[] | string | undefined, keyP
 }
 
 function renderBlock(block: PartialBlock, key: string): ReactNode {
-  const content = renderInlineContent(block.content as InlineContent[] | string | undefined, `${key}-content`);
-  const children = Array.isArray(block.children) && block.children.length > 0
-    ? (
-        <div className="mt-3 space-y-3 pl-5">
-          {block.children.map((child, index) => (
-            <Fragment key={`${key}-child-${index}`}>{renderBlock(child, `${key}-child-${index}`)}</Fragment>
-          ))}
-        </div>
-      )
-    : null;
+  const content = renderInlineContent(
+    block.content as InlineContent[] | string | undefined,
+    `${key}-content`,
+  );
+  const children =
+    Array.isArray(block.children) && block.children.length > 0 ? (
+      <div className="mt-3 space-y-3 pl-5">
+        {block.children.map((child, index) => (
+          <Fragment key={`${key}-child-${index}`}>
+            {renderBlock(child, `${key}-child-${index}`)}
+          </Fragment>
+        ))}
+      </div>
+    ) : null;
 
   switch (block.type) {
     case "heading": {
@@ -98,7 +105,9 @@ function renderBlock(block: PartialBlock, key: string): ReactNode {
       if (level === 1) {
         return (
           <div key={key}>
-            <h2 className="mt-8 text-3xl font-semibold tracking-tight text-stone-950 first:mt-0">{content}</h2>
+            <h2 className="mt-8 text-3xl font-semibold tracking-tight text-stone-950 first:mt-0">
+              {content}
+            </h2>
             {children}
           </div>
         );
@@ -165,7 +174,10 @@ function renderBlock(block: PartialBlock, key: string): ReactNode {
       );
     case "codeBlock":
       return (
-        <pre className="overflow-x-auto rounded-xl bg-stone-900 px-4 py-3 text-sm text-stone-100" key={key}>
+        <pre
+          className="overflow-x-auto rounded-xl bg-stone-900 px-4 py-3 text-sm text-stone-100"
+          key={key}
+        >
           <code>{typeof content === "string" ? content : content}</code>
           {children}
         </pre>
@@ -178,8 +190,14 @@ function renderBlock(block: PartialBlock, key: string): ReactNode {
       return (
         <figure className="space-y-3" key={key}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img alt={props.caption ?? ""} className="max-h-[34rem] w-full rounded-2xl object-cover" src={props.url} />
-          {props.caption ? <figcaption className="text-sm text-stone-500">{props.caption}</figcaption> : null}
+          <img
+            alt={props.caption ?? ""}
+            className="max-h-[34rem] w-full rounded-2xl object-cover"
+            src={props.url}
+          />
+          {props.caption ? (
+            <figcaption className="text-sm text-stone-500">{props.caption}</figcaption>
+          ) : null}
           {children}
         </figure>
       );
@@ -195,5 +213,9 @@ function renderBlock(block: PartialBlock, key: string): ReactNode {
 }
 
 export function TripContentRenderer({ blocks, className }: TripContentRendererProps) {
-  return <div className={`space-y-4 text-base leading-7 text-stone-700 ${className ?? ""}`}>{blocks.map((block, index) => renderBlock(block, `block-${index}`))}</div>;
+  return (
+    <div className={`space-y-4 text-base leading-7 text-stone-700 ${className ?? ""}`}>
+      {blocks.map((block, index) => renderBlock(block, `block-${index}`))}
+    </div>
+  );
 }

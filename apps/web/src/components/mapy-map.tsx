@@ -161,12 +161,15 @@ export function MapyMap({
 
       const map = window.L.map(mapRef.current, { zoomControl: false });
 
-      window.L.tileLayer(`https://api.mapy.com/v1/maptiles/outdoor/256/{z}/{x}/{y}?apikey=${apiKey}`, {
-        minZoom: 0,
-        maxZoom: 19,
-        attribution:
-          '<a href="https://api.mapy.com/copyright" target="_blank" rel="noreferrer">&copy; Seznam.cz a.s. and others</a>',
-      }).addTo(map);
+      window.L.tileLayer(
+        `https://api.mapy.com/v1/maptiles/outdoor/256/{z}/{x}/{y}?apikey=${apiKey}`,
+        {
+          minZoom: 0,
+          maxZoom: 19,
+          attribution:
+            '<a href="https://api.mapy.com/copyright" target="_blank" rel="noreferrer">&copy; Seznam.cz a.s. and others</a>',
+        },
+      ).addTo(map);
       map.on("click", () => {
         if (ignoreNextMapClickRef.current) {
           ignoreNextMapClickRef.current = false;

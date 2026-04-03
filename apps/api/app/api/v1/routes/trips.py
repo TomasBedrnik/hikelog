@@ -32,7 +32,11 @@ def _to_trip_read(trip: Trip) -> TripRead:
 
 
 async def _get_trip_or_404(session: AsyncSession, trip_id: int) -> Trip:
-    stmt = select(Trip).options(selectinload(Trip.comments), selectinload(Trip.images)).where(Trip.id == trip_id)
+    stmt = (
+        select(Trip)
+        .options(selectinload(Trip.comments), selectinload(Trip.images))
+        .where(Trip.id == trip_id)
+    )
     trip = (await session.scalars(stmt)).first()
     if trip is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
@@ -105,7 +109,9 @@ async def upload_trip_gpx(
 
     payload = await file.read()
     if not payload:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded GPX file is empty")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded GPX file is empty"
+        )
 
     trip.planned_path_polyline = build_trip_polyline_from_gpx(payload, compress=compress)
     await session.commit()
@@ -146,7 +152,9 @@ def _delete_trip_map_card_files(trip: Trip) -> None:
     )
 
 
-@router.post("/{trip_id}/images", response_model=list[TripImageRead], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{trip_id}/images", response_model=list[TripImageRead], status_code=status.HTTP_201_CREATED
+)
 async def upload_trip_images(
     trip_id: int,
     _: Annotated[AdminUser, Depends(require_admin)],
@@ -159,7 +167,9 @@ async def upload_trip_images(
     await _get_trip_or_404(session, trip_id)
 
     if not files:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No files were uploaded")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="No files were uploaded"
+        )
 
     if resize_mode not in {"keep", "resize"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid resize mode")
@@ -167,9 +177,14 @@ async def upload_trip_images(
     if resize_mode == "resize" and (
         resize_width is None or resize_height is None or resize_width <= 0 or resize_height <= 0
     ):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Resize width and height must be positive integers")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Resize width and height must be positive integers",
+        )
 
-    current_max_position = await session.scalar(select(func.max(TripImage.position)).where(TripImage.trip_id == trip_id))
+    current_max_position = await session.scalar(
+        select(func.max(TripImage.position)).where(TripImage.trip_id == trip_id)
+    )
     next_position = (current_max_position or 0) + 1 if current_max_position is not None else 0
 
     created_images: list[TripImage] = []
@@ -200,7 +215,9 @@ async def upload_trip_images(
     return [TripImageRead.model_validate(image) for image in created_images]
 
 
-@router.post("/{trip_id}/map-card-image", response_model=TripRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{trip_id}/map-card-image", response_model=TripRead, status_code=status.HTTP_201_CREATED
+)
 async def upload_trip_map_card_image(
     trip_id: int,
     _: Annotated[AdminUser, Depends(require_admin)],
@@ -218,7 +235,10 @@ async def upload_trip_map_card_image(
     if resize_mode == "resize" and (
         resize_width is None or resize_height is None or resize_width <= 0 or resize_height <= 0
     ):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Resize width and height must be positive integers")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Resize width and height must be positive integers",
+        )
 
     previous_storage_path = trip.map_card_storage_path
     uploaded = await create_uploaded_image(
@@ -281,7 +301,9 @@ async def rotate_trip_map_card_image(
 ) -> TripRead:
     trip = await _get_trip_or_404(session, trip_id)
     if not trip.map_card_storage_path:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip map card image not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Trip map card image not found"
+        )
 
     rotated = rotate_uploaded_image(
         storage_path=trip.map_card_storage_path,
@@ -349,7 +371,11 @@ async def reorder_trip_images(
     _: Annotated[AdminUser, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> list[TripImageRead]:
-    stmt = select(TripImage).where(TripImage.trip_id == trip_id).order_by(TripImage.position.asc(), TripImage.created_at.asc(), TripImage.id.asc())
+    stmt = (
+        select(TripImage)
+        .where(TripImage.trip_id == trip_id)
+        .order_by(TripImage.position.asc(), TripImage.created_at.asc(), TripImage.id.asc())
+    )
     images = list((await session.scalars(stmt)).all())
     if not images:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip has no images")
@@ -357,7 +383,9 @@ async def reorder_trip_images(
     current_ids = [image.id for image in images]
     ordered_ids = payload.ordered_image_ids
     if len(ordered_ids) != len(current_ids) or set(ordered_ids) != set(current_ids):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Image order does not match trip images")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Image order does not match trip images"
+        )
 
     images_by_id = {image.id: image for image in images}
     for index, image_id in enumerate(ordered_ids):

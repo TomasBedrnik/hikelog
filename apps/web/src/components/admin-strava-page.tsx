@@ -5,8 +5,6 @@ import { startTransition, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { listActivities } from "@/lib/activities";
 import { clearIdToken, getIdToken } from "@/lib/auth";
-import { AdminFooter } from "@/components/admin-footer";
-import { AdminNav } from "@/components/admin-nav";
 import { useI18n } from "@/components/i18n-provider";
 import { getDateLocale } from "@/lib/i18n";
 import { listTrips, TripRead } from "@/lib/trips";
@@ -26,7 +24,9 @@ function formatDistance(locale: string, value: number | null) {
   }
   return new Intl.NumberFormat(locale, {
     maximumFractionDigits: 1,
-  }).format(value / 1000).concat(" km");
+  })
+    .format(value / 1000)
+    .concat(" km");
 }
 
 function formatMovingTime(value: number | null) {
@@ -53,7 +53,9 @@ function formatElevation(locale: string, value: number | null) {
   }
   return new Intl.NumberFormat(locale, {
     maximumFractionDigits: 0,
-  }).format(value).concat(" m");
+  })
+    .format(value)
+    .concat(" m");
 }
 
 function getAthleteName(connection: StravaConnectionRead, fallback: string) {
@@ -110,7 +112,9 @@ export function AdminStravaPage() {
         listTrips(token),
         listActivities(token),
       ]);
-      const loadedActivities = loadedConnection.connected ? await listRecentStravaActivities(token, 1) : [];
+      const loadedActivities = loadedConnection.connected
+        ? await listRecentStravaActivities(token, 1)
+        : [];
       const loadedImportedStravaIds = loadedLocalActivities
         .map((activity) => activity.strava_activity_id)
         .filter((activityId): activityId is number => activityId !== null);
@@ -264,229 +268,243 @@ export function AdminStravaPage() {
     }
   };
 
-  const athleteName = connection ? getAthleteName(connection, dict.strava.unknownAthlete) : dict.strava.unknownAthlete;
+  const athleteName = connection
+    ? getAthleteName(connection, dict.strava.unknownAthlete)
+    : dict.strava.unknownAthlete;
   const isConnected = connection?.connected ?? false;
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#f5f1e8_0%,#f8fafc_30%,#ffffff_100%)] p-6 text-stone-900">
-      <div className="mx-auto max-w-6xl">
-        <AdminNav />
+    <div className="mx-auto mt-6 max-w-6xl border-t border-stone-300 pt-6">
+      <h1 className="text-3xl font-semibold tracking-tight">{dict.strava.title}</h1>
+      <p className="mt-2 max-w-3xl text-sm text-stone-600">{dict.strava.description}</p>
 
-        <div className="mt-8 rounded-[32px] border border-stone-300/80 bg-white p-6 shadow-sm">
-          <h1 className="text-3xl font-semibold tracking-tight">{dict.strava.title}</h1>
-          <p className="mt-2 max-w-3xl text-sm text-stone-600">{dict.strava.description}</p>
+      {error ? (
+        <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
+      ) : null}
+      {!connection && !error ? (
+        <p className="mt-4 text-sm text-stone-600">{dict.common.loading}</p>
+      ) : null}
 
-          {error ? <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
-          {!connection && !error ? <p className="mt-4 text-sm text-stone-600">{dict.common.loading}</p> : null}
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <section className="border-t border-stone-200 pt-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-stone-900">{dict.strava.statusTitle}</h2>
+              <p
+                className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
+                  isConnected ? "bg-emerald-100 text-emerald-800" : "bg-stone-200 text-stone-700"
+                }`}
+              >
+                {isConnected ? dict.strava.statusConnected : dict.strava.statusDisconnected}
+              </p>
+            </div>
 
-          <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-            <section className="rounded-[28px] border border-stone-200 bg-stone-50 p-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-stone-900">{dict.strava.statusTitle}</h2>
-                  <p className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
-                    isConnected ? "bg-emerald-100 text-emerald-800" : "bg-stone-200 text-stone-700"
-                  }`}>
-                    {isConnected ? dict.strava.statusConnected : dict.strava.statusDisconnected}
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={busy !== null}
-                    onClick={() => {
-                      void load();
-                    }}
-                    type="button"
-                  >
-                    {dict.strava.refresh}
-                  </button>
-                  {isConnected ? (
-                    <button
-                      className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={busy !== null}
-                      onClick={() => {
-                        void disconnect();
-                      }}
-                      type="button"
-                    >
-                      {busy === "disconnecting" ? dict.strava.disconnecting : dict.strava.disconnect}
-                    </button>
-                  ) : (
-                    <button
-                      className="rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={busy !== null}
-                      onClick={() => {
-                        void connect();
-                      }}
-                      type="button"
-                    >
-                      {busy === "connecting" ? dict.strava.connecting : dict.strava.connect}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {connection ? (
-                <div className="mt-5 rounded-[24px] border border-stone-200 bg-white p-4">
-                  <p className="text-sm font-medium text-stone-700">{dict.strava.accountTitle}</p>
-                  <div className="mt-4 flex items-center gap-4">
-                    {connection.profile_medium ? (
-                      <Image
-                        alt={athleteName}
-                        className="size-16 rounded-full border border-stone-200 object-cover"
-                        height={64}
-                        src={connection.profile_medium}
-                        unoptimized
-                        width={64}
-                      />
-                    ) : (
-                      <div className="flex size-16 items-center justify-center rounded-full border border-stone-200 bg-stone-100 text-lg font-semibold text-stone-500">
-                        {athleteName.slice(0, 1).toUpperCase()}
-                      </div>
-                    )}
-
-                    <div>
-                      <div className="text-base font-semibold text-stone-900">{athleteName}</div>
-                      <div className="mt-1 text-sm text-stone-600">
-                        {dict.strava.athleteId}: {connection.athlete_id ?? "—"}
-                      </div>
-                    </div>
-                  </div>
-
-                  <dl className="mt-5 grid gap-3 text-sm text-stone-700">
-                    <div className="rounded-2xl border border-stone-200 px-4 py-3">
-                      <dt className="font-medium">{dict.strava.scopes}</dt>
-                      <dd className="mt-1 text-stone-600">
-                        {connection.scopes.length > 0 ? connection.scopes.join(", ") : "—"}
-                      </dd>
-                    </div>
-                    <div className="rounded-2xl border border-stone-200 px-4 py-3">
-                      <dt className="font-medium">{dict.strava.tokenExpires}</dt>
-                      <dd className="mt-1 text-stone-600">
-                        {connection.expires_at
-                          ? new Date(connection.expires_at).toLocaleString(getDateLocale(locale))
-                          : "—"}
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
-              ) : null}
-            </section>
-
-            <section className="rounded-[28px] border border-stone-200 bg-stone-50 p-5">
-              <h2 className="text-lg font-semibold text-stone-900">{dict.strava.recentActivitiesTitle}</h2>
-              <p className="mt-2 text-sm text-stone-500">{dict.strava.recentActivitiesDescription}</p>
-
-              <div className="mt-5 rounded-[24px] border border-stone-200 bg-white p-4">
-                <label className="block">
-                  <span className="text-sm font-medium text-stone-700">{dict.strava.tripSelect}</span>
-                  <select
-                    className="mt-2 w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={!trips || trips.length === 0 || busy !== null}
-                    onChange={(event) => {
-                      setSelectedTripId(event.target.value);
-                    }}
-                    value={selectedTripId}
-                  >
-                    {trips && trips.length > 0 ? (
-                      trips.map((trip) => (
-                        <option key={trip.id} value={trip.id}>
-                          {trip.name}
-                        </option>
-                      ))
-                    ) : (
-                      <option value="">{dict.strava.noTrips}</option>
-                    )}
-                  </select>
-                </label>
-              </div>
-
-              {activities && activities.length === 0 ? (
-                <p className="mt-5 rounded-2xl border border-dashed border-stone-300 bg-white px-4 py-6 text-sm text-stone-500">
-                  {dict.strava.emptyActivities}
-                </p>
-              ) : null}
-
-              {activities && activities.length > 0 ? (
-                <div className="mt-5 space-y-3">
-                  {activities.map((activity) => {
-                    const alreadyImported = importedStravaIds.includes(activity.id);
-
-                    return (
-                      <article key={activity.id} className="rounded-[24px] border border-stone-200 bg-white p-4">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <h3 className="text-base font-semibold text-stone-900">{activity.name}</h3>
-                            <p className="mt-1 text-sm text-stone-500">{activity.sport_type ?? "—"}</p>
-                          </div>
-                          <div className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-600">
-                            #{activity.id}
-                          </div>
-                        </div>
-
-                        <dl className="mt-4 grid gap-3 text-sm text-stone-700 sm:grid-cols-2">
-                          <div className="rounded-2xl bg-stone-50 px-3 py-2">
-                            <dt className="font-medium">{dict.strava.started}</dt>
-                            <dd className="mt-1 text-stone-600">
-                              {new Date(activity.start_date).toLocaleString(getDateLocale(locale))}
-                            </dd>
-                          </div>
-                          <div className="rounded-2xl bg-stone-50 px-3 py-2">
-                            <dt className="font-medium">{dict.strava.distance}</dt>
-                            <dd className="mt-1 text-stone-600">{formatDistance(locale, activity.distance)}</dd>
-                          </div>
-                          <div className="rounded-2xl bg-stone-50 px-3 py-2">
-                            <dt className="font-medium">{dict.strava.movingTime}</dt>
-                            <dd className="mt-1 text-stone-600">{formatMovingTime(activity.moving_time)}</dd>
-                          </div>
-                          <div className="rounded-2xl bg-stone-50 px-3 py-2">
-                            <dt className="font-medium">{dict.strava.elevation}</dt>
-                            <dd className="mt-1 text-stone-600">{formatElevation(locale, activity.total_elevation_gain)}</dd>
-                          </div>
-                        </dl>
-
-                        <div className="mt-4 flex justify-end">
-                          <button
-                            className="rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
-                            disabled={alreadyImported || busy !== null || !selectedTripId || !trips || trips.length === 0}
-                            onClick={() => {
-                              void addToTrip(activity);
-                            }}
-                            type="button"
-                          >
-                            {alreadyImported
-                              ? dict.strava.alreadyAdded
-                              : busy === `import-${activity.id}`
-                                ? dict.strava.addingToTrip
-                                : dict.strava.addToTrip}
-                          </button>
-                        </div>
-                      </article>
-                    );
-                  })}
-
-                  <div className="flex justify-center pt-2">
-                    <button
-                      className="rounded-full border border-stone-300 bg-white px-5 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={!hasMoreActivities || busy !== null}
-                      onClick={() => {
-                        void loadOlderActivities();
-                      }}
-                      type="button"
-                    >
-                      {busy === "loading-more" ? dict.strava.loadingOlder : dict.strava.loadOlder}
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-            </section>
+            <div className="flex flex-wrap gap-2">
+              <button
+                className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={busy !== null}
+                onClick={() => {
+                  void load();
+                }}
+                type="button"
+              >
+                {dict.strava.refresh}
+              </button>
+              {isConnected ? (
+                <button
+                  className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={busy !== null}
+                  onClick={() => {
+                    void disconnect();
+                  }}
+                  type="button"
+                >
+                  {busy === "disconnecting" ? dict.strava.disconnecting : dict.strava.disconnect}
+                </button>
+              ) : (
+                <button
+                  className="rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={busy !== null}
+                  onClick={() => {
+                    void connect();
+                  }}
+                  type="button"
+                >
+                  {busy === "connecting" ? dict.strava.connecting : dict.strava.connect}
+                </button>
+              )}
+            </div>
           </div>
-        </div>
 
-        <AdminFooter />
+          {connection ? (
+            <div className="mt-5 border-t border-stone-200 pt-4">
+              <p className="text-sm font-medium text-stone-700">{dict.strava.accountTitle}</p>
+              <div className="mt-4 flex items-center gap-4">
+                {connection.profile_medium ? (
+                  <Image
+                    alt={athleteName}
+                    className="size-16 rounded-full border border-stone-200 object-cover"
+                    height={64}
+                    src={connection.profile_medium}
+                    unoptimized
+                    width={64}
+                  />
+                ) : (
+                  <div className="flex size-16 items-center justify-center rounded-full border border-stone-200 bg-stone-100 text-lg font-semibold text-stone-500">
+                    {athleteName.slice(0, 1).toUpperCase()}
+                  </div>
+                )}
+
+                <div>
+                  <div className="text-base font-semibold text-stone-900">{athleteName}</div>
+                  <div className="mt-1 text-sm text-stone-600">
+                    {dict.strava.athleteId}: {connection.athlete_id ?? "—"}
+                  </div>
+                </div>
+              </div>
+
+              <dl className="mt-5 grid gap-3 text-sm text-stone-700">
+                <div className="border-t border-stone-200 px-1 py-3">
+                  <dt className="font-medium">{dict.strava.scopes}</dt>
+                  <dd className="mt-1 text-stone-600">
+                    {connection.scopes.length > 0 ? connection.scopes.join(", ") : "—"}
+                  </dd>
+                </div>
+                <div className="border-t border-stone-200 px-1 py-3">
+                  <dt className="font-medium">{dict.strava.tokenExpires}</dt>
+                  <dd className="mt-1 text-stone-600">
+                    {connection.expires_at
+                      ? new Date(connection.expires_at).toLocaleString(getDateLocale(locale))
+                      : "—"}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          ) : null}
+        </section>
+
+        <section className="border-t border-stone-200 pt-6">
+          <h2 className="text-lg font-semibold text-stone-900">
+            {dict.strava.recentActivitiesTitle}
+          </h2>
+          <p className="mt-2 text-sm text-stone-500">{dict.strava.recentActivitiesDescription}</p>
+
+          <div className="mt-5 border-t border-stone-200 pt-4">
+            <label className="block">
+              <span className="text-sm font-medium text-stone-700">{dict.strava.tripSelect}</span>
+              <select
+                className="mt-2 w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!trips || trips.length === 0 || busy !== null}
+                onChange={(event) => {
+                  setSelectedTripId(event.target.value);
+                }}
+                value={selectedTripId}
+              >
+                {trips && trips.length > 0 ? (
+                  trips.map((trip) => (
+                    <option key={trip.id} value={trip.id}>
+                      {trip.name}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">{dict.strava.noTrips}</option>
+                )}
+              </select>
+            </label>
+          </div>
+
+          {activities && activities.length === 0 ? (
+            <p className="mt-5 rounded-2xl border border-dashed border-stone-300 bg-white px-4 py-6 text-sm text-stone-500">
+              {dict.strava.emptyActivities}
+            </p>
+          ) : null}
+
+          {activities && activities.length > 0 ? (
+            <div className="mt-5 space-y-3">
+              {activities.map((activity) => {
+                const alreadyImported = importedStravaIds.includes(activity.id);
+
+                return (
+                  <article key={activity.id} className="border-t border-stone-200 pt-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-semibold text-stone-900">{activity.name}</h3>
+                        <p className="mt-1 text-sm text-stone-500">{activity.sport_type ?? "—"}</p>
+                      </div>
+                      <div className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-600">
+                        #{activity.id}
+                      </div>
+                    </div>
+
+                    <dl className="mt-4 grid gap-3 text-sm text-stone-700 sm:grid-cols-2">
+                      <div className="rounded-2xl bg-stone-50 px-3 py-2">
+                        <dt className="font-medium">{dict.strava.started}</dt>
+                        <dd className="mt-1 text-stone-600">
+                          {new Date(activity.start_date).toLocaleString(getDateLocale(locale))}
+                        </dd>
+                      </div>
+                      <div className="rounded-2xl bg-stone-50 px-3 py-2">
+                        <dt className="font-medium">{dict.strava.distance}</dt>
+                        <dd className="mt-1 text-stone-600">
+                          {formatDistance(locale, activity.distance)}
+                        </dd>
+                      </div>
+                      <div className="rounded-2xl bg-stone-50 px-3 py-2">
+                        <dt className="font-medium">{dict.strava.movingTime}</dt>
+                        <dd className="mt-1 text-stone-600">
+                          {formatMovingTime(activity.moving_time)}
+                        </dd>
+                      </div>
+                      <div className="rounded-2xl bg-stone-50 px-3 py-2">
+                        <dt className="font-medium">{dict.strava.elevation}</dt>
+                        <dd className="mt-1 text-stone-600">
+                          {formatElevation(locale, activity.total_elevation_gain)}
+                        </dd>
+                      </div>
+                    </dl>
+
+                    <div className="mt-4 flex justify-end">
+                      <button
+                        className="rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={
+                          alreadyImported ||
+                          busy !== null ||
+                          !selectedTripId ||
+                          !trips ||
+                          trips.length === 0
+                        }
+                        onClick={() => {
+                          void addToTrip(activity);
+                        }}
+                        type="button"
+                      >
+                        {alreadyImported
+                          ? dict.strava.alreadyAdded
+                          : busy === `import-${activity.id}`
+                            ? dict.strava.addingToTrip
+                            : dict.strava.addToTrip}
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+
+              <div className="flex justify-center pt-2">
+                <button
+                  className="rounded-full border border-stone-300 bg-white px-5 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={!hasMoreActivities || busy !== null}
+                  onClick={() => {
+                    void loadOlderActivities();
+                  }}
+                  type="button"
+                >
+                  {busy === "loading-more" ? dict.strava.loadingOlder : dict.strava.loadOlder}
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </section>
       </div>
-    </main>
+    </div>
   );
 }

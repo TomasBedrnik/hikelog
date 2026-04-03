@@ -17,7 +17,9 @@ export function AdminNav() {
 
   return (
     <div className="border-b border-stone-300 pb-6">
-      <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-700">{dict.nav.brand}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-700">
+        {dict.nav.brand}
+      </p>
       <div className="mt-3 flex flex-wrap gap-2">
         {links.map((link) => {
           const active = pathname === link.href;

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,7 +12,11 @@ from app.db.session import get_session
 from app.models.admin_user import AdminUser
 from app.models.global_content import GlobalContent
 from app.schemas.global_content import GlobalContentRead, GlobalContentUpdate
-from app.services.image_uploads import create_uploaded_image, delete_uploaded_image_files, rotate_uploaded_image
+from app.services.image_uploads import (
+    create_uploaded_image,
+    delete_uploaded_image_files,
+    rotate_uploaded_image,
+)
 
 router = APIRouter()
 
@@ -59,7 +63,7 @@ def _assign_uploaded_image(global_content: GlobalContent, uploaded: dict[str, ob
     global_content.hero_original_filename = uploaded["original_filename"]  # type: ignore[assignment]
 
 
-@router.get('', response_model=GlobalContentRead)
+@router.get("", response_model=GlobalContentRead)
 async def get_global_content(
     _: Annotated[AdminUser, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -68,7 +72,7 @@ async def get_global_content(
     return _to_global_content_read(global_content)
 
 
-@router.patch('', response_model=GlobalContentRead)
+@router.patch("", response_model=GlobalContentRead)
 async def update_global_content(
     payload: GlobalContentUpdate,
     _: Annotated[AdminUser, Depends(require_admin)],
@@ -84,24 +88,27 @@ async def update_global_content(
     return _to_global_content_read(global_content)
 
 
-@router.post('/hero-image', response_model=GlobalContentRead, status_code=status.HTTP_201_CREATED)
+@router.post("/hero-image", response_model=GlobalContentRead, status_code=status.HTTP_201_CREATED)
 async def upload_global_content_hero_image(
     _: Annotated[AdminUser, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
     file: Annotated[UploadFile, File(...)],
-    resize_mode: Annotated[str, Form()] = 'keep',
+    resize_mode: Annotated[str, Form()] = "keep",
     resize_width: Annotated[int | None, Form()] = None,
     resize_height: Annotated[int | None, Form()] = None,
 ) -> GlobalContentRead:
     global_content = await _get_or_create_global_content(session)
 
-    if resize_mode not in {'keep', 'resize'}:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Invalid resize mode')
+    if resize_mode not in {"keep", "resize"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid resize mode")
 
-    if resize_mode == 'resize' and (
+    if resize_mode == "resize" and (
         resize_width is None or resize_height is None or resize_width <= 0 or resize_height <= 0
     ):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Resize width and height must be positive integers')
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Resize width and height must be positive integers",
+        )
 
     previous_paths = (
         global_content.hero_storage_path,
@@ -114,7 +121,7 @@ async def upload_global_content_hero_image(
         resize_mode=resize_mode,
         resize_width=resize_width,
         resize_height=resize_height,
-        storage_prefix='global-content',
+        storage_prefix="global-content",
     )
 
     try:
@@ -141,7 +148,7 @@ async def upload_global_content_hero_image(
     return _to_global_content_read(global_content)
 
 
-@router.delete('/hero-image', response_model=GlobalContentRead)
+@router.delete("/hero-image", response_model=GlobalContentRead)
 async def delete_global_content_hero_image(
     _: Annotated[AdminUser, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -182,23 +189,23 @@ async def delete_global_content_hero_image(
     return _to_global_content_read(global_content)
 
 
-@router.patch('/hero-image/rotate', response_model=GlobalContentRead)
+@router.patch("/hero-image/rotate", response_model=GlobalContentRead)
 async def rotate_global_content_hero_image(
     _: Annotated[AdminUser, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> GlobalContentRead:
     global_content = await _get_or_create_global_content(session)
     if not global_content.hero_storage_path or not global_content.hero_thumbnail_storage_path:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Hero image not found')
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hero image not found")
 
     rotated = rotate_uploaded_image(
         storage_path=global_content.hero_storage_path,
         thumbnail_storage_path=global_content.hero_thumbnail_storage_path,
         tiny_thumbnail_storage_path=global_content.hero_tiny_thumbnail_storage_path,
-        image_url=global_content.hero_image_url or '',
-        thumbnail_url=global_content.hero_thumbnail_url or '',
+        image_url=global_content.hero_image_url or "",
+        thumbnail_url=global_content.hero_thumbnail_url or "",
         tiny_thumbnail_url=global_content.hero_tiny_thumbnail_url,
-        content_type=global_content.hero_content_type or 'image/jpeg',
+        content_type=global_content.hero_content_type or "image/jpeg",
         original_filename=global_content.hero_original_filename,
         gps_latitude=None,
         gps_longitude=None,

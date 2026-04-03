@@ -27,7 +27,9 @@ export function TripImageManager({
   const router = useRouter();
   const { dict, locale } = useI18n();
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"uploading" | `delete-${number}` | `move-${number}` | `rotate-${number}` | null>(null);
+  const [busy, setBusy] = useState<
+    "uploading" | `delete-${number}` | `move-${number}` | `rotate-${number}` | null
+  >(null);
   const [files, setFiles] = useState<File[]>([]);
   const [resizeMode, setResizeMode] = useState<"keep" | "resize">("keep");
   const [resizeWidth, setResizeWidth] = useState(DEFAULT_WIDTH);
@@ -95,7 +97,9 @@ export function TripImageManager({
         resizeHeight: height,
       });
       startTransition(() => {
-        onImagesChange([...images, ...uploaded].sort((a, b) => a.position - b.position || a.id - b.id));
+        onImagesChange(
+          [...images, ...uploaded].sort((a, b) => a.position - b.position || a.id - b.id),
+        );
       });
       setFiles([]);
       setInputKey((current) => current + 1);
@@ -168,10 +172,14 @@ export function TripImageManager({
         <p className="text-sm text-stone-500">{dict.tripImages.description}</p>
       </div>
 
-      {error ? <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
+      {error ? (
+        <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
+      ) : null}
 
       {!trip?.id ? (
-        <p className="mt-4 rounded-2xl bg-white px-4 py-4 text-sm text-stone-500">{dict.tripImages.saveTripFirst}</p>
+        <p className="mt-4 rounded-2xl bg-white px-4 py-4 text-sm text-stone-500">
+          {dict.tripImages.saveTripFirst}
+        </p>
       ) : (
         <>
           <div className="mt-5 rounded-[1.5rem] border border-stone-200 bg-white p-4">
@@ -223,7 +231,9 @@ export function TripImageManager({
                 {resizeMode === "resize" ? (
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label className="block">
-                      <span className="text-sm font-medium text-stone-700">{dict.tripImages.width}</span>
+                      <span className="text-sm font-medium text-stone-700">
+                        {dict.tripImages.width}
+                      </span>
                       <input
                         className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
                         inputMode="numeric"
@@ -234,7 +244,9 @@ export function TripImageManager({
                       />
                     </label>
                     <label className="block">
-                      <span className="text-sm font-medium text-stone-700">{dict.tripImages.height}</span>
+                      <span className="text-sm font-medium text-stone-700">
+                        {dict.tripImages.height}
+                      </span>
                       <input
                         className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
                         inputMode="numeric"
@@ -262,7 +274,9 @@ export function TripImageManager({
           </div>
 
           {images.length === 0 ? (
-            <p className="mt-4 rounded-2xl bg-white px-4 py-4 text-sm text-stone-500">{dict.tripImages.empty}</p>
+            <p className="mt-4 rounded-2xl bg-white px-4 py-4 text-sm text-stone-500">
+              {dict.tripImages.empty}
+            </p>
           ) : (
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               {images.map((image, index) => (
@@ -319,7 +333,8 @@ export function TripImageManager({
                         {image.original_filename ?? dict.tripImages.imageAlt}
                       </p>
                       <p className="mt-1 text-xs text-stone-500">
-                        {image.width} x {image.height} · {new Date(image.created_at).toLocaleString(getDateLocale(locale))}
+                        {image.width} x {image.height} ·{" "}
+                        {new Date(image.created_at).toLocaleString(getDateLocale(locale))}
                       </p>
                     </div>
                   </div>

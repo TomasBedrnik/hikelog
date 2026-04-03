@@ -34,7 +34,9 @@ async def list_public_trip_activities(
         select(Activity)
         .options(selectinload(Activity.comments), selectinload(Activity.photos))
         .where(Activity.trip_id == trip_id)
-        .order_by(Activity.start_date.desc().nullslast(), Activity.created_at.desc(), Activity.id.desc())
+        .order_by(
+            Activity.start_date.desc().nullslast(), Activity.created_at.desc(), Activity.id.desc()
+        )
     )
     activities = (await session.scalars(stmt)).all()
     return [ActivitySummaryRead.model_validate(activity) for activity in activities]
@@ -47,7 +49,11 @@ async def get_public_activity(
 ) -> ActivityRead:
     stmt = (
         select(Activity)
-        .options(selectinload(Activity.trip), selectinload(Activity.comments), selectinload(Activity.photos))
+        .options(
+            selectinload(Activity.trip),
+            selectinload(Activity.comments),
+            selectinload(Activity.photos),
+        )
         .where(Activity.id == activity_id)
     )
     activity = (await session.scalars(stmt)).first()
@@ -56,7 +62,11 @@ async def get_public_activity(
     return _to_activity_read(activity)
 
 
-@router.post("/activities/{activity_id}/comments", response_model=CommentRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/activities/{activity_id}/comments",
+    response_model=CommentRead,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_public_activity_comment(
     activity_id: int,
     payload: CommentCreate,

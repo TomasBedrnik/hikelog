@@ -34,11 +34,18 @@ def upgrade() -> None:
         sa.Column("thumbnail_height", sa.Integer(), nullable=False),
         sa.Column("content_type", sa.String(length=32), nullable=False),
         sa.Column("original_filename", sa.String(length=255), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["activity_id"], ["activities.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_activity_photos_activity_id"), "activity_photos", ["activity_id"], unique=False)
+    op.create_index(
+        op.f("ix_activity_photos_activity_id"), "activity_photos", ["activity_id"], unique=False
+    )
 
 
 def downgrade() -> None:

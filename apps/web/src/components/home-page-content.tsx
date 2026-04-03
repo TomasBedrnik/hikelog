@@ -87,7 +87,13 @@ export function HomePageContent({
           <div className="relative px-6 py-6 sm:px-8 lg:px-10">
             <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-stone-700">
               <h1 className="flex items-center gap-3 text-lg font-bold tracking-[0.18em] text-[#035E24] sm:text-xl">
-                <Image alt="" className="size-8 rounded-md" height={32} src="/favicon-32x32.png" width={32} />
+                <Image
+                  alt=""
+                  className="size-8 rounded-md"
+                  height={32}
+                  src="/favicon-32x32.png"
+                  width={32}
+                />
                 <span>Zuzka jde...</span>
               </h1>
               <nav className="flex flex-wrap gap-5 text-sm text-stone-700/85">
@@ -121,7 +127,6 @@ export function HomePageContent({
         </section>
 
         <section className="mt-14">
-
           <div className="mt-8 grid gap-5 lg:grid-cols-3">
             {tripCards.map((card) => (
               <Link

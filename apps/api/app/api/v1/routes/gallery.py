@@ -19,6 +19,8 @@ from app.services.image_uploads import (
 )
 
 router = APIRouter()
+
+
 def _delete_gallery_image_files(image: GalleryImage) -> None:
     delete_uploaded_image_files(
         storage_path=image.storage_path,
@@ -47,7 +49,9 @@ async def upload_gallery_images(
     resize_height: Annotated[int | None, Form()] = None,
 ) -> list[GalleryImageRead]:
     if not files:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No files were uploaded")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="No files were uploaded"
+        )
 
     if resize_mode not in {"keep", "resize"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid resize mode")

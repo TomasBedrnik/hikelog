@@ -102,7 +102,9 @@ export function TripMapPage({
       />
 
       <div className="absolute left-4 top-4 z-[1000] max-h-[calc(100vh-2rem)] w-[min(27rem,calc(100vw-2rem))] overflow-auto rounded-[1.75rem] border border-stone-200 bg-white/95 px-5 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur">
-        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">{dict.publicSite.mapEyebrow}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">
+          {dict.publicSite.mapEyebrow}
+        </p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950">
           {trip.name || dict.publicSite.untitledTrip}
         </h1>
@@ -115,7 +117,9 @@ export function TripMapPage({
         {error ? <p className="mt-3 text-sm text-red-700">{error}</p> : null}
 
         <div className="mt-6 space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">{dict.activities.publicTitle}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
+            {dict.activities.publicTitle}
+          </p>
           {activities.length === 0 ? (
             <p className="text-sm text-stone-500">{dict.activities.emptyPublic}</p>
           ) : (

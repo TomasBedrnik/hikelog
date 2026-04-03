@@ -19,7 +19,9 @@ function formatDate(value: string | null, locale: "en" | "cs") {
     return null;
   }
 
-  return new Intl.DateTimeFormat(getDateLocale(locale), { dateStyle: "medium" }).format(new Date(value));
+  return new Intl.DateTimeFormat(getDateLocale(locale), { dateStyle: "medium" }).format(
+    new Date(value),
+  );
 }
 
 export function PublicTripPage({
@@ -63,11 +65,15 @@ export function PublicTripPage({
     },
     {
       label: dict.publicSite.countries,
-      value: trip.country_codes.length > 0 ? trip.country_codes.join(", ") : dict.publicSite.metaEmpty,
+      value:
+        trip.country_codes.length > 0 ? trip.country_codes.join(", ") : dict.publicSite.metaEmpty,
     },
     {
       label: dict.publicSite.plannedDistance,
-      value: trip.planned_distance_m !== null ? trip.planned_distance_m.toLocaleString(locale) : dict.publicSite.metaEmpty,
+      value:
+        trip.planned_distance_m !== null
+          ? trip.planned_distance_m.toLocaleString(locale)
+          : dict.publicSite.metaEmpty,
     },
     {
       label: dict.publicSite.showPlannedPath,
@@ -118,7 +124,9 @@ export function PublicTripPage({
                   <TripContentRenderer blocks={contentBlocks} className="text-stone-700" />
                 </div>
               ) : (
-                <p className="mt-5 max-w-2xl text-sm leading-6 text-stone-600">{dict.publicSite.contentEmpty}</p>
+                <p className="mt-5 max-w-2xl text-sm leading-6 text-stone-600">
+                  {dict.publicSite.contentEmpty}
+                </p>
               )}
             </div>
           </div>
@@ -144,29 +152,32 @@ export function PublicTripPage({
           </div>
 
           {activities.length === 0 ? (
-              <p className="mt-4 rounded-2xl bg-stone-50 px-4 py-4 text-sm text-stone-500">{dict.activities.emptyPublic}</p>
+            <p className="mt-4 rounded-2xl bg-stone-50 px-4 py-4 text-sm text-stone-500">
+              {dict.activities.emptyPublic}
+            </p>
           ) : (
-              <div className="mt-5 grid gap-4 md:grid-cols-2">
-                {sortedActivities.map((activity) => (
-                    <Link
-                        key={activity.id}
-                        className="rounded-[1.5rem] border border-stone-200 bg-stone-50 px-5 py-4 transition hover:border-emerald-600 hover:bg-emerald-50"
-                        href={`/activities/${activity.id}`}
-                    >
-                      <p className="text-lg font-semibold text-stone-900">{activity.name}</p>
-                      <p className="mt-2 text-sm text-stone-600">
-                        {activity.sport_type ?? activity.type ?? dict.publicSite.metaEmpty}
-                      </p>
-                      <p className="mt-2 text-xs uppercase tracking-[0.2em] text-stone-400">
-                        {activity.start_date
-                            ? new Intl.DateTimeFormat(getDateLocale(locale), { dateStyle: "medium", timeStyle: "short" }).format(
-                                new Date(activity.start_date),
-                            )
-                            : dict.publicSite.metaEmpty}
-                      </p>
-                    </Link>
-                ))}
-              </div>
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              {sortedActivities.map((activity) => (
+                <Link
+                  key={activity.id}
+                  className="rounded-[1.5rem] border border-stone-200 bg-stone-50 px-5 py-4 transition hover:border-emerald-600 hover:bg-emerald-50"
+                  href={`/activities/${activity.id}`}
+                >
+                  <p className="text-lg font-semibold text-stone-900">{activity.name}</p>
+                  <p className="mt-2 text-sm text-stone-600">
+                    {activity.sport_type ?? activity.type ?? dict.publicSite.metaEmpty}
+                  </p>
+                  <p className="mt-2 text-xs uppercase tracking-[0.2em] text-stone-400">
+                    {activity.start_date
+                      ? new Intl.DateTimeFormat(getDateLocale(locale), {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        }).format(new Date(activity.start_date))
+                      : dict.publicSite.metaEmpty}
+                  </p>
+                </Link>
+              ))}
+            </div>
           )}
         </section>
 
@@ -191,7 +202,9 @@ export function PublicTripPage({
 
         <section className="mt-10 rounded-[2rem] border border-stone-200 bg-white p-6">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-xl font-semibold text-stone-900">{dict.activityPhotos.tripTitle}</h2>
+            <h2 className="text-xl font-semibold text-stone-900">
+              {dict.activityPhotos.tripTitle}
+            </h2>
             <span className="text-sm text-stone-500">{activityPhotoItems.length}</span>
           </div>
 

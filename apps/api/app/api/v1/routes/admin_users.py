@@ -35,10 +35,12 @@ async def create_admin_user(
     session.add(admin)
 
     try:
-      await session.commit()
+        await session.commit()
     except IntegrityError:
-      await session.rollback()
-      raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Admin user already exists") from None
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Admin user already exists"
+        ) from None
 
     await session.refresh(admin)
     return AdminUserRead.model_validate(admin)
@@ -55,7 +57,10 @@ async def delete_admin_user(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Admin user not found")
 
     if admin.id == current_admin.id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You cannot remove your own admin access")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot remove your own admin access",
+        )
 
     await session.delete(admin)
     await session.commit()

@@ -7,8 +7,8 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -99,7 +99,11 @@ async def _get_trip_or_404(session: AsyncSession, trip_id: int) -> Trip:
 async def _get_activity_with_relations(session: AsyncSession, activity_id: int) -> Activity:
     stmt = (
         select(Activity)
-        .options(selectinload(Activity.trip), selectinload(Activity.comments), selectinload(Activity.photos))
+        .options(
+            selectinload(Activity.trip),
+            selectinload(Activity.comments),
+            selectinload(Activity.photos),
+        )
         .where(Activity.id == activity_id)
     )
     activity = (await session.scalars(stmt)).first()
@@ -151,7 +155,9 @@ def _callback_redirect_url(success: bool, error: str | None = None) -> str:
     return f"{base_url}{separator}{query}"
 
 
-async def _ensure_fresh_token(session: AsyncSession, connection: StravaConnection) -> StravaConnection:
+async def _ensure_fresh_token(
+    session: AsyncSession, connection: StravaConnection
+) -> StravaConnection:
     now = datetime.now(timezone.utc)
     if (
         connection.access_token
@@ -162,7 +168,9 @@ async def _ensure_fresh_token(session: AsyncSession, connection: StravaConnectio
         return connection
 
     if not connection.refresh_token:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Strava account is not connected")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Strava account is not connected"
+        )
 
     try:
         token_payload = refresh_access_token(connection.refresh_token)
@@ -208,7 +216,9 @@ async def authorize_strava_connection(
     await session.commit()
     await session.refresh(connection)
 
-    return StravaAuthorizationRead(authorization_url=build_authorization_url(connection.oauth_state))
+    return StravaAuthorizationRead(
+        authorization_url=build_authorization_url(connection.oauth_state)
+    )
 
 
 @router.get("/callback", include_in_schema=False)
@@ -228,7 +238,10 @@ async def handle_strava_callback(
         )
 
     if error:
-        return RedirectResponse(_callback_redirect_url(success=False, error=error), status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(
+            _callback_redirect_url(success=False, error=error),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
 
     if not state or not code:
         return RedirectResponse(
@@ -261,7 +274,9 @@ async def handle_strava_callback(
     _apply_token_payload(connection, token_payload, scopes)
     await session.commit()
 
-    return RedirectResponse(_callback_redirect_url(success=True), status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(
+        _callback_redirect_url(success=True), status_code=status.HTTP_303_SEE_OTHER
+    )
 
 
 @router.delete("/connection", status_code=status.HTTP_204_NO_CONTENT)
@@ -297,7 +312,9 @@ async def get_recent_strava_activities(
     connection = await _ensure_fresh_token(session, connection)
 
     try:
-        activities = list_recent_activities(connection.access_token or "", page=page, per_page=per_page)
+        activities = list_recent_activities(
+            connection.access_token or "", page=page, per_page=per_page
+        )
     except StravaServiceError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
@@ -308,7 +325,9 @@ async def get_recent_strava_activities(
             sport_type=activity.get("sport_type"),
             start_date=datetime.fromisoformat(str(activity["start_date"]).replace("Z", "+00:00")),
             distance=float(activity["distance"]) if activity.get("distance") is not None else None,
-            moving_time=int(activity["moving_time"]) if activity.get("moving_time") is not None else None,
+            moving_time=int(activity["moving_time"])
+            if activity.get("moving_time") is not None
+            else None,
             total_elevation_gain=(
                 float(activity["total_elevation_gain"])
                 if activity.get("total_elevation_gain") is not None
@@ -316,11 +335,17 @@ async def get_recent_strava_activities(
             ),
         )
         for activity in activities
-        if isinstance(activity, dict) and activity.get("id") is not None and activity.get("start_date") is not None
+        if isinstance(activity, dict)
+        and activity.get("id") is not None
+        and activity.get("start_date") is not None
     ]
 
 
-@router.post("/activities/{activity_id}/import", response_model=ActivityRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/activities/{activity_id}/import",
+    response_model=ActivityRead,
+    status_code=status.HTTP_201_CREATED,
+)
 async def import_strava_activity(
     activity_id: int,
     payload: StravaActivityImport,
@@ -337,11 +362,15 @@ async def import_strava_activity(
     existing_stmt = select(Activity).where(Activity.strava_activity_id == activity_id)
     existing = await session.scalar(existing_stmt)
     if existing is not None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Activity already imported")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Activity already imported"
+        )
 
     connection = await _get_connection(session)
     if connection is None or not connection.refresh_token:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Strava account is not connected")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Strava account is not connected"
+        )
 
     connection = await _ensure_fresh_token(session, connection)
 
@@ -374,7 +403,9 @@ async def import_strava_activity(
         await session.commit()
     except IntegrityError:
         await session.rollback()
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Activity already imported") from None
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Activity already imported"
+        ) from None
 
     local_activity = await _get_activity_with_relations(session, local_activity.id)
     return _to_activity_read(local_activity)

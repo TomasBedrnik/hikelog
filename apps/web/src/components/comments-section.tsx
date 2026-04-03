@@ -85,7 +85,11 @@ export function CommentsSection({
                 setText("");
               })
               .catch((nextError: unknown) => {
-                setError(nextError instanceof Error ? nextError.message : (unknownError ?? "Unknown error"));
+                setError(
+                  nextError instanceof Error
+                    ? nextError.message
+                    : (unknownError ?? "Unknown error"),
+                );
               })
               .finally(() => {
                 setIsSubmitting(false);
@@ -124,7 +128,7 @@ export function CommentsSection({
             disabled={isSubmitting}
             type="submit"
           >
-            {isSubmitting ? submittingLabel ?? submitLabel : submitLabel}
+            {isSubmitting ? (submittingLabel ?? submitLabel) : submitLabel}
           </button>
         </form>
       ) : null}
@@ -134,7 +138,10 @@ export function CommentsSection({
       ) : (
         <div className="mt-5 space-y-4">
           {comments.map((comment) => (
-            <article key={comment.id} className="rounded-[1.5rem] border border-stone-200 bg-stone-50 px-5 py-4">
+            <article
+              key={comment.id}
+              className="rounded-[1.5rem] border border-stone-200 bg-stone-50 px-5 py-4"
+            >
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="font-semibold text-stone-900">{comment.name}</p>
@@ -151,7 +158,11 @@ export function CommentsSection({
                       setError(null);
                       void onDelete(comment.id)
                         .catch((nextError: unknown) => {
-                          setError(nextError instanceof Error ? nextError.message : (unknownError ?? "Unknown error"));
+                          setError(
+                            nextError instanceof Error
+                              ? nextError.message
+                              : (unknownError ?? "Unknown error"),
+                          );
                         })
                         .finally(() => {
                           setDeletingCommentId(null);
@@ -159,11 +170,15 @@ export function CommentsSection({
                     }}
                     type="button"
                   >
-                    {deletingCommentId === comment.id ? deletingLabel ?? deleteLabel : deleteLabel}
+                    {deletingCommentId === comment.id
+                      ? (deletingLabel ?? deleteLabel)
+                      : deleteLabel}
                   </button>
                 ) : null}
               </div>
-              <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-stone-700">{comment.text}</p>
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-stone-700">
+                {comment.text}
+              </p>
             </article>
           ))}
         </div>

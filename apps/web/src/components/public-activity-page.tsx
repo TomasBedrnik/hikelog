@@ -126,8 +126,12 @@ export function PublicActivityPage({ activity }: { activity: ActivityRead }) {
         className="absolute left-4 z-[1000] max-h-[calc(100vh-2rem)] w-[min(26rem,calc(100vw-2rem))] overflow-auto rounded-[1.75rem] border border-stone-200 bg-white/95 px-5 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur"
         style={{ top: photoItems.length > 0 ? "11.5rem" : "1rem" }}
       >
-        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">{dict.activities.mapEyebrow}</p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950">{activity.name}</h1>
+        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">
+          {dict.activities.mapEyebrow}
+        </p>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950">
+          {activity.name}
+        </h1>
 
         <Link
           className="mt-4 inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
@@ -140,7 +144,9 @@ export function PublicActivityPage({ activity }: { activity: ActivityRead }) {
         <dl className="mt-5 space-y-4">
           {infoItems.map((item) => (
             <div key={item.label}>
-              <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">{item.label}</dt>
+              <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
+                {item.label}
+              </dt>
               <dd className="mt-1 text-sm text-stone-700">{item.value}</dd>
             </div>
           ))}

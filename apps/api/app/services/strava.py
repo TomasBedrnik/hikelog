@@ -91,7 +91,9 @@ def refresh_access_token(refresh_token: str) -> StravaTokenPayload:
     return _parse_token_response(response)
 
 
-def list_recent_activities(access_token: str, *, page: int = 1, per_page: int = 10) -> list[dict[str, Any]]:
+def list_recent_activities(
+    access_token: str, *, page: int = 1, per_page: int = 10
+) -> list[dict[str, Any]]:
     try:
         response = requests.get(
             f"{STRAVA_API_URL}/athlete/activities",
@@ -100,7 +102,9 @@ def list_recent_activities(access_token: str, *, page: int = 1, per_page: int = 
             timeout=30,
         )
     except requests.RequestException as exc:
-        raise StravaServiceError("Unable to reach Strava activities endpoint", status_code=502) from exc
+        raise StravaServiceError(
+            "Unable to reach Strava activities endpoint", status_code=502
+        ) from exc
 
     if not response.ok:
         raise StravaServiceError(_extract_error_detail(response), status_code=502)
@@ -120,7 +124,9 @@ def get_activity(access_token: str, activity_id: int) -> dict[str, Any]:
             timeout=30,
         )
     except requests.RequestException as exc:
-        raise StravaServiceError("Unable to reach Strava activity endpoint", status_code=502) from exc
+        raise StravaServiceError(
+            "Unable to reach Strava activity endpoint", status_code=502
+        ) from exc
 
     if not response.ok:
         raise StravaServiceError(_extract_error_detail(response), status_code=502)

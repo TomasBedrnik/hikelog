@@ -33,7 +33,9 @@ def encode_polyline(points: list[tuple[float, float]]) -> str:
     return "".join(encoded)
 
 
-def _downsample_points(points: list[tuple[float, float]], step: int = SUMMARY_POLYLINE_STEP) -> list[tuple[float, float]]:
+def _downsample_points(
+    points: list[tuple[float, float]], step: int = SUMMARY_POLYLINE_STEP
+) -> list[tuple[float, float]]:
     if len(points) <= 2 or step <= 1:
         return points
 
@@ -46,34 +48,45 @@ def _downsample_points(points: list[tuple[float, float]], step: int = SUMMARY_PO
 
 def _parse_float(value: str | None, label: str) -> float:
     if value is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"GPX point is missing {label}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"GPX point is missing {label}"
+        )
     try:
         return float(value)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"GPX point has invalid {label}") from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"GPX point has invalid {label}"
+        ) from exc
 
 
 def parse_gpx_points(payload: bytes) -> list[tuple[float, float]]:
     try:
         root = ET.fromstring(payload)
     except ET.ParseError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid GPX file") from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid GPX file"
+        ) from exc
 
-    track_points = root.findall('.//{*}trkpt')
-    route_points = root.findall('.//{*}rtept')
+    track_points = root.findall(".//{*}trkpt")
+    route_points = root.findall(".//{*}rtept")
     point_elements = track_points or route_points
 
     if not point_elements:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="GPX file does not contain track points")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="GPX file does not contain track points"
+        )
 
     points: list[tuple[float, float]] = []
     for point in point_elements:
-        latitude = _parse_float(point.attrib.get('lat'), 'latitude')
-        longitude = _parse_float(point.attrib.get('lon'), 'longitude')
+        latitude = _parse_float(point.attrib.get("lat"), "latitude")
+        longitude = _parse_float(point.attrib.get("lon"), "longitude")
         points.append((latitude, longitude))
 
     if len(points) < 2:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="GPX file must contain at least two points")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="GPX file must contain at least two points",
+        )
 
     return points
 

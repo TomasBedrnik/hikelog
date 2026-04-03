@@ -30,7 +30,9 @@ export function TripList({ trips }: { trips: TripRead[] }) {
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-stone-400">
             {dict.publicSite.tripListEyebrow}
           </p>
-          <h2 className="mt-2 text-2xl font-semibold text-stone-900">{dict.publicSite.tripListTitle}</h2>
+          <h2 className="mt-2 text-2xl font-semibold text-stone-900">
+            {dict.publicSite.tripListTitle}
+          </h2>
         </div>
         <p className="text-sm text-stone-500">{trips.length}</p>
       </div>

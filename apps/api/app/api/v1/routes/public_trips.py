@@ -38,7 +38,11 @@ async def get_public_trip(
     trip_id: int,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> TripRead:
-    stmt = select(Trip).options(selectinload(Trip.comments), selectinload(Trip.images)).where(Trip.id == trip_id)
+    stmt = (
+        select(Trip)
+        .options(selectinload(Trip.comments), selectinload(Trip.images))
+        .where(Trip.id == trip_id)
+    )
     trip = (await session.scalars(stmt)).first()
     if trip is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")

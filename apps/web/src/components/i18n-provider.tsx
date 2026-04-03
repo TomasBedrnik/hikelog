@@ -1,13 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import {
-  dictionaries,
-  Dictionary,
-  LOCALE_STORAGE_KEY,
-  Locale,
-  normalizeLocale,
-} from "@/lib/i18n";
+import { dictionaries, Dictionary, LOCALE_STORAGE_KEY, Locale, normalizeLocale } from "@/lib/i18n";
 
 type I18nContextValue = {
   dict: Dictionary;

@@ -5,8 +5,9 @@ Revises: 2026_03_30_180000
 Create Date: 2026-03-30 20:00:00.000000
 """
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "2026_03_30_200000"
@@ -22,7 +23,9 @@ def upgrade() -> None:
         sa.Column("trip_id", sa.Integer(), nullable=False),
         sa.Column("name", sa.String(length=120), nullable=False),
         sa.Column("text", sa.Text(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.ForeignKeyConstraint(["trip_id"], ["trips.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -34,11 +37,15 @@ def upgrade() -> None:
         sa.Column("activity_id", sa.Integer(), nullable=False),
         sa.Column("name", sa.String(length=120), nullable=False),
         sa.Column("text", sa.Text(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.ForeignKeyConstraint(["activity_id"], ["activities.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_activity_comments_activity_id"), "activity_comments", ["activity_id"], unique=False)
+    op.create_index(
+        op.f("ix_activity_comments_activity_id"), "activity_comments", ["activity_id"], unique=False
+    )
 
 
 def downgrade() -> None:
