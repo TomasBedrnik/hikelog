@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class Activity(Base):
     __tablename__ = "activities"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     trip_id: Mapped[int] = mapped_column(
         ForeignKey("trips.id", ondelete="CASCADE"),
         nullable=False,
