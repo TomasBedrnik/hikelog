@@ -56,7 +56,7 @@ export function HomePageContent({
   ];
   const tripCards =
     trips.length > 0
-      ? trips.slice(0, 3).map((trip, index) => ({
+      ? trips.map((trip, index) => ({
           id: trip.id,
           href: `/trips/${trip.id}`,
           title: trip.name || dict.publicSite.untitledTrip,
@@ -84,25 +84,26 @@ export function HomePageContent({
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.08)_34%,rgba(245,239,227,0.72)_66%,rgba(245,239,227,0.94)_100%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.62),transparent_36%),radial-gradient(circle_at_bottom,rgba(116,92,54,0.12),transparent_45%)]" />
 
-          <div className="relative px-6 py-6 sm:px-8 lg:px-10">
+          <div className="relative pr-6 pb-6 sm:pr-6 lg:pb-6">
             <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-stone-700">
-              <h1 className="flex items-center gap-3 text-lg font-bold tracking-[0.18em] text-[#035E24] sm:text-xl">
+              <div className="relative flex items-center gap-3 text-lg font-bold tracking-[0.18em] text-[#035E24] sm:text-2xl  p-6">
+                <div className="pointer-events-none absolute inset-0 bg-[rgba(255,255,255,0.7)] blur-xl"></div>
                 <Image
                   alt=""
-                  className="size-8 rounded-md"
+                  className="size-8 rounded-md z-2"
                   height={32}
                   src="/favicon-32x32.png"
                   width={32}
                 />
-                <span>Zuzka jde...</span>
-              </h1>
-              <nav className="flex flex-wrap gap-5 text-sm text-stone-700/85">
-                <span>{dict.publicSite.homeNavAbout}</span>
-                <span>{dict.publicSite.homeNavTalks}</span>
-                <span>{dict.publicSite.homeNavTrips}</span>
-                <span>{dict.publicSite.homeNavMedia}</span>
-                <span>{dict.publicSite.homeNavContact}</span>
-              </nav>
+                <h1 className="z-2">Zuzka jde...</h1>
+              </div>
+              {/*<nav className="flex flex-wrap gap-5 text-sm text-stone-700/85">*/}
+              {/*  <span>{dict.publicSite.homeNavAbout}</span>*/}
+              {/*  <span>{dict.publicSite.homeNavTalks}</span>*/}
+              {/*  <span>{dict.publicSite.homeNavTrips}</span>*/}
+              {/*  <span>{dict.publicSite.homeNavMedia}</span>*/}
+              {/*  <span>{dict.publicSite.homeNavContact}</span>*/}
+              {/*</nav>*/}
             </div>
 
             <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.1fr)] lg:items-end">
@@ -144,7 +145,7 @@ export function HomePageContent({
                   />
                 </div>
                 <div className="px-5 pb-5 pt-1">
-                  <h3 className="font-serif text-2xl italic text-stone-900">{card.title}</h3>
+                  <h3 className="text-2xl text-bold text-stone-900">{card.title}</h3>
                   <p className="mt-2 text-sm leading-6 text-stone-700">{card.text}</p>
                 </div>
               </Link>

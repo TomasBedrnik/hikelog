@@ -96,7 +96,7 @@ export function CommentsSection({
               });
           }}
         >
-          <div className="grid gap-4 md:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]">
+          <div className="grid gap-4 md:grid-cols-1">
             <label className="block">
               <span className="text-sm font-medium text-stone-700">{nameLabel}</span>
               <input

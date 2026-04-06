@@ -13,6 +13,7 @@ import { ActivitySummaryRead, sortActivitiesByStartDate } from "@/lib/activities
 import { createPublicTripComment } from "@/lib/comments";
 import { TripRead } from "@/lib/trips";
 import Link from "next/link";
+import Image from "next/image";
 
 function formatDate(value: string | null, locale: "en" | "cs") {
   if (!value) {
@@ -22,6 +23,18 @@ function formatDate(value: string | null, locale: "en" | "cs") {
   return new Intl.DateTimeFormat(getDateLocale(locale), { dateStyle: "medium" }).format(
     new Date(value),
   );
+}
+
+function formatNumber(
+  value: number | null,
+  locale: "en" | "cs",
+  options?: Intl.NumberFormatOptions,
+) {
+  if (value === null || Number.isNaN(value)) {
+    return null;
+  }
+
+  return new Intl.NumberFormat(getDateLocale(locale), options).format(value);
 }
 
 export function PublicTripPage({
@@ -40,6 +53,21 @@ export function PublicTripPage({
   const sortedActivities = sortActivitiesByStartDate(activities);
   const heroImageUrl = trip.images[0]?.image_url ?? "/home-hero-theme.png";
   const mapCardImageUrl = trip.map_card_image_url ?? "/default_map.jpg";
+  const totalDistanceMeters = activities.reduce(
+    (sum, activity) => sum + (activity.distance ?? 0),
+    0,
+  );
+  const totalMovingTimeSeconds = activities.reduce(
+    (sum, activity) => sum + (activity.moving_time ?? 0),
+    0,
+  );
+  const totalElevationGainMeters = activities.reduce(
+    (sum, activity) => sum + (activity.total_elevation_gain ?? 0),
+    0,
+  );
+  const totalDistanceKm = totalDistanceMeters > 0 ? totalDistanceMeters / 1000 : null;
+  const totalMovingHours = totalMovingTimeSeconds > 0 ? totalMovingTimeSeconds / 3600 : null;
+  const totalTripDays = activities.length > 0 ? activities.length : null;
   const activityPhotoItems = sortedActivities.flatMap((activity) =>
     activity.photos.map((photo) => ({
       id: photo.id,
@@ -60,24 +88,30 @@ export function PublicTripPage({
       value: formatDate(trip.end_date, locale) ?? dict.publicSite.metaEmpty,
     },
     {
-      label: dict.publicSite.timezone,
-      value: trip.timezone ?? dict.publicSite.metaEmpty,
-    },
-    {
-      label: dict.publicSite.countries,
+      label: dict.publicSite.walkedDistance,
       value:
-        trip.country_codes.length > 0 ? trip.country_codes.join(", ") : dict.publicSite.metaEmpty,
+        totalDistanceKm === null
+          ? dict.publicSite.metaEmpty
+          : `${formatNumber(totalDistanceKm, locale, { maximumFractionDigits: 1 })} km`,
     },
     {
-      label: dict.publicSite.plannedDistance,
+      label: dict.publicSite.walkedTime,
       value:
-        trip.planned_distance_m !== null
-          ? trip.planned_distance_m.toLocaleString(locale)
-          : dict.publicSite.metaEmpty,
+        totalMovingHours === null
+          ? dict.publicSite.metaEmpty
+          : `${formatNumber(totalMovingHours, locale, { maximumFractionDigits: 1 })} h`,
     },
     {
-      label: dict.publicSite.showPlannedPath,
-      value: trip.show_planned_path ? dict.publicSite.yes : dict.publicSite.no,
+      label: dict.publicSite.tripDays,
+      value:
+        totalTripDays === null ? dict.publicSite.metaEmpty : formatNumber(totalTripDays, locale),
+    },
+    {
+      label: dict.publicSite.elevationGain,
+      value:
+        totalElevationGainMeters === null
+          ? dict.publicSite.metaEmpty
+          : `${formatNumber(totalElevationGainMeters, locale, { maximumFractionDigits: 0 })} m`,
     },
   ];
 
@@ -89,13 +123,27 @@ export function PublicTripPage({
             className="absolute inset-0 bg-cover bg-[right_center]"
             style={{ backgroundImage: `url('${heroImageUrl}')` }}
           />
+          <Link
+            href="/"
+            className="absolute left-0 top-0 flex items-center gap-3 text-lg font-bold tracking-[0.18em] text-[#035E24] sm:text-2xl  p-6"
+          >
+            <div className="pointer-events-none absolute inset-0 bg-[rgba(255,255,255,0.7)] blur-xl"></div>
+            <Image
+              alt=""
+              className="size-8 rounded-md z-2"
+              height={32}
+              src="/favicon-32x32.png"
+              width={32}
+            />
+            <h1 className="z-2">Zuzka jde...</h1>
+          </Link>
           <div className="absolute inset-0 bg-[linear-gradient(270deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.08)_34%,rgba(245,239,227,0.72)_66%,rgba(245,239,227,0.94)_100%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.62),transparent_36%),radial-gradient(circle_at_bottom,rgba(116,92,54,0.12),transparent_45%)]" />
 
-          <div className="relative px-8 py-12 sm:px-10 lg:px-12">
+          <div className="relative px-8 pb-12 pt-8 sm:px-10 lg:px-12 sm:pt-10 lg:pt-12">
             <div className="flex justify-end">
               <Link
-                className="group relative overflow-hidden rounded-[1.75rem] border border-stone-300/80 bg-[#f4efe3] shadow-[0_24px_60px_-40px_rgba(41,37,36,0.65)] transition hover:-translate-y-0.5 hover:shadow-[0_28px_70px_-40px_rgba(41,37,36,0.8)]"
+                className="group relative overflow-hidden rounded-[1.75rem] border border-stone-300/80 bg-[#f4efe3] shadow-[0_24px_60px_-40px_rgba(41,37,36,0.65)] transition hover:shadow-[0_28px_70px_-40px_rgba(41,37,36,0.8)]"
                 href={`/trips/${trip.id}/map`}
               >
                 <div
@@ -103,7 +151,7 @@ export function PublicTripPage({
                   style={{ backgroundImage: `url('${mapCardImageUrl}')` }}
                 />
                 <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(3,94,36,0.8),rgba(3,94,36,0.62)_45%,rgba(3,94,36,0.52)_100%)]" />
-                <div className="relative flex min-h-40 min-w-72 items-end p-6 sm:min-h-44 sm:min-w-80">
+                <div className="relative flex items-center justify-center min-h-40 min-w-72 p-6 sm:min-h-44 sm:min-w-80">
                   <span className="max-w-44 text-3xl font-bold leading-tight tracking-tight text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.35)] sm:max-w-52">
                     {dict.publicSite.mapWithRoute}
                   </span>
@@ -112,9 +160,6 @@ export function PublicTripPage({
             </div>
 
             <div className="max-w-3xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-stone-500">
-                {dict.publicSite.tripEyebrow}
-              </p>
               <h1 className="mt-4 text-4xl font-semibold tracking-tight text-stone-950 sm:text-5xl lg:text-6xl">
                 {trip.name || dict.publicSite.untitledTrip}
               </h1>
@@ -156,7 +201,7 @@ export function PublicTripPage({
               {dict.activities.emptyPublic}
             </p>
           ) : (
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
               {sortedActivities.map((activity) => (
                 <Link
                   key={activity.id}
@@ -164,9 +209,6 @@ export function PublicTripPage({
                   href={`/activities/${activity.id}`}
                 >
                   <p className="text-lg font-semibold text-stone-900">{activity.name}</p>
-                  <p className="mt-2 text-sm text-stone-600">
-                    {activity.sport_type ?? activity.type ?? dict.publicSite.metaEmpty}
-                  </p>
                   <p className="mt-2 text-xs uppercase tracking-[0.2em] text-stone-400">
                     {activity.start_date
                       ? new Intl.DateTimeFormat(getDateLocale(locale), {

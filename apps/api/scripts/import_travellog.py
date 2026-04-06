@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import bindparam, create_engine, text
+from sqlalchemy import bindparam, create_engine, select, text
 from sqlalchemy.engine import RowMapping
 
 from app.db.session import SessionLocal
@@ -14,6 +14,7 @@ from app.models.activity import Activity
 from app.models.activity_comment import ActivityComment
 from app.models.activity_photo import ActivityPhoto
 from app.models.trip import Trip
+from app.models.trip_comment import TripComment
 
 # One-off local migration script.
 # Fill these in directly and run: `python scripts/import_travellog.py`
@@ -27,6 +28,13 @@ DEFAULT_IMAGE_WIDTH = 1680
 DEFAULT_IMAGE_HEIGHT = 1680
 DEFAULT_THUMBNAIL_WIDTH = 350
 DEFAULT_THUMBNAIL_HEIGHT = 350
+TRIP_COMMENT_JOURNEYS: dict[int, str] = {
+    0: "cr",
+    1: "sk",
+    2: "usa",
+    3: "usa_at",
+    4: "compostela",
+}
 
 # Either point a journey at an existing trip_id or let the script create one.
 JOURNEY_CONFIG: dict[str, dict[str, Any]] = {
@@ -102,18 +110,18 @@ def build_activity_description(
             if line:
                 blocks.append(paragraph_block(line))
 
-    legacy_bits: list[str] = []
-    if activity.get("beer") is not None:
-        legacy_bits.append(f"Beer: {int(activity['beer'])}")
-    if activity.get("hamburgers") is not None:
-        legacy_bits.append(f"Hamburgers: {int(activity['hamburgers'])}")
-    if activity.get("pain"):
-        legacy_bits.append(f"Pain: {activity['pain']}")
-    if activity.get("journey"):
-        legacy_bits.append(f"Journey: {activity['journey']}")
-    if legacy_bits:
-        blocks.append(heading_block("Legacy metadata"))
-        blocks.extend(bullet_block(item) for item in legacy_bits)
+    # legacy_bits: list[str] = []
+    # if activity.get("beer") is not None:
+    #     legacy_bits.append(f"Beer: {int(activity['beer'])}")
+    # if activity.get("hamburgers") is not None:
+    #     legacy_bits.append(f"Hamburgers: {int(activity['hamburgers'])}")
+    # if activity.get("pain"):
+    #     legacy_bits.append(f"Pain: {activity['pain']}")
+    # if activity.get("journey"):
+    #     legacy_bits.append(f"Journey: {activity['journey']}")
+    # if legacy_bits:
+    #     blocks.append(heading_block("Legacy metadata"))
+    #     blocks.extend(bullet_block(item) for item in legacy_bits)
 
     captions = [str(row.get("caption") or "").strip() for row in photo_rows]
     captions = [caption for caption in captions if caption]
@@ -154,7 +162,9 @@ def guess_content_type(image_url: str, thumbnail_url: str) -> str:
     return "image/jpeg"
 
 
-def fetch_rows(connection, table_name: str, activity_ids: list[int], order_by: str) -> dict[int, list[RowMapping]]:
+def fetch_rows(
+    connection, table_name: str, activity_ids: list[int], order_by: str
+) -> dict[int, list[RowMapping]]:
     if not activity_ids:
         return {}
 
@@ -230,15 +240,23 @@ async def import_activity(
         trip_id=trip_id,
         strava_activity_id=None,
         user_id=int(activity_row["user_id"]) if activity_row.get("user_id") is not None else None,
-        upload_id=int(activity_row["upload_id"]) if activity_row.get("upload_id") is not None else None,
+        upload_id=int(activity_row["upload_id"])
+        if activity_row.get("upload_id") is not None
+        else None,
         external_id=str(activity_row["external_id"]) if activity_row.get("external_id") else None,
         type=str(activity_row["type"]) if activity_row.get("type") else None,
         sport_type=str(activity_row["type"]) if activity_row.get("type") else None,
         start_date=start_date,
         name=str(activity_row["name"]).strip(),
-        distance=float(activity_row["distance"]) if activity_row.get("distance") is not None else None,
-        moving_time=int(activity_row["moving_time"]) if activity_row.get("moving_time") is not None else None,
-        elapsed_time=int(activity_row["elapsed_time"]) if activity_row.get("elapsed_time") is not None else None,
+        distance=float(activity_row["distance"])
+        if activity_row.get("distance") is not None
+        else None,
+        moving_time=int(activity_row["moving_time"])
+        if activity_row.get("moving_time") is not None
+        else None,
+        elapsed_time=int(activity_row["elapsed_time"])
+        if activity_row.get("elapsed_time") is not None
+        else None,
         total_elevation_gain=(
             float(activity_row["total_elevation_gain"])
             if activity_row.get("total_elevation_gain") is not None
@@ -288,6 +306,9 @@ async def import_activity(
         )
 
     for row in comment_rows:
+        legacy_activity_id = row.get("activity_id")
+        if legacy_activity_id is not None and int(legacy_activity_id) in TRIP_COMMENT_JOURNEYS:
+            continue
         text_value = str(row.get("text") or "").strip()
         if not text_value:
             continue
@@ -305,6 +326,40 @@ async def import_activity(
         )
 
     print(f"Imported activity {activity_id}: {activity.name}")
+
+
+async def import_trip_comments(
+    session,
+    trip_id: int,
+    timezone_name: str,
+    comment_rows: list[RowMapping],
+) -> None:
+    for row in comment_rows:
+        text_value = str(row.get("text") or "").strip()
+        if not text_value:
+            continue
+
+        name = (str(row.get("name") or "Anonymous").strip() or "Anonymous")[:120]
+        created_at = parse_legacy_datetime(row.get("date"), timezone_name) or datetime.now(UTC)
+        existing_comment_id = await session.scalar(
+            select(TripComment.id).where(
+                TripComment.trip_id == trip_id,
+                TripComment.name == name,
+                TripComment.text == text_value,
+                TripComment.created_at == created_at,
+            )
+        )
+        if existing_comment_id is not None:
+            continue
+
+        session.add(
+            TripComment(
+                trip_id=trip_id,
+                name=name,
+                text=text_value,
+                created_at=created_at,
+            )
+        )
 
 
 async def main() -> None:
@@ -348,10 +403,20 @@ async def main() -> None:
                 ]
 
             activity_ids = [int(row["id"]) for row in activity_rows]
-            photos_by_activity = fetch_rows(connection, "photos", activity_ids, "photo_order ASC, id ASC")
-            comments_by_activity = fetch_rows(connection, "comments", activity_ids, "date ASC, id ASC")
+            comment_activity_ids = sorted({*activity_ids, *TRIP_COMMENT_JOURNEYS.keys()})
+            photos_by_activity = fetch_rows(
+                connection, "photos", activity_ids, "photo_order ASC, id ASC"
+            )
+            comments_by_activity = fetch_rows(
+                connection,
+                "comments",
+                comment_activity_ids,
+                "date ASC, id ASC",
+            )
             audio_by_activity = fetch_rows(connection, "audio", activity_ids, "id ASC")
-            videos_by_activity = fetch_rows(connection, "videos", activity_ids, "`order` ASC, id ASC")
+            videos_by_activity = fetch_rows(
+                connection, "videos", activity_ids, "`order` ASC, id ASC"
+            )
 
         activities_by_journey: dict[str, list[RowMapping]] = defaultdict(list)
         for row in activity_rows:
@@ -362,6 +427,33 @@ async def main() -> None:
             trip_ids: dict[str, int] = {}
             for journey, rows in activities_by_journey.items():
                 trip_ids[journey] = await ensure_trip(session, journey, rows)
+            await session.commit()
+
+            trip_comments_by_journey: dict[str, list[RowMapping]] = defaultdict(list)
+            for rows in comments_by_activity.values():
+                for row in rows:
+                    legacy_activity_id = row.get("activity_id")
+                    print(f"LOOKING FOR ACTIVITY COMMENTS: {legacy_activity_id}")
+                    if legacy_activity_id is None:
+                        continue
+                    journey = TRIP_COMMENT_JOURNEYS.get(int(legacy_activity_id))
+                    if journey is not None:
+                        trip_comments_by_journey[journey].append(row)
+
+            for journey, rows in trip_comments_by_journey.items():
+                trip_id = trip_ids.get(journey)
+                if trip_id is None:
+                    raise ValueError(
+                        f"Trip comment override points to unknown journey {journey!r} for rows "
+                        f"{[int(row['id']) for row in rows]}"
+                    )
+                timezone_name = JOURNEY_CONFIG.get(journey, {}).get("timezone") or DEFAULT_TIMEZONE
+                await import_trip_comments(
+                    session=session,
+                    trip_id=trip_id,
+                    timezone_name=timezone_name,
+                    comment_rows=rows,
+                )
             await session.commit()
 
             for journey, rows in activities_by_journey.items():

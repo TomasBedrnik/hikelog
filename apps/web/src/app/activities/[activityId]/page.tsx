@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { PublicActivityPage } from "@/components/public-activity-page";
-import { getPublicActivity } from "@/lib/public-activities";
+import { getPublicActivity, listPublicTripActivities } from "@/lib/public-activities";
 
 export const dynamic = "force-dynamic";
 
@@ -22,5 +22,7 @@ export default async function ActivityPage({
     notFound();
   }
 
-  return <PublicActivityPage activity={activity} />;
+  const tripActivities = await listPublicTripActivities(activity.trip_id).catch(() => []);
+
+  return <PublicActivityPage activity={activity} tripActivities={tripActivities} />;
 }

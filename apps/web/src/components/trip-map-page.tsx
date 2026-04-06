@@ -6,6 +6,7 @@ import { useI18n } from "@/components/i18n-provider";
 import { MapyMap } from "@/components/mapy-map";
 import { getFirstParagraphText } from "@/lib/blocknote";
 import { ActivitySummaryRead } from "@/lib/activities";
+import { getDateLocale } from "@/lib/i18n";
 import { TripRead } from "@/lib/trips";
 
 const TRIP_ROUTE_STYLE = {
@@ -37,6 +38,28 @@ const ACTIVITY_ROUTE_COLORS = [
   "#7f49f1",
 ];
 
+function formatDate(value: string | null, locale: "en" | "cs") {
+  if (!value) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat(getDateLocale(locale), { dateStyle: "medium" }).format(
+    new Date(value),
+  );
+}
+
+function formatNumber(
+  value: number | null,
+  locale: "en" | "cs",
+  options?: Intl.NumberFormatOptions,
+) {
+  if (value === null || Number.isNaN(value)) {
+    return null;
+  }
+
+  return new Intl.NumberFormat(getDateLocale(locale), options).format(value);
+}
+
 export function TripMapPage({
   trip,
   activities,
@@ -44,10 +67,62 @@ export function TripMapPage({
   trip: TripRead;
   activities: ActivitySummaryRead[];
 }) {
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [hoveredActivityId, setHoveredActivityId] = useState<number | null>(null);
   const [selectedActivityId, setSelectedActivityId] = useState<number | null>(null);
+  const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
+  const totalDistanceMeters = activities.reduce(
+    (sum, activity) => sum + (activity.distance ?? 0),
+    0,
+  );
+  const totalMovingTimeSeconds = activities.reduce(
+    (sum, activity) => sum + (activity.moving_time ?? 0),
+    0,
+  );
+  const totalElevationGainMeters = activities.reduce(
+    (sum, activity) => sum + (activity.total_elevation_gain ?? 0),
+    0,
+  );
+  const totalDistanceKm = totalDistanceMeters > 0 ? totalDistanceMeters / 1000 : null;
+  const totalMovingHours = totalMovingTimeSeconds > 0 ? totalMovingTimeSeconds / 3600 : null;
+  const totalTripDays = activities.length > 0 ? activities.length : null;
+  const metaItems = [
+    {
+      label: dict.publicSite.startDate,
+      value: formatDate(trip.start_date, locale) ?? dict.publicSite.metaEmpty,
+    },
+    {
+      label: dict.publicSite.endDate,
+      value: formatDate(trip.end_date, locale) ?? dict.publicSite.metaEmpty,
+    },
+    {
+      label: dict.publicSite.walkedDistance,
+      value:
+        totalDistanceKm === null
+          ? dict.publicSite.metaEmpty
+          : `${formatNumber(totalDistanceKm, locale, { maximumFractionDigits: 1 })} km`,
+    },
+    {
+      label: dict.publicSite.walkedTime,
+      value:
+        totalMovingHours === null
+          ? dict.publicSite.metaEmpty
+          : `${formatNumber(totalMovingHours, locale, { maximumFractionDigits: 1 })} h`,
+    },
+    {
+      label: dict.publicSite.tripDays,
+      value:
+        totalTripDays === null ? dict.publicSite.metaEmpty : formatNumber(totalTripDays, locale),
+    },
+    {
+      label: dict.publicSite.elevationGain,
+      value:
+        totalElevationGainMeters === null
+          ? dict.publicSite.metaEmpty
+          : `${formatNumber(totalElevationGainMeters, locale, { maximumFractionDigits: 0 })} m`,
+    },
+  ];
   const activityRoutes = activities.flatMap((activity, index) => {
     if (!activity.summary_polyline) {
       return [];
@@ -101,52 +176,124 @@ export function TripMapPage({
         }}
       />
 
-      <div className="absolute left-4 top-4 z-[1000] max-h-[calc(100vh-2rem)] w-[min(27rem,calc(100vw-2rem))] overflow-auto rounded-[1.75rem] border border-stone-200 bg-white/95 px-5 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur">
-        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">
-          {dict.publicSite.mapEyebrow}
-        </p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950">
-          {trip.name || dict.publicSite.untitledTrip}
+      <div
+        className="absolute left-4 top-4 z-[1000]
+                flex max-h-[calc(100vh-2rem)] w-[min(27rem,calc(100vw-2rem))] flex-col
+                rounded-[1.75rem] border border-stone-200 bg-white/95 px-5 py-4
+                shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur"
+      >
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950 flex justify-between w-full">
+          <span>{trip.name || dict.publicSite.untitledTrip}</span>
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-stone-50 px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
+            onClick={() => {
+              setIsPanelCollapsed((current) => !current);
+            }}
+          >
+            {isPanelCollapsed ? (
+              <>
+                <svg
+                  aria-hidden="true"
+                  className="size-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.8"
+                  />
+                  <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+                </svg>
+                <span>Show</span>
+              </>
+            ) : (
+              <>
+                <svg
+                  aria-hidden="true"
+                  className="size-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M3 3l18 18"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.8"
+                  />
+                  <path
+                    d="M10.6 6.35A11.7 11.7 0 0 1 12 6c6.5 0 10 6 10 6a17.2 17.2 0 0 1-3.02 3.57M6.7 6.72C3.92 8.28 2 12 2 12a17.56 17.56 0 0 0 5.2 4.88M9.88 9.88A3 3 0 0 0 14.12 14.12"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.8"
+                  />
+                </svg>
+                <span>Hide</span>
+              </>
+            )}
+          </button>
         </h1>
-        <Link
-          className="mt-4 inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
-          href={`/trips/${trip.id}`}
-        >
-          {dict.publicSite.backToTrip}
-        </Link>
-        {error ? <p className="mt-3 text-sm text-red-700">{error}</p> : null}
+        {!isPanelCollapsed ? (
+          <>
+            <Link
+              className="mt-4 inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+              href={`/trips/${trip.id}`}
+            >
+              {dict.publicSite.backToTrip}
+            </Link>
+            {error ? <p className="mt-3 text-sm text-red-700">{error}</p> : null}
 
-        <div className="mt-6 space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
-            {dict.activities.publicTitle}
-          </p>
-          {activities.length === 0 ? (
-            <p className="text-sm text-stone-500">{dict.activities.emptyPublic}</p>
-          ) : (
-            activities.map((activity) => (
-              <Link
-                key={activity.id}
-                className={`block rounded-[1.25rem] border px-4 py-3 transition ${
-                  selectedActivityId === activity.id
-                    ? "border-emerald-700 bg-emerald-100"
-                    : "border-stone-200 bg-stone-50 hover:border-emerald-700 hover:bg-emerald-50"
-                }`}
-                href={`/activities/${activity.id}`}
-                onMouseEnter={() => {
-                  setHoveredActivityId(activity.id);
-                }}
-                onMouseLeave={() => {
-                  setHoveredActivityId((current) => (current === activity.id ? null : current));
-                }}
-              >
-                <p className="text-sm font-semibold text-stone-900">{activity.name}</p>
-                <p className="mt-1 text-sm leading-6 text-stone-600">
-                  {getFirstParagraphText(activity.description) ?? dict.publicSite.contentEmpty}
-                </p>
-              </Link>
-            ))
-          )}
-        </div>
+            <dl className="mt-6 grid gap-3 sm:grid-cols-2">
+              {metaItems.map((item) => (
+                <div key={item.label} className="rounded-[1.25rem] bg-stone-50 px-4 py-3">
+                  <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-400">
+                    {item.label}
+                  </dt>
+                  <dd className="mt-1 text-sm text-stone-700">{item.value}</dd>
+                </div>
+              ))}
+            </dl>
+
+            <div className="mt-6 flex-1 overflow-y-auto space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
+                {dict.activities.publicTitle}
+              </p>
+              {activities.length === 0 ? (
+                <p className="text-sm text-stone-500">{dict.activities.emptyPublic}</p>
+              ) : (
+                activities.map((activity) => (
+                  <Link
+                    key={activity.id}
+                    className={`block rounded-[1.25rem] border px-4 py-3 transition ${
+                      selectedActivityId === activity.id
+                        ? "border-emerald-700 bg-emerald-100"
+                        : "border-stone-200 bg-stone-50 hover:border-emerald-700 hover:bg-emerald-50"
+                    }`}
+                    href={`/activities/${activity.id}`}
+                    onMouseEnter={() => {
+                      setHoveredActivityId(activity.id);
+                    }}
+                    onMouseLeave={() => {
+                      setHoveredActivityId((current) => (current === activity.id ? null : current));
+                    }}
+                  >
+                    <p className="text-sm font-semibold text-stone-900">{activity.name}</p>
+                    <p className="mt-1 text-sm leading-6 text-stone-600">
+                      {getFirstParagraphText(activity.description) ?? dict.publicSite.contentEmpty}
+                    </p>
+                  </Link>
+                ))
+              )}
+            </div>
+          </>
+        ) : null}
       </div>
     </main>
   );

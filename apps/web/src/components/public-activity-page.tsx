@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ActivityRead } from "@/lib/activities";
+import { ActivityRead, ActivitySummaryRead, sortActivitiesByStartDate } from "@/lib/activities";
 import { ActivityPhotoGallery } from "@/components/activity-photo-gallery";
 import { CommentsSection } from "@/components/comments-section";
 import { useI18n } from "@/components/i18n-provider";
@@ -32,11 +32,28 @@ function formatDistance(value: number | null, locale: "en" | "cs") {
   return `${(value / 1000).toLocaleString(locale, { maximumFractionDigits: 1 })} km`;
 }
 
-export function PublicActivityPage({ activity }: { activity: ActivityRead }) {
+export function PublicActivityPage({
+  activity,
+  tripActivities,
+}: {
+  activity: ActivityRead;
+  tripActivities: ActivitySummaryRead[];
+}) {
   const { dict, locale } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
   const [comments, setComments] = useState(activity.comments);
+  const sortedTripActivities = useMemo(
+    () => sortActivitiesByStartDate(tripActivities).reverse(),
+    [tripActivities],
+  );
+  const currentActivityIndex = sortedTripActivities.findIndex((item) => item.id === activity.id);
+  const previousActivity =
+    currentActivityIndex > 0 ? sortedTripActivities[currentActivityIndex - 1] : null;
+  const nextActivity =
+    currentActivityIndex >= 0 && currentActivityIndex < sortedTripActivities.length - 1
+      ? sortedTripActivities[currentActivityIndex + 1]
+      : null;
   const descriptionBlocks = getTripContentBlocks(activity.description);
   const hasDescription = hasTripContent(activity.description);
   const photoItems = useMemo(
@@ -68,10 +85,6 @@ export function PublicActivityPage({ activity }: { activity: ActivityRead }) {
   );
 
   const infoItems = [
-    {
-      label: dict.activities.type,
-      value: activity.sport_type ?? activity.type ?? dict.publicSite.metaEmpty,
-    },
     {
       label: dict.activities.startDate,
       value: formatDateTime(activity.start_date, locale) ?? dict.publicSite.metaEmpty,
@@ -126,19 +139,34 @@ export function PublicActivityPage({ activity }: { activity: ActivityRead }) {
         className="absolute left-4 z-[1000] max-h-[calc(100vh-2rem)] w-[min(26rem,calc(100vw-2rem))] overflow-auto rounded-[1.75rem] border border-stone-200 bg-white/95 px-5 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur"
         style={{ top: photoItems.length > 0 ? "11.5rem" : "1rem" }}
       >
-        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">
-          {dict.activities.mapEyebrow}
-        </p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950">
           {activity.name}
         </h1>
 
-        <Link
-          className="mt-4 inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
-          href={`/trips/${activity.trip_id}/map`}
-        >
-          {dict.activities.backToTrip}
-        </Link>
+        <div className="mt-4 flex flex-wrap gap-3">
+          {previousActivity ? (
+            <Link
+              className="inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+              href={`/activities/${previousActivity.id}`}
+            >
+              {dict.activities.previousDay}
+            </Link>
+          ) : null}
+          <Link
+            className="inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+            href={`/trips/${activity.trip_id}/map`}
+          >
+            {dict.activities.wholeMap}
+          </Link>
+          {nextActivity ? (
+            <Link
+              className="inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+              href={`/activities/${nextActivity.id}`}
+            >
+              {dict.activities.nextDay}
+            </Link>
+          ) : null}
+        </div>
         {error ? <p className="mt-3 text-sm text-red-700">{error}</p> : null}
 
         <dl className="mt-5 space-y-4">
