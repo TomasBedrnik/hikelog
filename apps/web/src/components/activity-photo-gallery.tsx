@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useI18n } from "@/components/i18n-provider";
 
 export type ActivityPhotoGalleryItem = {
   id: number;
@@ -20,13 +21,15 @@ export function ActivityPhotoGallery({
   layout: "grid" | "strip";
   onItemSelect?: (index: number) => void;
 }) {
+  const { dict } = useI18n();
+
   if (items.length === 0) {
     return null;
   }
 
   if (layout === "strip") {
     return (
-      <div className="overflow-x-auto">
+      <div className="min-w-0 max-w-full overflow-x-auto">
         <div className="flex min-w-max gap-3">
           {items.map((item, index) => {
             const content = (
@@ -79,7 +82,7 @@ export function ActivityPhotoGallery({
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((item, index) => {
-        const content = (
+        const imageContent = (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -88,6 +91,42 @@ export function ActivityPhotoGallery({
               loading="lazy"
               src={item.thumbnailUrl}
             />
+          </>
+        );
+
+        if (onItemSelect && item.href) {
+          return (
+            <div
+              key={item.id}
+              className="overflow-hidden rounded-[1.5rem] border border-stone-200 bg-white transition hover:border-emerald-600 hover:bg-emerald-50"
+            >
+              <button
+                className="block w-full text-left"
+                onClick={() => {
+                  onItemSelect(index);
+                }}
+                type="button"
+              >
+                {imageContent}
+              </button>
+              {item.label ? (
+                <div className="flex items-center justify-between gap-3 px-4 py-3">
+                  <p className="min-w-0 truncate text-sm text-stone-700">{item.label}</p>
+                  <Link
+                    className="shrink-0 text-sm font-medium text-emerald-700 transition hover:text-emerald-900"
+                    href={item.href}
+                  >
+                    {dict.publicSite.openTrip}
+                  </Link>
+                </div>
+              ) : null}
+            </div>
+          );
+        }
+
+        const content = (
+          <>
+            {imageContent}
             {item.label ? (
               <p className="truncate px-4 py-3 text-sm text-stone-700">{item.label}</p>
             ) : null}

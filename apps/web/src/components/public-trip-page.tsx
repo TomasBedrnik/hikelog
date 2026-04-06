@@ -6,6 +6,7 @@ import { ActivityPhotoGallery } from "@/components/activity-photo-gallery";
 import { CommentsSection } from "@/components/comments-section";
 import { TripContentRenderer } from "@/components/trip-content-renderer";
 import { TripList } from "@/components/trip-list";
+import { ImageLightbox } from "@/components/image-lightbox";
 import { useI18n } from "@/components/i18n-provider";
 import { getTripContentBlocks, hasTripContent } from "@/lib/blocknote";
 import { getDateLocale } from "@/lib/i18n";
@@ -48,6 +49,7 @@ export function PublicTripPage({
 }) {
   const { dict, locale } = useI18n();
   const [comments, setComments] = useState(trip.comments);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
   const contentBlocks = getTripContentBlocks(trip.content);
   const tripHasContent = hasTripContent(trip.content);
   const sortedActivities = sortActivitiesByStartDate(activities);
@@ -69,13 +71,14 @@ export function PublicTripPage({
   const totalMovingHours = totalMovingTimeSeconds > 0 ? totalMovingTimeSeconds / 3600 : null;
   const totalTripDays = activities.length > 0 ? activities.length : null;
   const activityPhotoItems = sortedActivities.flatMap((activity) =>
-    activity.photos.map((photo) => ({
-      id: photo.id,
-      imageUrl: photo.image_url,
-      thumbnailUrl: photo.thumbnail_url,
-      alt: photo.original_filename ?? activity.name,
-      href: `/activities/${activity.id}`,
-    })),
+      activity.photos.map((photo) => ({
+        id: photo.id,
+        imageUrl: photo.image_url,
+        thumbnailUrl: photo.thumbnail_url,
+        alt: photo.original_filename ?? activity.name,
+        label: activity.name,
+        href: `/activities/${activity.id}`,
+      })),
   );
 
   const metaItems = [
@@ -256,7 +259,11 @@ export function PublicTripPage({
             </p>
           ) : (
             <div className="mt-5">
-              <ActivityPhotoGallery items={activityPhotoItems} layout="grid" />
+              <ActivityPhotoGallery
+                items={activityPhotoItems}
+                layout="grid"
+                onItemSelect={setSelectedPhotoIndex}
+              />
             </div>
           )}
         </section>
@@ -264,6 +271,15 @@ export function PublicTripPage({
         <TripList trips={trips} />
         <PublicFooter />
       </div>
+
+      <ImageLightbox
+        items={activityPhotoItems}
+        onClose={() => {
+          setSelectedPhotoIndex(null);
+        }}
+        onSelect={setSelectedPhotoIndex}
+        selectedIndex={selectedPhotoIndex}
+      />
     </main>
   );
 }

@@ -106,107 +106,111 @@ export function PublicActivityPage({
       value: activity.total_elevation_gain?.toLocaleString(locale) ?? dict.publicSite.metaEmpty,
     },
   ];
+  const desktopGridClassName =
+    photoItems.length > 0
+      ? "lg:grid-cols-[26rem_minmax(0,1fr)] lg:grid-rows-[11rem_minmax(0,1fr)]"
+      : "lg:grid-cols-[26rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]";
 
   return (
-    <main className="relative h-screen w-full overflow-hidden bg-stone-200">
-      <MapyMap
-        polyline={activity.polyline ?? activity.summary_polyline}
-        markers={mapMarkers}
-        onMarkerClick={(markerId) => {
-          setSelectedPhotoIndex(Number(markerId));
-        }}
-        onError={(message) => {
-          setError(message === "missing_api_key" ? dict.publicSite.mapMissingApiKey : null);
-        }}
-      />
+    <main className="min-h-screen w-full overflow-x-hidden bg-stone-200 lg:h-screen lg:overflow-hidden">
+      <div className={`grid w-full min-w-0 gap-0 lg:h-full ${desktopGridClassName}`}>
+        <section className="order-1 w-full min-w-0 overflow-hidden border-b border-stone-200 bg-white/90 px-4 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur lg:order-2 lg:h-[11rem] lg:border-b lg:border-l">
+          {photoItems.length > 0 ? (
+            <ActivityPhotoGallery
+              items={photoItems}
+              layout="strip"
+              onItemSelect={(index) => {
+                setSelectedPhotoIndex(index);
+              }}
+            />
+          ) : null}
+        </section>
 
-      {photoItems.length > 0 ? (
-        <div className="absolute left-4 right-4 top-4 z-[1000] rounded-[1.75rem] border border-stone-200 bg-white/90 px-4 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
-            {dict.activityPhotos.publicTitle}
-          </p>
-          <ActivityPhotoGallery
-            items={photoItems}
-            layout="strip"
-            onItemSelect={(index) => {
-              setSelectedPhotoIndex(index);
-            }}
-          />
-        </div>
-      ) : null}
+        <section className="order-2 w-full min-w-0 bg-white/95 px-5 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur lg:order-1 lg:row-span-2 lg:min-h-0 lg:overflow-auto lg:border-r lg:border-stone-200">
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950">
+            {activity.name}
+          </h1>
 
-      <div
-        className="absolute left-4 z-[1000] max-h-[calc(100vh-2rem)] w-[min(26rem,calc(100vw-2rem))] overflow-auto rounded-[1.75rem] border border-stone-200 bg-white/95 px-5 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur"
-        style={{ top: photoItems.length > 0 ? "11.5rem" : "1rem" }}
-      >
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950">
-          {activity.name}
-        </h1>
-
-        <div className="mt-4 flex flex-wrap gap-3">
-          {previousActivity ? (
+          <div className="mt-4 flex flex-wrap gap-3">
+            {previousActivity ? (
+              <Link
+                className="inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+                href={`/activities/${previousActivity.id}`}
+              >
+                {dict.activities.previousDay}
+              </Link>
+            ) : null}
             <Link
               className="inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
-              href={`/activities/${previousActivity.id}`}
+              href={`/trips/${activity.trip_id}/map`}
             >
-              {dict.activities.previousDay}
+              {dict.activities.wholeMap}
             </Link>
-          ) : null}
-          <Link
-            className="inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
-            href={`/trips/${activity.trip_id}/map`}
-          >
-            {dict.activities.wholeMap}
-          </Link>
-          {nextActivity ? (
-            <Link
-              className="inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
-              href={`/activities/${nextActivity.id}`}
-            >
-              {dict.activities.nextDay}
-            </Link>
-          ) : null}
-        </div>
-        {error ? <p className="mt-3 text-sm text-red-700">{error}</p> : null}
-
-        <dl className="mt-5 space-y-4">
-          {infoItems.map((item) => (
-            <div key={item.label}>
-              <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
-                {item.label}
-              </dt>
-              <dd className="mt-1 text-sm text-stone-700">{item.value}</dd>
-            </div>
-          ))}
-        </dl>
-
-        {hasDescription ? (
-          <div className="mt-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
-              {dict.activities.descriptionTitle}
-            </p>
-            <TripContentRenderer blocks={descriptionBlocks} className="mt-3" />
+            {nextActivity ? (
+              <Link
+                className="inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+                href={`/activities/${nextActivity.id}`}
+              >
+                {dict.activities.nextDay}
+              </Link>
+            ) : null}
           </div>
-        ) : null}
+          {error ? <p className="mt-3 text-sm text-red-700">{error}</p> : null}
 
-        <CommentsSection
-          comments={comments}
-          emptyText={dict.comments.emptyActivity}
-          locale={locale}
-          nameLabel={dict.comments.name}
-          namePlaceholder={dict.comments.namePlaceholder}
-          onCreate={async (payload) => {
-            const created = await createPublicActivityComment(activity.id, payload);
-            setComments((current) => [created, ...current]);
-          }}
-          submitLabel={dict.comments.submit}
-          submittingLabel={dict.comments.submitting}
-          textLabel={dict.comments.text}
-          textPlaceholder={dict.comments.textPlaceholder}
-          title={dict.comments.activityTitle}
-          unknownError={dict.common.unknownError}
-          validationError={dict.comments.validationError}
-        />
+          <dl className="mt-5 space-y-4">
+            {infoItems.map((item) => (
+              <div key={item.label}>
+                <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
+                  {item.label}
+                </dt>
+                <dd className="mt-1 text-sm text-stone-700">{item.value}</dd>
+              </div>
+            ))}
+          </dl>
+
+          {hasDescription ? (
+            <div className="mt-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
+                {dict.activities.descriptionTitle}
+              </p>
+              <TripContentRenderer blocks={descriptionBlocks} className="mt-3" />
+            </div>
+          ) : null}
+
+          <CommentsSection
+            comments={comments}
+            emptyText={dict.comments.emptyActivity}
+            locale={locale}
+            nameLabel={dict.comments.name}
+            namePlaceholder={dict.comments.namePlaceholder}
+            onCreate={async (payload) => {
+              const created = await createPublicActivityComment(activity.id, payload);
+              setComments((current) => [created, ...current]);
+            }}
+            submitLabel={dict.comments.submit}
+            submittingLabel={dict.comments.submitting}
+            textLabel={dict.comments.text}
+            textPlaceholder={dict.comments.textPlaceholder}
+            title={dict.comments.activityTitle}
+            unknownError={dict.common.unknownError}
+            validationError={dict.comments.validationError}
+          />
+        </section>
+
+        <section className="order-3 w-full min-w-0 overflow-hidden bg-white/95 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur lg:order-3 lg:min-h-0 lg:h-full lg:border-l lg:border-t lg:border-stone-200">
+          <div className="h-[calc(100vh-10rem)] w-full min-w-0 lg:h-full">
+            <MapyMap
+              polyline={activity.polyline ?? activity.summary_polyline}
+              markers={mapMarkers}
+              onMarkerClick={(markerId) => {
+                setSelectedPhotoIndex(Number(markerId));
+              }}
+              onError={(message) => {
+                setError(message === "missing_api_key" ? dict.publicSite.mapMissingApiKey : null);
+              }}
+            />
+          </div>
+        </section>
       </div>
 
       <ImageLightbox

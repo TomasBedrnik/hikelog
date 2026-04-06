@@ -63,7 +63,7 @@ export function CommentsSection({
 
       {onCreate ? (
         <form
-          className="mt-5 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4"
+          className="pt-4"
           onSubmit={(event) => {
             event.preventDefault();
             if (!onCreate) {

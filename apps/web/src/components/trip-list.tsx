@@ -27,9 +27,6 @@ export function TripList({ trips }: { trips: TripRead[] }) {
     <section className="mt-16">
       <div className="mb-6 flex items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-stone-400">
-            {dict.publicSite.tripListEyebrow}
-          </p>
           <h2 className="mt-2 text-2xl font-semibold text-stone-900">
             {dict.publicSite.tripListTitle}
           </h2>
