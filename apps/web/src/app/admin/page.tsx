@@ -32,6 +32,11 @@ export default function AdminPage() {
       description: dict.adminHome.stravaDescription,
     },
     {
+      href: "/admin/webpushr",
+      title: dict.adminHome.webpushrTitle,
+      description: dict.adminHome.webpushrDescription,
+    },
+    {
       href: "/admin/gallery",
       title: dict.adminHome.galleryTitle,
       description: dict.adminHome.galleryDescription,

@@ -10,6 +10,7 @@ from app.api.v1.routes.public_global_content import router as public_global_cont
 from app.api.v1.routes.public_trips import router as public_trips_router
 from app.api.v1.routes.strava import router as strava_router
 from app.api.v1.routes.trips import router as trips_router
+from app.api.v1.routes.webpushr import router as webpushr_router
 
 router = APIRouter()
 
@@ -25,3 +26,4 @@ router.include_router(gallery_router, prefix="/gallery", tags=["gallery"])
 router.include_router(global_content_router, prefix="/global-content", tags=["global-content"])
 router.include_router(strava_router, prefix="/strava", tags=["strava"])
 router.include_router(trips_router, prefix="/trips", tags=["trips"])
+router.include_router(webpushr_router, prefix="/webpushr", tags=["webpushr"])

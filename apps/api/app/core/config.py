@@ -25,6 +25,8 @@ class Settings(BaseModel):
     strava_client_secret: str | None = Field(default=None, alias="STRAVA_CLIENT_SECRET")
     strava_redirect_uri: str | None = Field(default=None, alias="STRAVA_REDIRECT_URI")
     strava_admin_redirect_url: str | None = Field(default=None, alias="STRAVA_ADMIN_REDIRECT_URL")
+    webpushr_api_key: str | None = Field(default=None, alias="WEBPUSHR_API_KEY")
+    webpushr_auth_token: str | None = Field(default=None, alias="WEBPUSHR_AUTH_TOKEN")
 
     def firebase_private_key_value(self) -> str:
         return self.firebase_private_key.replace("\\n", "\n")
@@ -49,6 +51,9 @@ class Settings(BaseModel):
             return None
 
         return f"{origins[0].rstrip('/')}/admin/strava"
+
+    def webpushr_enabled(self) -> bool:
+        return bool(self.webpushr_api_key and self.webpushr_auth_token)
 
 
 def load_settings() -> Settings:
