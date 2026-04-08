@@ -140,10 +140,12 @@ export function PublicTripPage({
             />
             <h1 className="z-2">Zuzka jde...</h1>
           </Link>
-          <div className="absolute inset-0 bg-[linear-gradient(270deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.08)_34%,rgba(245,239,227,0.72)_66%,rgba(245,239,227,0.94)_100%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.62),transparent_36%),radial-gradient(circle_at_bottom,rgba(116,92,54,0.12),transparent_45%)]" />
+          <div className="absolute inset-0 hidden lg:block bg-[linear-gradient(270deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.08)_34%,rgba(245,239,227,0.72)_66%,rgba(245,239,227,0.94)_100%)]" />
+          <div className="absolute inset-0 hidden lg:block bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.62),transparent_36%),radial-gradient(circle_at_bottom,rgba(116,92,54,0.12),transparent_45%)]" />
 
-          <div className="relative px-8 pb-12 pt-8 sm:px-10 lg:px-12 sm:pt-10 lg:pt-12">
+          <div className="absolute inset-0 lg:hidden block bg-[rgba(255,255,255,0.8)]" />
+
+          <div className="relative px-8 pb-12 pt-20 sm:px-10 lg:px-12 sm:pt-10 lg:pt-12">
             <div className="flex justify-end">
               <Link
                 className="group relative overflow-hidden rounded-[1.75rem] border border-stone-300/80 bg-[#f4efe3] shadow-[0_24px_60px_-40px_rgba(41,37,36,0.65)] transition hover:shadow-[0_28px_70px_-40px_rgba(41,37,36,0.8)]"
@@ -154,8 +156,8 @@ export function PublicTripPage({
                   style={{ backgroundImage: `url('${mapCardImageUrl}')` }}
                 />
                 <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(3,94,36,0.8),rgba(3,94,36,0.62)_45%,rgba(3,94,36,0.52)_100%)]" />
-                <div className="relative flex items-center justify-center min-h-40 min-w-72 p-6 sm:min-h-44 sm:min-w-80">
-                  <span className="max-w-44 text-3xl font-bold leading-tight tracking-tight text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.35)] sm:max-w-52">
+                <div className="relative flex items-center justify-center min-h-28 sm:min-h-36 lg:min-h-44 p-6 min-w-72 sm:min-w-80">
+                  <span className="max-w-44 text-2xl lg:text-3xl font-bold leading-tight tracking-tight text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.35)] sm:max-w-52">
                     {dict.publicSite.mapWithRoute}
                   </span>
                 </div>

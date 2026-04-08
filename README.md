@@ -14,3 +14,283 @@ I chose these technologies not because they are the best for the job, but becaus
 * TailwindCSS for styling
 * Docker for containerization
 * Postgres database
+
+## Deployment
+
+The repository now contains production Dockerfiles for:
+
+* backend: `apps/api/Dockerfile`
+* frontend: `apps/web/Dockerfile`
+
+and one compose file at [`compose.yaml`](/hikelog/compose.yaml) with three services:
+
+* `db`
+* `api`
+* `web`
+
+### Important env rule
+
+Do not copy `apps/api/.env` or `apps/web/.env.local` into images.
+
+Those files are for local development. For deployment:
+
+* backend secrets go to a runtime env file, for example `deploy/env/api.env`
+* frontend server-side runtime env goes to `deploy/env/web.env`
+* `NEXT_PUBLIC_*` frontend values are build-time values, not secrets
+
+This is the key security split:
+
+* private secrets:
+  * `FIREBASE_PRIVATE_KEY`
+  * `STRAVA_CLIENT_SECRET`
+  * `WEBPUSHR_AUTH_TOKEN`
+  * backend `DATABASE_URL`
+  * keep these only in `deploy/env/api.env` on the VPS
+* public or effectively public values:
+  * `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
+  * `NEXT_PUBLIC_MAPYCOM_API_KEY`
+  * `NEXT_PUBLIC_WEBPUSHR_PUBLIC_KEY`
+  * these are embedded into the frontend build and must be available at image build time
+
+The root [`.dockerignore`](/hikelog/.dockerignore) excludes local env files so they are not copied into images during `docker build`.
+
+## Files To Prepare On VPS
+
+Copy these templates and fill them:
+
+* [`/.env.example`](/hikelog/.env.example) -> `.env`
+* [`/deploy/env/api.env.example`](/hikelog/deploy/env/api.env.example) -> `deploy/env/api.env`
+* [`/deploy/env/web.env.example`](/hikelog/deploy/env/web.env.example) -> `deploy/env/web.env`
+
+Recommended:
+
+* keep `deploy/env/*.env` on the server only
+* chmod them to owner-only access:
+
+```bash
+chmod 600 deploy/env/api.env deploy/env/web.env .env
+```
+
+## What Goes Where
+
+### Root `.env`
+
+This file is used by Docker Compose itself.
+
+Use it for:
+
+* image names/tags
+* published ports
+* build-time frontend `NEXT_PUBLIC_*` values
+* paths to runtime env files
+
+Example:
+
+```env
+POSTGRES_DB=hikelog
+POSTGRES_USER=hikelog
+POSTGRES_PASSWORD=strong-db-password
+
+DB_PORT=5432
+API_PORT=8000
+WEB_PORT=3000
+
+API_IMAGE=yourdockerhubuser/hikelog-api:latest
+WEB_IMAGE=yourdockerhubuser/hikelog-web:latest
+
+API_ENV_FILE=./deploy/env/api.env
+WEB_ENV_FILE=./deploy/env/web.env
+
+NEXT_PUBLIC_API_BASE_URL=https://api.example.com
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
+NEXT_PUBLIC_MAPYCOM_API_KEY=your_mapycom_api_key
+NEXT_PUBLIC_WEBPUSHR_PUBLIC_KEY=your_webpushr_public_key
+```
+
+### `deploy/env/api.env`
+
+Use this for backend runtime configuration and secrets.
+
+Example values are in [`deploy/env/api.env.example`](/hikelog/deploy/env/api.env.example).
+
+This file is injected into the running backend container with `env_file:` and is not baked into the image.
+
+Important:
+
+* put `DATABASE_URL` here, not in the root `.env`
+
+### `deploy/env/web.env`
+
+Use this only for frontend runtime server-side values.
+
+Right now the important one is:
+
+* `API_BASE_URL`
+
+Example:
+
+```env
+API_BASE_URL=https://api.example.com
+```
+
+Do not rely on `deploy/env/web.env` for `NEXT_PUBLIC_*` values. In Next.js those belong to image build time.
+
+## Run On VPS From Source
+
+If the VPS has the repository checked out:
+
+```bash
+cp .env.example .env
+cp deploy/env/api.env.example deploy/env/api.env
+cp deploy/env/web.env.example deploy/env/web.env
+
+# edit all 3 files
+
+docker compose build
+docker compose up -d
+```
+
+Check logs:
+
+```bash
+docker compose logs -f api
+docker compose logs -f web
+```
+
+The backend container runs:
+
+```bash
+alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+so database migrations are applied automatically on startup.
+
+## Deploy Using Docker Hub
+
+Docker Hub is still a reasonable option here, and for now the intended workflow is manual:
+
+1. build images locally
+2. push them to Docker Hub manually
+3. on the VPS run `docker compose pull && docker compose up -d`
+
+### Build and push manually
+
+Log in:
+
+```bash
+docker login
+```
+
+Build and push backend:
+
+```bash
+docker build -f apps/api/Dockerfile -t yourdockerhubuser/hikelog-api:latest .
+docker push yourdockerhubuser/hikelog-api:latest
+```
+
+Build and push frontend:
+
+```bash
+docker build \
+  -f apps/web/Dockerfile \
+  --build-arg NEXT_PUBLIC_API_BASE_URL=https://api.example.com \
+  --build-arg NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com \
+  --build-arg NEXT_PUBLIC_MAPYCOM_API_KEY=your_mapycom_api_key \
+  --build-arg NEXT_PUBLIC_WEBPUSHR_PUBLIC_KEY=your_webpushr_public_key \
+  -t yourdockerhubuser/hikelog-web:latest \
+  .
+docker push yourdockerhubuser/hikelog-web:latest
+```
+
+Then on VPS:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+## Safe Secret Handling
+
+What is safe:
+
+* keep backend secrets only in `deploy/env/api.env` on the VPS
+* keep `.env`, `deploy/env/api.env`, and `deploy/env/web.env` out of git
+* build frontend with only values that are safe to expose publicly
+
+What is not safe:
+
+* copying `apps/api/.env` or `apps/web/.env.local` into images
+* putting backend secrets into `NEXT_PUBLIC_*`
+* assuming values in frontend JavaScript are private
+
+Frontend reminder:
+
+* every `NEXT_PUBLIC_*` variable is visible to users in the built frontend bundle
+
+## Nginx Reverse Proxy
+
+An example nginx config is in:
+
+* [`deploy/nginx/hikelog.example.conf`](/hikelog/deploy/nginx/hikelog.example.conf)
+
+It assumes:
+
+* `example.com` and `www.example.com` -> frontend on `127.0.0.1:3000`
+* `api.example.com` -> backend on `127.0.0.1:8000`
+
+To use it:
+
+1. copy it to your nginx sites directory
+2. replace `example.com` and `api.example.com` with your real domains
+3. make sure nginx can reach the Docker-published ports on localhost
+4. issue TLS certificates with certbot
+5. reload nginx
+
+Typical commands on Debian/Ubuntu:
+
+```bash
+sudo cp deploy/nginx/hikelog.example.conf /etc/nginx/sites-available/hikelog.conf
+sudo ln -s /etc/nginx/sites-available/hikelog.conf /etc/nginx/sites-enabled/hikelog.conf
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+If you use certbot with nginx:
+
+```bash
+sudo certbot --nginx -d example.com -d www.example.com
+sudo certbot --nginx -d api.example.com
+```
+
+For production you will usually place nginx in front of:
+
+* `web` on port `3000`
+* optionally `api` on port `8000` if you expose it separately
+
+Typical setup:
+
+* `https://example.com` -> `web:3000`
+* `https://api.example.com` -> `api:8000`
+
+Then set:
+
+* `NEXT_PUBLIC_API_BASE_URL=https://api.example.com`
+* `API_BASE_URL=https://api.example.com`
+* `CORS_ALLOWED_ORIGINS=https://example.com`
+
+## Updating
+
+If building on VPS from source:
+
+```bash
+git pull
+docker compose build
+docker compose up -d
+```
+
+If using Docker Hub:
+
+```bash
+docker compose pull
+docker compose up -d
+```

@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HikeLog",
-  description: "HikeLog web application",
+  title: "Zuzka jde...",
+  description: "Web o Zuzčině putování po světě",
   icons: {
     icon: [
       { url: "/favicon.ico" },

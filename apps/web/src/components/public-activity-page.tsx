@@ -95,11 +95,21 @@ export function PublicActivityPage({
     },
     {
       label: dict.activities.movingTime,
-      value: activity.moving_time?.toLocaleString(locale) ?? dict.publicSite.metaEmpty,
+      value:
+          activity.moving_time != null
+              ? `${Math.floor(activity.moving_time / 3600)}:${Math.floor((activity.moving_time % 3600) / 60)
+                  .toString()
+                  .padStart(2, "0")}`
+              : dict.publicSite.metaEmpty,
     },
     {
       label: dict.activities.elapsedTime,
-      value: activity.elapsed_time?.toLocaleString(locale) ?? dict.publicSite.metaEmpty,
+      value:
+          activity.elapsed_time != null
+              ? `${Math.floor(activity.elapsed_time / 3600)}:${Math.floor((activity.elapsed_time % 3600) / 60)
+                  .toString()
+                  .padStart(2, "0")}`
+              : dict.publicSite.metaEmpty,
     },
     {
       label: dict.activities.totalElevationGain,

@@ -81,8 +81,10 @@ export function HomePageContent({
             className="absolute inset-0 bg-cover bg-[left_center]"
             style={{ backgroundImage: `url('${heroImageUrl}')` }}
           />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.08)_34%,rgba(245,239,227,0.72)_66%,rgba(245,239,227,0.94)_100%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.62),transparent_36%),radial-gradient(circle_at_bottom,rgba(116,92,54,0.12),transparent_45%)]" />
+          <div className="absolute inset-0 hidden lg:block bg-[linear-gradient(90deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.08)_34%,rgba(245,239,227,0.72)_66%,rgba(245,239,227,0.94)_100%)]" />
+          <div className="absolute inset-0 hidden lg:block bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.62),transparent_36%),radial-gradient(circle_at_bottom,rgba(116,92,54,0.12),transparent_45%)]" />
+
+          <div className="absolute inset-0 lg:hidden block bg-[rgba(255,255,255,0.8)]" />
 
           <div className="relative pr-6 pb-6 sm:pr-6 lg:pb-6">
             <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-stone-700">
@@ -108,8 +110,8 @@ export function HomePageContent({
 
             <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.1fr)] lg:items-end">
               <div className="hidden lg:block" />
-              <div className="pb-2 lg:justify-self-end lg:text-left">
-                <h2 className="max-w-3xl text-5xl font-bold leading-[0.95] text-[#035E24] sm:text-6xl lg:text-7xl">
+              <div className="pl-6 lg:pl-0 pb-2 lg:justify-self-end lg:text-left">
+                <h2 className="max-w-3xl text-5xl font-bold leading-[0.95] text-stone-900 sm:text-6xl lg:text-7xl">
                   {heroHeadline}
                 </h2>
                 {hasGlobalHeroContent ? (

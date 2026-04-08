@@ -204,7 +204,7 @@ function renderBlock(block: PartialBlock, key: string): ReactNode {
     }
     default:
       return (
-        <div className="text-base leading-7 text-stone-700" key={key}>
+        <div className="text-base leading-7 text-stone-900" key={key}>
           {content}
           {children}
         </div>
