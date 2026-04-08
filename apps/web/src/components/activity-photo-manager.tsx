@@ -113,19 +113,47 @@ export function ActivityPhotoManager({
     setBusy("uploading");
     setError(null);
     try {
-      const uploaded = await uploadActivityPhotos(token, activity.id, {
-        files,
-        resizeMode,
-        resizeWidth: width,
-        resizeHeight: height,
-      });
-      startTransition(() => {
-        onPhotosChange(
-          [...photos, ...uploaded].sort((a, b) => a.position - b.position || a.id - b.id),
-        );
-      });
+      let nextPhotos = photos;
+      const { uploaded, failures } = await uploadActivityPhotos(
+        token,
+        activity.id,
+        {
+          files,
+          resizeMode,
+          resizeWidth: width,
+          resizeHeight: height,
+        },
+        {
+          onUploaded: (saved) => {
+            nextPhotos = [...nextPhotos, ...saved].sort(
+              (a, b) => a.position - b.position || a.id - b.id,
+            );
+            startTransition(() => {
+              onPhotosChange(nextPhotos);
+            });
+          },
+        },
+      );
+
       setFiles([]);
       setInputKey((current) => current + 1);
+
+      if (failures.length > 0) {
+        setError(
+          [
+            dict.activityPhotos.uploadPartialFailure,
+            ...failures.map(
+              ({ fileName, message }) =>
+                `${dict.activityPhotos.uploadFailedPhoto.replace("{name}", fileName)}: ${message}`,
+            ),
+          ].join("\n"),
+        );
+        return;
+      }
+
+      if (uploaded.length === 0) {
+        setError(dict.common.unknownError);
+      }
     } catch (e: unknown) {
       if (handleAuthError(e)) {
         return;
@@ -236,7 +264,9 @@ export function ActivityPhotoManager({
       </div>
 
       {error ? (
-        <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
+        <p className="mt-4 whitespace-pre-line rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </p>
       ) : null}
 
       {!activity?.id ? (

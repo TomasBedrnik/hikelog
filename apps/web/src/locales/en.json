@@ -335,6 +335,8 @@
     "resizeLongSideInvalid": "Max side must be a positive integer.",
     "upload": "Upload photos",
     "uploading": "Uploading…",
+    "uploadPartialFailure": "Some photos failed to upload.",
+    "uploadFailedPhoto": "Failed to upload \"{name}\"",
     "deleting": "Deleting…",
     "delete": "Remove",
     "moveEarlier": "Move earlier",

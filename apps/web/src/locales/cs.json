@@ -335,6 +335,8 @@
     "resizeLongSideInvalid": "Max. delší strana musí být kladné celé číslo.",
     "upload": "Nahrát fotky",
     "uploading": "Nahrávání…",
+    "uploadPartialFailure": "Některé fotky se nepodařilo nahrát.",
+    "uploadFailedPhoto": "Nepodařilo se nahrát „{name}“",
     "deleting": "Mazání…",
     "delete": "Odstranit",
     "moveEarlier": "Posunout dříve",
