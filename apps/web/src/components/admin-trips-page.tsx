@@ -29,8 +29,7 @@ import {
 } from "@/lib/trips";
 
 const EMPTY_BLOCKS: PartialBlock[] = [{ type: "paragraph" }];
-const DEFAULT_MAP_CARD_WIDTH = "1600";
-const DEFAULT_MAP_CARD_HEIGHT = "900";
+const DEFAULT_MAP_CARD_LONG_SIDE = "1600";
 
 type TripDraft = {
   id: number | null;
@@ -134,9 +133,10 @@ export function AdminTripsPage() {
   const [compressTripGpx, setCompressTripGpx] = useState(false);
   const [tripMapCardFile, setTripMapCardFile] = useState<File | null>(null);
   const [tripMapCardInputKey, setTripMapCardInputKey] = useState(0);
-  const [tripMapCardResizeMode, setTripMapCardResizeMode] = useState<"keep" | "resize">("keep");
-  const [tripMapCardResizeWidth, setTripMapCardResizeWidth] = useState(DEFAULT_MAP_CARD_WIDTH);
-  const [tripMapCardResizeHeight, setTripMapCardResizeHeight] = useState(DEFAULT_MAP_CARD_HEIGHT);
+  const [tripMapCardResizeMode, setTripMapCardResizeMode] = useState<"keep" | "resize">("resize");
+  const [tripMapCardResizeLongSide, setTripMapCardResizeLongSide] = useState(
+    DEFAULT_MAP_CARD_LONG_SIDE,
+  );
   const [tripMapCardBusy, setTripMapCardBusy] = useState<
     "uploading" | "rotating" | "deleting" | null
   >(null);
@@ -429,17 +429,13 @@ export function AdminTripsPage() {
     let resizeWidth: number | null = null;
     let resizeHeight: number | null = null;
     if (tripMapCardResizeMode === "resize") {
-      resizeWidth = Number(tripMapCardResizeWidth);
-      resizeHeight = Number(tripMapCardResizeHeight);
-      if (
-        !Number.isInteger(resizeWidth) ||
-        resizeWidth <= 0 ||
-        !Number.isInteger(resizeHeight) ||
-        resizeHeight <= 0
-      ) {
-        setError(dict.trips.mapCardImageResizeInvalid);
+      const longSide = Number(tripMapCardResizeLongSide);
+      if (!Number.isInteger(longSide) || longSide <= 0) {
+        setError(dict.trips.mapCardImageResizeLongSideInvalid);
         return;
       }
+      resizeWidth = longSide;
+      resizeHeight = longSide;
     }
 
     setTripMapCardBusy("uploading");
@@ -1039,31 +1035,18 @@ export function AdminTripsPage() {
                           </div>
 
                           {tripMapCardResizeMode === "resize" ? (
-                            <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="grid gap-4">
                               <label className="block">
                                 <span className="text-sm font-medium text-stone-700">
-                                  {dict.trips.mapCardImageWidth}
+                                  {dict.trips.mapCardImageLongSide}
                                 </span>
                                 <input
                                   className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
                                   inputMode="numeric"
                                   onChange={(event) => {
-                                    setTripMapCardResizeWidth(event.target.value);
+                                    setTripMapCardResizeLongSide(event.target.value);
                                   }}
-                                  value={tripMapCardResizeWidth}
-                                />
-                              </label>
-                              <label className="block">
-                                <span className="text-sm font-medium text-stone-700">
-                                  {dict.trips.mapCardImageHeight}
-                                </span>
-                                <input
-                                  className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
-                                  inputMode="numeric"
-                                  onChange={(event) => {
-                                    setTripMapCardResizeHeight(event.target.value);
-                                  }}
-                                  value={tripMapCardResizeHeight}
+                                  value={tripMapCardResizeLongSide}
                                 />
                               </label>
                             </div>

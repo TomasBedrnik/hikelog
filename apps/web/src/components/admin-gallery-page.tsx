@@ -14,8 +14,7 @@ import {
 } from "@/lib/gallery";
 import { getDateLocale } from "@/lib/i18n";
 
-const DEFAULT_GALLERY_WIDTH = "1920";
-const DEFAULT_GALLERY_HEIGHT = "1080";
+const DEFAULT_GALLERY_LONG_SIDE = "1920";
 
 export function AdminGalleryPage() {
   const router = useRouter();
@@ -26,9 +25,8 @@ export function AdminGalleryPage() {
     null,
   );
   const [files, setFiles] = useState<File[]>([]);
-  const [resizeMode, setResizeMode] = useState<"keep" | "resize">("keep");
-  const [resizeWidth, setResizeWidth] = useState(DEFAULT_GALLERY_WIDTH);
-  const [resizeHeight, setResizeHeight] = useState(DEFAULT_GALLERY_HEIGHT);
+  const [resizeMode, setResizeMode] = useState<"keep" | "resize">("resize");
+  const [resizeLongSide, setResizeLongSide] = useState(DEFAULT_GALLERY_LONG_SIDE);
   const [inputKey, setInputKey] = useState(0);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
 
@@ -69,12 +67,13 @@ export function AdminGalleryPage() {
     let height: number | null = null;
 
     if (resizeMode === "resize") {
-      width = Number(resizeWidth);
-      height = Number(resizeHeight);
-      if (!Number.isInteger(width) || width <= 0 || !Number.isInteger(height) || height <= 0) {
-        setError(dict.gallery.resizeInvalid);
+      const longSide = Number(resizeLongSide);
+      if (!Number.isInteger(longSide) || longSide <= 0) {
+        setError(dict.gallery.resizeLongSideInvalid);
         return;
       }
+      width = longSide;
+      height = longSide;
     }
 
     setBusy("uploading");
@@ -219,29 +218,18 @@ export function AdminGalleryPage() {
               </div>
 
               {resizeMode === "resize" ? (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="block">
-                    <span className="text-sm font-medium text-stone-700">{dict.gallery.width}</span>
-                    <input
-                      className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
-                      inputMode="numeric"
-                      onChange={(event) => {
-                        setResizeWidth(event.target.value);
-                      }}
-                      value={resizeWidth}
-                    />
-                  </label>
+                <div className="grid gap-4">
                   <label className="block">
                     <span className="text-sm font-medium text-stone-700">
-                      {dict.gallery.height}
+                      {dict.gallery.longSide}
                     </span>
                     <input
                       className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
                       inputMode="numeric"
                       onChange={(event) => {
-                        setResizeHeight(event.target.value);
+                        setResizeLongSide(event.target.value);
                       }}
-                      value={resizeHeight}
+                      value={resizeLongSide}
                     />
                   </label>
                 </div>

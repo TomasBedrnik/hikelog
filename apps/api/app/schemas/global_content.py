@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class GlobalContentUpdate(BaseModel):
     main_headline: str | None = Field(default=None, max_length=300)
     home_content: dict[str, Any] | None = None
+    activity_photo_resize_long_side: int | None = Field(default=None, ge=1)
 
 
 class GlobalContentRead(BaseModel):
@@ -26,6 +27,7 @@ class GlobalContentRead(BaseModel):
     hero_thumbnail_height: int | None = Field(default=None, ge=1)
     hero_tiny_thumbnail_width: int | None = Field(default=None, ge=1)
     hero_tiny_thumbnail_height: int | None = Field(default=None, ge=1)
+    activity_photo_resize_long_side: int = Field(ge=1)
     hero_content_type: str | None
     hero_original_filename: str | None
     created_at: datetime

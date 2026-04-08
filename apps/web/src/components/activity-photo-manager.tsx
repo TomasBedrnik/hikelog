@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearIdToken, getIdToken } from "@/lib/auth";
 import {
@@ -11,11 +11,11 @@ import {
   rotateActivityPhoto,
   uploadActivityPhotos,
 } from "@/lib/activities";
+import { getGlobalContent } from "@/lib/global-content";
 import { ImageLightbox } from "@/components/image-lightbox";
 import { useI18n } from "@/components/i18n-provider";
 
-const DEFAULT_WIDTH = "1920";
-const DEFAULT_HEIGHT = "1080";
+const DEFAULT_RESIZE_LONG_SIDE = "1920";
 
 export function ActivityPhotoManager({
   activity,
@@ -36,9 +36,8 @@ export function ActivityPhotoManager({
     | null
   >(null);
   const [files, setFiles] = useState<File[]>([]);
-  const [resizeMode, setResizeMode] = useState<"keep" | "resize">("keep");
-  const [resizeWidth, setResizeWidth] = useState(DEFAULT_WIDTH);
-  const [resizeHeight, setResizeHeight] = useState(DEFAULT_HEIGHT);
+  const [resizeMode, setResizeMode] = useState<"keep" | "resize">("resize");
+  const [resizeLongSide, setResizeLongSide] = useState(DEFAULT_RESIZE_LONG_SIDE);
   const [inputKey, setInputKey] = useState(0);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
 
@@ -46,6 +45,24 @@ export function ActivityPhotoManager({
     () => [...(activity?.photos ?? [])].sort((a, b) => a.position - b.position || a.id - b.id),
     [activity?.photos],
   );
+
+  useEffect(() => {
+    const token = getIdToken();
+    if (!token) {
+      return;
+    }
+
+    getGlobalContent(token)
+      .then((loaded) => {
+        setResizeLongSide(String(loaded.activity_photo_resize_long_side));
+      })
+      .catch((e: unknown) => {
+        if (e instanceof Error && e.message === "AUTH_REQUIRED") {
+          clearIdToken();
+          router.push("/login");
+        }
+      });
+  }, [router]);
 
   const requireToken = () => {
     const token = getIdToken();
@@ -84,12 +101,13 @@ export function ActivityPhotoManager({
     let width: number | null = null;
     let height: number | null = null;
     if (resizeMode === "resize") {
-      width = Number(resizeWidth);
-      height = Number(resizeHeight);
-      if (!Number.isInteger(width) || width <= 0 || !Number.isInteger(height) || height <= 0) {
-        setError(dict.activityPhotos.resizeInvalid);
+      const longSide = Number(resizeLongSide);
+      if (!Number.isInteger(longSide) || longSide <= 0) {
+        setError(dict.activityPhotos.resizeLongSideInvalid);
         return;
       }
+      width = longSide;
+      height = longSide;
     }
 
     setBusy("uploading");
@@ -278,31 +296,18 @@ export function ActivityPhotoManager({
                 </div>
 
                 {resizeMode === "resize" ? (
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-4">
                     <label className="block">
                       <span className="text-sm font-medium text-stone-700">
-                        {dict.activityPhotos.width}
+                        {dict.activityPhotos.longSide}
                       </span>
                       <input
                         className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
                         inputMode="numeric"
                         onChange={(event) => {
-                          setResizeWidth(event.target.value);
+                          setResizeLongSide(event.target.value);
                         }}
-                        value={resizeWidth}
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="text-sm font-medium text-stone-700">
-                        {dict.activityPhotos.height}
-                      </span>
-                      <input
-                        className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
-                        inputMode="numeric"
-                        onChange={(event) => {
-                          setResizeHeight(event.target.value);
-                        }}
-                        value={resizeHeight}
+                        value={resizeLongSide}
                       />
                     </label>
                   </div>

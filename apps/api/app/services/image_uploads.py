@@ -73,6 +73,26 @@ def _save_image_bytes(image: Image.Image, image_format: str) -> bytes:
     return output.getvalue()
 
 
+def _resize_with_no_upscale(
+    image: Image.Image,
+    *,
+    max_width: int | None,
+    max_height: int | None,
+) -> Image.Image:
+    if max_width is None or max_height is None:
+        return image
+
+    scale = min(max_width / image.width, max_height / image.height)
+    if scale >= 1:
+        return image
+
+    next_size = (
+        max(1, int(image.width * scale)),
+        max(1, int(image.height * scale)),
+    )
+    return image.resize(next_size, Image.Resampling.LANCZOS)
+
+
 def _decode_gps_ref(value: object) -> str | None:
     if isinstance(value, bytes):
         return value.decode("ascii", errors="ignore").strip().upper() or None
@@ -181,9 +201,11 @@ async def create_uploaded_image(
     original_image = _normalize_image_for_format(transposed_image, image_format)
 
     if resize_mode == "resize":
-        resized_image = original_image.copy()
-        resized_image.thumbnail((resize_width, resize_height), Image.Resampling.LANCZOS)
-        original_image = resized_image
+        original_image = _resize_with_no_upscale(
+            original_image,
+            max_width=resize_width,
+            max_height=resize_height,
+        )
 
     original_bytes = _save_image_bytes(original_image, image_format)
 

@@ -18,17 +18,22 @@ import { ImageLightbox } from "@/components/image-lightbox";
 import { useI18n } from "@/components/i18n-provider";
 import { TripContentEditor } from "@/components/trip-content-editor";
 
-const DEFAULT_WIDTH = "1920";
-const DEFAULT_HEIGHT = "1080";
+const DEFAULT_LONG_SIDE = "1920";
+const DEFAULT_ACTIVITY_PHOTO_RESIZE_LONG_SIDE = "1920";
 const EMPTY_BLOCKS: PartialBlock[] = [{ type: "paragraph" }];
 
-function toUpdatePayload(headline: string, blocks: PartialBlock[]) {
+function toUpdatePayload(
+  headline: string,
+  blocks: PartialBlock[],
+  activityPhotoResizeLongSide: number,
+) {
   return {
     main_headline: headline.trim() || null,
     home_content: {
       type: "blocknote",
       blocks,
     },
+    activity_photo_resize_long_side: activityPhotoResizeLongSide,
   };
 }
 
@@ -41,9 +46,11 @@ export function AdminGlobalContentPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<"saving" | "uploading" | "deleting" | "rotating" | null>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [resizeMode, setResizeMode] = useState<"keep" | "resize">("keep");
-  const [resizeWidth, setResizeWidth] = useState(DEFAULT_WIDTH);
-  const [resizeHeight, setResizeHeight] = useState(DEFAULT_HEIGHT);
+  const [resizeMode, setResizeMode] = useState<"keep" | "resize">("resize");
+  const [resizeLongSide, setResizeLongSide] = useState(DEFAULT_LONG_SIDE);
+  const [activityPhotoResizeLongSide, setActivityPhotoResizeLongSide] = useState(
+    DEFAULT_ACTIVITY_PHOTO_RESIZE_LONG_SIDE,
+  );
   const [inputKey, setInputKey] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
@@ -59,6 +66,7 @@ export function AdminGlobalContentPage() {
         setContent(loaded);
         setHeadline(loaded.main_headline ?? "");
         setContentBlocks(getTripContentBlocks(loaded.home_content));
+        setActivityPhotoResizeLongSide(String(loaded.activity_photo_resize_long_side));
       })
       .catch((e: unknown) => {
         if (e instanceof Error && e.message === "AUTH_REQUIRED") {
@@ -94,12 +102,25 @@ export function AdminGlobalContentPage() {
       return;
     }
 
+    const parsedActivityPhotoResizeLongSide = Number(activityPhotoResizeLongSide);
+    if (
+      !Number.isInteger(parsedActivityPhotoResizeLongSide) ||
+      parsedActivityPhotoResizeLongSide <= 0
+    ) {
+      setError(dict.globalContent.activityPhotoResizeInvalid);
+      return;
+    }
+
     setBusy("saving");
     setError(null);
     try {
-      const updated = await updateGlobalContent(token, toUpdatePayload(headline, contentBlocks));
+      const updated = await updateGlobalContent(
+        token,
+        toUpdatePayload(headline, contentBlocks, parsedActivityPhotoResizeLongSide),
+      );
       startTransition(() => {
         setContent(updated);
+        setActivityPhotoResizeLongSide(String(updated.activity_photo_resize_long_side));
       });
     } catch (e: unknown) {
       if (handleAuthError(e)) {
@@ -125,12 +146,13 @@ export function AdminGlobalContentPage() {
     let width: number | null = null;
     let height: number | null = null;
     if (resizeMode === "resize") {
-      width = Number(resizeWidth);
-      height = Number(resizeHeight);
-      if (!Number.isInteger(width) || width <= 0 || !Number.isInteger(height) || height <= 0) {
-        setError(dict.globalContent.resizeInvalid);
+      const longSide = Number(resizeLongSide);
+      if (!Number.isInteger(longSide) || longSide <= 0) {
+        setError(dict.globalContent.resizeLongSideInvalid);
         return;
       }
+      width = longSide;
+      height = longSide;
     }
 
     setBusy("uploading");
@@ -246,6 +268,25 @@ export function AdminGlobalContentPage() {
             </div>
 
             <div>
+              <label className="block">
+                <span className="text-sm font-medium text-stone-700">
+                  {dict.globalContent.activityPhotoResizeLongSide}
+                </span>
+                <input
+                  className="mt-2 w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-emerald-600"
+                  inputMode="numeric"
+                  onChange={(event) => {
+                    setActivityPhotoResizeLongSide(event.target.value);
+                  }}
+                  value={activityPhotoResizeLongSide}
+                />
+                <p className="mt-2 text-xs text-stone-500">
+                  {dict.globalContent.activityPhotoResizeLongSideHelp}
+                </p>
+              </label>
+            </div>
+
+            <div>
               <button
                 className="rounded-full bg-stone-900 px-5 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={busy !== null}
@@ -313,31 +354,18 @@ export function AdminGlobalContentPage() {
               </div>
 
               {resizeMode === "resize" ? (
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4">
                   <label className="block">
                     <span className="text-sm font-medium text-stone-700">
-                      {dict.globalContent.width}
+                      {dict.globalContent.longSide}
                     </span>
                     <input
                       className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
                       inputMode="numeric"
                       onChange={(event) => {
-                        setResizeWidth(event.target.value);
+                        setResizeLongSide(event.target.value);
                       }}
-                      value={resizeWidth}
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="text-sm font-medium text-stone-700">
-                      {dict.globalContent.height}
-                    </span>
-                    <input
-                      className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
-                      inputMode="numeric"
-                      onChange={(event) => {
-                        setResizeHeight(event.target.value);
-                      }}
-                      value={resizeHeight}
+                      value={resizeLongSide}
                     />
                   </label>
                 </div>
