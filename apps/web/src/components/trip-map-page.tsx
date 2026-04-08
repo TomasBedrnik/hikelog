@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useI18n } from "@/components/i18n-provider";
 import { MapyMap } from "@/components/mapy-map";
@@ -193,48 +194,26 @@ export function TripMapPage({
           >
             {isPanelCollapsed ? (
               <>
-                <svg
+                <Image
+                  alt=""
                   aria-hidden="true"
                   className="size-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="1.8"
-                  />
-                  <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
-                </svg>
+                  height={16}
+                  src="/icons/eye-light.svg"
+                  width={16}
+                />
                 <span>Show</span>
               </>
             ) : (
               <>
-                <svg
+                <Image
+                  alt=""
                   aria-hidden="true"
                   className="size-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M3 3l18 18"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="1.8"
-                  />
-                  <path
-                    d="M10.6 6.35A11.7 11.7 0 0 1 12 6c6.5 0 10 6 10 6a17.2 17.2 0 0 1-3.02 3.57M6.7 6.72C3.92 8.28 2 12 2 12a17.56 17.56 0 0 0 5.2 4.88M9.88 9.88A3 3 0 0 0 14.12 14.12"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="1.8"
-                  />
-                </svg>
+                  height={16}
+                  src="/icons/eye-slash-light.svg"
+                  width={16}
+                />
                 <span>Hide</span>
               </>
             )}
