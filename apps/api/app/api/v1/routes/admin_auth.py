@@ -19,5 +19,10 @@ async def login_admin(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> AdminLoginResponse:
     email, sub = verify_google_token(payload.id_token)
-    await get_admin_by_identity(session=session, email=email, sub=sub)
+    await get_admin_by_identity(
+        session=session,
+        email=email,
+        sub=sub,
+        allow_sub_rebind=True,
+    )
     return AdminLoginResponse(access_token=create_admin_session_token(email=email, sub=sub))

@@ -45,7 +45,11 @@ def verify_google_token(token: str) -> tuple[str, str]:
 
 
 async def get_admin_by_identity(
-    *, session: AsyncSession, email: str, sub: str
+    *,
+    session: AsyncSession,
+    email: str,
+    sub: str,
+    allow_sub_rebind: bool = False,
 ) -> AdminUser:
     email_norm = email.strip().lower()
 
@@ -64,10 +68,14 @@ async def get_admin_by_identity(
         admin.google_sub = str(sub)
         should_commit = True
     elif admin.google_sub != str(sub):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Admin identity changed",
-        )
+        if allow_sub_rebind:
+            admin.google_sub = str(sub)
+            should_commit = True
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Admin identity changed",
+            )
 
     admin.last_login_at = datetime.now(timezone.utc)
     should_commit = True
