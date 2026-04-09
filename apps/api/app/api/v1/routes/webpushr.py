@@ -61,8 +61,7 @@ async def get_webpushr_summary(
         authorization_description=_to_str_or_none(auth_payload.get("description")),
         total_subscribers=(
             _to_int_or_none(count_payload.get("total_life_time_subscribers"))
-            or
-            _to_int_or_none(count_payload.get("total_subscribers"))
+            or _to_int_or_none(count_payload.get("total_subscribers"))
             or _to_int_or_none(count_payload.get("subscribers_count"))
             or _to_int_or_none(count_payload.get("subscribers"))
         ),
