@@ -9,13 +9,15 @@ import { CommentsSection } from "@/components/comments-section";
 import { TripContentEditor } from "@/components/trip-content-editor";
 import { useI18n } from "@/components/i18n-provider";
 import {
+  ActivityListItemRead,
   ActivityPhotoRead,
   ActivityRead,
   ActivityWrite,
   createActivity,
   deleteActivity,
   deleteActivityComment,
-  listActivities,
+  getActivity,
+  listActivitySummaries,
   sortActivitiesByStartDate,
   updateActivity,
   uploadActivityGpx,
@@ -63,6 +65,16 @@ function toDateTimeInput(value: string | null) {
     timeZone: "UTC",
   });
   return formatter.format(date).replace(" ", "T");
+}
+
+function formatActivityListDate(value: string | null, locale: "en" | "cs") {
+  if (!value) {
+    return "—";
+  }
+
+  return new Intl.DateTimeFormat(getDateLocale(locale), {
+    dateStyle: "medium",
+  }).format(new Date(value));
 }
 
 function toActivityDraft(activity: ActivityRead): ActivityDraft {
@@ -115,12 +127,14 @@ export function AdminActivitiesPage() {
   const router = useRouter();
   const { dict, locale } = useI18n();
   const [trips, setTrips] = useState<TripRead[] | null>(null);
-  const [activities, setActivities] = useState<ActivityRead[] | null>(null);
+  const [activities, setActivities] = useState<ActivityListItemRead[] | null>(null);
+  const [selectedActivity, setSelectedActivity] = useState<ActivityRead | null>(null);
   const [selectedTripId, setSelectedTripId] = useState<number | null>(null);
   const [selectedActivityId, setSelectedActivityId] = useState<number | "new" | null>(null);
   const [activityDraft, setActivityDraft] = useState<ActivityDraft | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<"saving" | "deleting" | "uploading-gpx" | null>(null);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
   const [activityGpxFile, setActivityGpxFile] = useState<File | null>(null);
   const [activityGpxInputKey, setActivityGpxInputKey] = useState(0);
 
@@ -129,19 +143,84 @@ export function AdminActivitiesPage() {
     setActivityGpxInputKey((current) => current + 1);
   };
 
-  const getActivitiesForTrip = (tripId: number) =>
-    sortActivitiesByStartDate((activities ?? []).filter((activity) => activity.trip_id === tripId));
-
   const setCurrentActivity = (activity: ActivityRead) => {
+    setSelectedActivity(activity);
     setSelectedActivityId(activity.id);
     setActivityDraft(toActivityDraft(activity));
     resetActivityGpxSelection();
   };
 
   const showNewActivityForTrip = (tripId: number | null) => {
+    setSelectedActivity(null);
     setSelectedActivityId("new");
     setActivityDraft(createEmptyActivityDraft(tripId));
     resetActivityGpxSelection();
+  };
+
+  const loadSelectedActivity = async (activityId: number) => {
+    const token = getIdToken();
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    setSelectedActivityId(activityId);
+    setSelectedActivity(null);
+    setActivityDraft(null);
+    setActivitiesLoading(true);
+    setError(null);
+
+    try {
+      const activity = await getActivity(token, activityId);
+      startTransition(() => {
+        setCurrentActivity(activity);
+      });
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === "AUTH_REQUIRED") {
+        clearIdToken();
+        router.push("/login");
+        return;
+      }
+      setError(e instanceof Error ? e.message : dict.common.unknownError);
+    } finally {
+      setActivitiesLoading(false);
+    }
+  };
+
+  const loadActivitiesForTrip = async (tripId: number, preferredActivityId?: number | null) => {
+    const token = getIdToken();
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    setActivitiesLoading(true);
+    setError(null);
+
+    try {
+      const activityItems = sortActivitiesByStartDate(await listActivitySummaries(token, tripId));
+      startTransition(() => {
+        setActivities(activityItems);
+      });
+
+      const nextActivityId = preferredActivityId ?? activityItems[0]?.id ?? null;
+      if (nextActivityId !== null) {
+        await loadSelectedActivity(nextActivityId);
+      } else {
+        startTransition(() => {
+          showNewActivityForTrip(tripId);
+        });
+        setActivitiesLoading(false);
+      }
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === "AUTH_REQUIRED") {
+        clearIdToken();
+        router.push("/login");
+        return;
+      }
+      setError(e instanceof Error ? e.message : dict.common.unknownError);
+      setActivitiesLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -151,29 +230,22 @@ export function AdminActivitiesPage() {
       return;
     }
 
-    Promise.all([listTrips(token), listActivities(token)])
-      .then(([tripItems, activityItems]) => {
+    listTrips(token)
+      .then((tripItems) => {
         setTrips(tripItems);
-        setActivities(activityItems);
 
         if (tripItems.length === 0) {
           setSelectedTripId(null);
           setSelectedActivityId(null);
+          setSelectedActivity(null);
           setActivityDraft(null);
+          setActivities([]);
           return;
         }
 
         const firstTrip = tripItems[0];
-        const firstTripActivities = sortActivitiesByStartDate(
-          activityItems.filter((activity) => activity.trip_id === firstTrip.id),
-        );
-
         setSelectedTripId(firstTrip.id);
-        if (firstTripActivities.length > 0) {
-          setCurrentActivity(firstTripActivities[0]);
-        } else {
-          showNewActivityForTrip(firstTrip.id);
-        }
+        void loadActivitiesForTrip(firstTrip.id);
       })
       .catch((e: unknown) => {
         if (e instanceof Error && e.message === "AUTH_REQUIRED") {
@@ -189,35 +261,40 @@ export function AdminActivitiesPage() {
     selectedTripId !== null
       ? ((trips ?? []).find((trip) => trip.id === selectedTripId) ?? null)
       : null;
-  const visibleActivities = selectedTripId !== null ? getActivitiesForTrip(selectedTripId) : [];
-  const selectedActivity =
-    activityDraft && activityDraft.id !== null
-      ? (visibleActivities.find((activity) => activity.id === activityDraft.id) ?? null)
-      : null;
+  const visibleActivities = activities ?? [];
 
-  const selectTrip = (tripId: number) => {
+  const selectTrip = async (tripId: number) => {
     setError(null);
     setSelectedTripId(tripId);
-    const tripActivities = getActivitiesForTrip(tripId);
-    if (tripActivities.length > 0) {
-      setCurrentActivity(tripActivities[0]);
-    } else {
-      showNewActivityForTrip(tripId);
-    }
+    setActivities([]);
+    setSelectedActivityId(null);
+    setSelectedActivity(null);
+    setActivityDraft(null);
+    await loadActivitiesForTrip(tripId);
   };
 
   const replaceActivity = (saved: ActivityRead) => {
     setActivities((current) =>
-      (current ?? []).map((activity) => (activity.id === saved.id ? saved : activity)),
+      sortActivitiesByStartDate(
+        (current ?? []).map((activity) =>
+          activity.id === saved.id
+            ? {
+                ...activity,
+                trip_id: saved.trip_id,
+                name: saved.name,
+                start_date: saved.start_date,
+              }
+            : activity,
+        ),
+      ),
     );
+    setSelectedActivity((current) => (current?.id === saved.id ? saved : current));
     setActivityDraft((current) => (current?.id === saved.id ? toActivityDraft(saved) : current));
   };
 
   const replaceActivityPhotos = (activityId: number, photos: ActivityPhotoRead[]) => {
-    setActivities((current) =>
-      (current ?? []).map((activity) =>
-        activity.id === activityId ? { ...activity, photos } : activity,
-      ),
+    setSelectedActivity((current) =>
+      current?.id === activityId ? { ...current, photos } : current,
     );
   };
 
@@ -250,7 +327,18 @@ export function AdminActivitiesPage() {
       const saved = await uploadActivityGpx(token, activityDraft.id, activityGpxFile);
       startTransition(() => {
         setActivities((current) =>
-          (current ?? []).map((activity) => (activity.id === saved.id ? saved : activity)),
+          sortActivitiesByStartDate(
+            (current ?? []).map((activity) =>
+              activity.id === saved.id
+                ? {
+                    ...activity,
+                    trip_id: saved.trip_id,
+                    name: saved.name,
+                    start_date: saved.start_date,
+                  }
+                : activity,
+            ),
+          ),
         );
         setCurrentActivity(saved);
       });
@@ -327,12 +415,30 @@ export function AdminActivitiesPage() {
       startTransition(() => {
         setActivities((current) => {
           const items = current ?? [];
-          return activityDraft.id === null
-            ? [saved, ...items]
-            : items.map((activity) => (activity.id === saved.id ? saved : activity));
+          const nextItems =
+            activityDraft.id === null
+              ? [
+                  {
+                    id: saved.id,
+                    trip_id: saved.trip_id,
+                    name: saved.name,
+                    start_date: saved.start_date,
+                  },
+                  ...items,
+                ]
+              : items.map((activity) =>
+                  activity.id === saved.id
+                    ? {
+                        ...activity,
+                        trip_id: saved.trip_id,
+                        name: saved.name,
+                        start_date: saved.start_date,
+                      }
+                    : activity,
+                );
+          return sortActivitiesByStartDate(nextItems);
         });
-        setSelectedActivityId(saved.id);
-        setActivityDraft(toActivityDraft(saved));
+        setCurrentActivity(saved);
       });
     } catch (e: unknown) {
       if (e instanceof Error && e.message === "AUTH_REQUIRED") {
@@ -365,11 +471,10 @@ export function AdminActivitiesPage() {
       await deleteActivity(token, activityDraft.id);
       startTransition(() => {
         const nextItems = visibleActivities.filter((activity) => activity.id !== activityDraft.id);
-        setActivities((current) =>
-          (current ?? []).filter((activity) => activity.id !== activityDraft.id),
-        );
+        setActivities(nextItems);
+        setSelectedActivity(null);
         if (nextItems.length > 0) {
-          setCurrentActivity(nextItems[0]);
+          void loadSelectedActivity(nextItems[0].id);
         } else {
           showNewActivityForTrip(selectedTripId);
         }
@@ -450,7 +555,7 @@ export function AdminActivitiesPage() {
                   <select
                     className="mt-2 w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-600"
                     onChange={(event) => {
-                      selectTrip(Number(event.target.value));
+                      void selectTrip(Number(event.target.value));
                     }}
                     value={selectedTripId ?? ""}
                   >
@@ -488,9 +593,15 @@ export function AdminActivitiesPage() {
                   </button>
 
                   {visibleActivities.length === 0 ? (
-                    <p className="rounded-2xl bg-white px-4 py-4 text-sm text-stone-500">
-                      {dict.activities.emptyPublic}
-                    </p>
+                    activitiesLoading ? (
+                      <p className="rounded-2xl bg-white px-4 py-4 text-sm text-stone-500">
+                        {dict.activities.loading}
+                      </p>
+                    ) : (
+                      <p className="rounded-2xl bg-white px-4 py-4 text-sm text-stone-500">
+                        {dict.activities.emptyPublic}
+                      </p>
+                    )
                   ) : (
                     visibleActivities.map((activity) => (
                       <button
@@ -502,13 +613,13 @@ export function AdminActivitiesPage() {
                         }`}
                         onClick={() => {
                           setError(null);
-                          setCurrentActivity(activity);
+                          void loadSelectedActivity(activity.id);
                         }}
                         type="button"
                       >
                         <div className="truncate text-sm font-medium">{activity.name}</div>
                         <div className="mt-1 text-xs text-stone-500">
-                          {activity.sport_type ?? activity.type ?? "—"}
+                          {formatActivityListDate(activity.start_date, locale)}
                         </div>
                       </button>
                     ))

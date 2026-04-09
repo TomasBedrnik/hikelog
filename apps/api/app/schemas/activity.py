@@ -77,3 +77,12 @@ class ActivitySummaryRead(BaseModel):
     description: dict[str, Any] | None = None
     summary_polyline: str | None = None
     photos: list[ActivityPhotoRead] = Field(default_factory=list)
+
+
+class ActivityListItemRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    trip_id: int
+    name: str
+    start_date: datetime | None

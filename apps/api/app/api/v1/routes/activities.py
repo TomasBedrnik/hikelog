@@ -25,7 +25,7 @@ from app.models.activity_comment import ActivityComment
 from app.models.activity_photo import ActivityPhoto
 from app.models.admin_user import AdminUser
 from app.models.trip import Trip
-from app.schemas.activity import ActivityCreate, ActivityRead, ActivityUpdate
+from app.schemas.activity import ActivityCreate, ActivityListItemRead, ActivityRead, ActivityUpdate
 from app.schemas.activity_photo import ActivityPhotoOrderUpdate, ActivityPhotoRead
 from app.schemas.comment import CommentRead
 from app.services.gpx_polylines import build_polylines_from_gpx
@@ -74,6 +74,7 @@ async def _get_activity_or_404(session: AsyncSession, activity_id: int) -> Activ
 async def list_activities(
     _: Annotated[AdminUser, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
+    trip_id: Annotated[int | None, Query(ge=1)] = None,
 ) -> list[ActivityRead]:
     stmt = (
         select(Activity)
@@ -88,8 +89,29 @@ async def list_activities(
             Activity.id.desc(),
         )
     )
+    if trip_id is not None:
+        stmt = stmt.where(Activity.trip_id == trip_id)
     activities = (await session.scalars(stmt)).all()
     return [_to_activity_read(activity) for activity in activities]
+
+
+@router.get("/summaries", response_model=list[ActivityListItemRead])
+async def list_activity_summaries(
+    _: Annotated[AdminUser, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+    trip_id: Annotated[int, Query(ge=1)],
+) -> list[ActivityListItemRead]:
+    stmt = (
+        select(Activity)
+        .where(Activity.trip_id == trip_id)
+        .order_by(
+            Activity.start_date.desc().nullslast(),
+            Activity.created_at.desc(),
+            Activity.id.desc(),
+        )
+    )
+    activities = (await session.scalars(stmt)).all()
+    return [ActivityListItemRead.model_validate(activity) for activity in activities]
 
 
 @router.post("", response_model=ActivityRead, status_code=status.HTTP_201_CREATED)
