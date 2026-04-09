@@ -15,6 +15,9 @@ class GlobalContent(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     main_headline: Mapped[str | None] = mapped_column(String(300), nullable=True)
     home_content: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    enabled_language_codes: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=lambda: ["en", "cs"]
+    )
     hero_storage_path: Mapped[str | None] = mapped_column(String, nullable=True)
     hero_thumbnail_storage_path: Mapped[str | None] = mapped_column(String, nullable=True)
     hero_tiny_thumbnail_storage_path: Mapped[str | None] = mapped_column(String, nullable=True)

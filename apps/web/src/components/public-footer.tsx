@@ -4,9 +4,11 @@ import Link from "next/link";
 import Script from "next/script";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { useI18n } from "@/components/i18n-provider";
+import { Locale, normalizeEnabledLocales } from "@/lib/i18n";
 
-export function PublicFooter() {
+export function PublicFooter({ enabledLocales }: { enabledLocales?: Locale[] }) {
   const { dict } = useI18n();
+  const allowedLocales = normalizeEnabledLocales(enabledLocales);
   const webpushrPublicKey = process.env.NEXT_PUBLIC_WEBPUSHR_PUBLIC_KEY;
 
   return (
@@ -24,7 +26,9 @@ export function PublicFooter() {
               {dict.publicSite.adminLink}
             </Link>
           </div>
-          <LocaleSwitcher />
+          {allowedLocales.length > 1 ? (
+            <LocaleSwitcher enabledLocales={allowedLocales} />
+          ) : null}
         </div>
       </footer>
     </>

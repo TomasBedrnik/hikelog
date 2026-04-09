@@ -17,6 +17,7 @@ import { getTripContentBlocks } from "@/lib/blocknote";
 import { ImageLightbox } from "@/components/image-lightbox";
 import { useI18n } from "@/components/i18n-provider";
 import { TripContentEditor } from "@/components/trip-content-editor";
+import { DEFAULT_ENABLED_LOCALES, Locale, normalizeEnabledLocales } from "@/lib/i18n";
 
 const DEFAULT_LONG_SIDE = "1920";
 const DEFAULT_ACTIVITY_PHOTO_RESIZE_LONG_SIDE = "1920";
@@ -26,6 +27,7 @@ const EMPTY_BLOCKS: PartialBlock[] = [{ type: "paragraph" }];
 function toUpdatePayload(
   headline: string,
   blocks: PartialBlock[],
+  enabledLanguageCodes: Locale[],
   activityPhotoResizeLongSide: number,
   audioTranscriptionLanguageCode: string,
   audioTranscriptionModel: string,
@@ -39,6 +41,7 @@ function toUpdatePayload(
       type: "blocknote",
       blocks,
     },
+    enabled_language_codes: enabledLanguageCodes,
     activity_photo_resize_long_side: activityPhotoResizeLongSide,
     activity_audio_transcription_language_code: audioTranscriptionLanguageCode.trim() || null,
     activity_audio_transcription_model:
@@ -56,6 +59,9 @@ export function AdminGlobalContentPage() {
   const [content, setContent] = useState<GlobalContentRead | null>(null);
   const [headline, setHeadline] = useState("");
   const [contentBlocks, setContentBlocks] = useState<PartialBlock[]>(EMPTY_BLOCKS);
+  const [enabledLanguageCodes, setEnabledLanguageCodes] = useState<Locale[]>(
+    DEFAULT_ENABLED_LOCALES,
+  );
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<"saving" | "uploading" | "deleting" | "rotating" | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -89,6 +95,7 @@ export function AdminGlobalContentPage() {
         setContent(loaded);
         setHeadline(loaded.main_headline ?? "");
         setContentBlocks(getTripContentBlocks(loaded.home_content));
+        setEnabledLanguageCodes(normalizeEnabledLocales(loaded.enabled_language_codes));
         setActivityPhotoResizeLongSide(String(loaded.activity_photo_resize_long_side));
         setAudioTranscriptionLanguageCode(loaded.activity_audio_transcription_language_code ?? "");
         setAudioTranscriptionModel(
@@ -151,6 +158,7 @@ export function AdminGlobalContentPage() {
         toUpdatePayload(
           headline,
           contentBlocks,
+          enabledLanguageCodes,
           parsedActivityPhotoResizeLongSide,
           audioTranscriptionLanguageCode,
           audioTranscriptionModel,
@@ -161,6 +169,7 @@ export function AdminGlobalContentPage() {
       );
       startTransition(() => {
         setContent(updated);
+        setEnabledLanguageCodes(normalizeEnabledLocales(updated.enabled_language_codes));
         setActivityPhotoResizeLongSide(String(updated.activity_photo_resize_long_side));
         setAudioTranscriptionLanguageCode(updated.activity_audio_transcription_language_code ?? "");
         setAudioTranscriptionModel(
@@ -334,6 +343,43 @@ export function AdminGlobalContentPage() {
                   {dict.globalContent.activityPhotoResizeLongSideHelp}
                 </p>
               </label>
+            </div>
+
+            <div>
+              <p className="text-sm font-medium text-stone-700">
+                {dict.globalContent.enabledLanguages}
+              </p>
+              <p className="mt-1 text-xs text-stone-500">
+                {dict.globalContent.enabledLanguagesHelp}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-3">
+                {DEFAULT_ENABLED_LOCALES.map((languageCode) => (
+                  <label
+                    key={languageCode}
+                    className="flex items-center gap-2 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700"
+                  >
+                    <input
+                      checked={enabledLanguageCodes.includes(languageCode)}
+                      className="size-4 accent-emerald-700"
+                      onChange={(event) => {
+                        setEnabledLanguageCodes((current) => {
+                          const enabled = event.target.checked
+                            ? [...current, languageCode]
+                            : current.filter((item) => item !== languageCode);
+                          const next = DEFAULT_ENABLED_LOCALES.filter((item) =>
+                            enabled.includes(item),
+                          );
+                          return next.length > 0 ? next : current;
+                        });
+                      }}
+                      type="checkbox"
+                    />
+                    <span>
+                      {languageCode === "en" ? dict.common.english : dict.common.czech}
+                    </span>
+                  </label>
+                ))}
+              </div>
             </div>
 
             <div>

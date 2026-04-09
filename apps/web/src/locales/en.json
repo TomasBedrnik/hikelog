@@ -170,6 +170,8 @@
     "homeText": "Main intro text",
     "save": "Save content",
     "saving": "Saving…",
+    "enabledLanguages": "Enabled public languages",
+    "enabledLanguagesHelp": "Only checked languages are available in the public language switcher. If a visitor has not selected a language, the first checked language is used.",
     "activityPhotoResizeLongSide": "Default max side for activity photo uploads (px)",
     "activityPhotoResizeLongSideHelp": "Used as the default resize value in the Activity Photos manager. The longer side of each image is constrained to this size while preserving aspect ratio.",
     "activityPhotoResizeInvalid": "Default max side must be a positive integer.",

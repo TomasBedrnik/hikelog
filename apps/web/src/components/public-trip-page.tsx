@@ -9,7 +9,8 @@ import { TripList } from "@/components/trip-list";
 import { ImageLightbox } from "@/components/image-lightbox";
 import { useI18n } from "@/components/i18n-provider";
 import { getTripContentBlocks, hasTripContent } from "@/lib/blocknote";
-import { getDateLocale } from "@/lib/i18n";
+import { GlobalContentRead } from "@/lib/global-content";
+import { getDateLocale, normalizeEnabledLocales } from "@/lib/i18n";
 import { ActivitySummaryRead, sortActivitiesByStartDate } from "@/lib/activities";
 import { createPublicTripComment } from "@/lib/comments";
 import { TripRead } from "@/lib/trips";
@@ -42,10 +43,12 @@ export function PublicTripPage({
   trip,
   trips,
   activities,
+  globalContent,
 }: {
   trip: TripRead;
   trips: TripRead[];
   activities: ActivitySummaryRead[];
+  globalContent: GlobalContentRead | null;
 }) {
   const { dict, locale } = useI18n();
   const [comments, setComments] = useState(trip.comments);
@@ -53,6 +56,7 @@ export function PublicTripPage({
   const contentBlocks = getTripContentBlocks(trip.content);
   const tripHasContent = hasTripContent(trip.content);
   const sortedActivities = sortActivitiesByStartDate(activities);
+  const enabledLocales = normalizeEnabledLocales(globalContent?.enabled_language_codes);
   const heroImageUrl = trip.images[0]?.image_url ?? "/home-hero-theme.png";
   const mapCardImageUrl = trip.map_card_image_url ?? "/default_map.jpg";
   const totalDistanceMeters = activities.reduce(
@@ -271,7 +275,7 @@ export function PublicTripPage({
         </section>
 
         <TripList trips={trips} />
-        <PublicFooter />
+        <PublicFooter enabledLocales={enabledLocales} />
       </div>
 
       <ImageLightbox

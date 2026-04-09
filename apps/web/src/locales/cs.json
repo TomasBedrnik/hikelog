@@ -170,6 +170,8 @@
     "homeText": "Úvodní text",
     "save": "Uložit obsah",
     "saving": "Ukládání…",
+    "enabledLanguages": "Povolené jazyky veřejného webu",
+    "enabledLanguagesHelp": "Ve veřejném přepínači jazyků budou dostupné jen zaškrtnuté jazyky. Pokud si návštěvník jazyk nevybral, použije se první zaškrtnutý jazyk.",
     "activityPhotoResizeLongSide": "Výchozí max. delší strana pro fotky aktivit (px)",
     "activityPhotoResizeLongSideHelp": "Použije se jako výchozí hodnota změny velikosti ve správě fotek aktivit. Delší strana obrázku bude omezena na tuto velikost při zachování poměru stran.",
     "activityPhotoResizeInvalid": "Výchozí max. delší strana musí být kladné celé číslo.",

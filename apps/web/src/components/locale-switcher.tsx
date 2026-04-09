@@ -1,12 +1,26 @@
 "use client";
 
+import { useEffect, useMemo } from "react";
 import { useI18n } from "@/components/i18n-provider";
-import { Locale } from "@/lib/i18n";
+import { Locale, LOCALE_STORAGE_KEY, normalizeEnabledLocales } from "@/lib/i18n";
 
 const localeOptions: Locale[] = ["en", "cs"];
 
-export function LocaleSwitcher() {
+export function LocaleSwitcher({ enabledLocales }: { enabledLocales?: Locale[] }) {
   const { dict, locale, setLocale } = useI18n();
+  const enabledLocaleKey = enabledLocales?.join("|") ?? "";
+  const allowedLocales = useMemo(
+    () => normalizeEnabledLocales(enabledLocaleKey ? enabledLocaleKey.split("|") : undefined),
+    [enabledLocaleKey],
+  );
+  const allowedLocaleKey = allowedLocales.join("|");
+
+  useEffect(() => {
+    const storedLocale = window.localStorage.getItem(LOCALE_STORAGE_KEY);
+    if (!storedLocale || !allowedLocales.includes(locale)) {
+      setLocale(allowedLocales[0]);
+    }
+  }, [allowedLocaleKey, allowedLocales, locale, setLocale]);
 
   return (
     <div className="flex items-center gap-2">
@@ -14,7 +28,7 @@ export function LocaleSwitcher() {
         {dict.nav.language}
       </span>
       <div className="flex rounded-full border border-stone-300 bg-white p-1">
-        {localeOptions.map((option) => {
+        {localeOptions.filter((option) => allowedLocales.includes(option)).map((option) => {
           const active = locale === option;
           return (
             <button

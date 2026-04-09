@@ -7,7 +7,7 @@ import { TripContentRenderer } from "@/components/trip-content-renderer";
 import { useI18n } from "@/components/i18n-provider";
 import { getTripContentBlocks } from "@/lib/blocknote";
 import { GlobalContentRead } from "@/lib/global-content";
-import { getDateLocale } from "@/lib/i18n";
+import { getDateLocale, normalizeEnabledLocales } from "@/lib/i18n";
 import { TripRead } from "@/lib/trips";
 
 function formatTripDates(trip: TripRead, locale: "en" | "cs") {
@@ -36,6 +36,7 @@ export function HomePageContent({
   const heroImageUrl = globalContent?.hero_image_url ?? "/home-hero-theme.png";
   const heroHeadline = globalContent?.main_headline?.trim() || dict.publicSite.homeTitle;
   const heroBlocks = getTripContentBlocks(globalContent?.home_content ?? null);
+  const enabledLocales = normalizeEnabledLocales(globalContent?.enabled_language_codes);
   const hasGlobalHeroContent = globalContent?.home_content != null;
   const fallbackTripCards = [
     {
@@ -155,7 +156,7 @@ export function HomePageContent({
           </div>
         </section>
 
-        <PublicFooter />
+        <PublicFooter enabledLocales={enabledLocales} />
       </div>
     </main>
   );

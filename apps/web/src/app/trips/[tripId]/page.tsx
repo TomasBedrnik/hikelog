@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { PublicTripPage } from "@/components/public-trip-page";
+import { getPublicGlobalContent } from "@/lib/public-global-content";
 import { listPublicTripActivities } from "@/lib/public-activities";
 import { getPublicTrip, listPublicTrips } from "@/lib/public-trips";
 
@@ -13,15 +14,23 @@ export default async function TripPage({ params }: { params: Promise<{ tripId: s
     notFound();
   }
 
-  const [trip, trips, activities] = await Promise.all([
+  const [trip, trips, activities, globalContent] = await Promise.all([
     getPublicTrip(id).catch(() => null),
     listPublicTrips().catch(() => []),
     listPublicTripActivities(id).catch(() => []),
+    getPublicGlobalContent().catch(() => null),
   ]);
 
   if (!trip) {
     notFound();
   }
 
-  return <PublicTripPage trip={trip} trips={trips} activities={activities} />;
+  return (
+    <PublicTripPage
+      trip={trip}
+      trips={trips}
+      activities={activities}
+      globalContent={globalContent}
+    />
+  );
 }
