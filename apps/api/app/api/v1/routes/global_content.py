@@ -11,7 +11,7 @@ from app.auth.admin import require_admin
 from app.db.session import get_session
 from app.models.admin_user import AdminUser
 from app.models.global_content import GlobalContent
-from app.schemas.global_content import GlobalContentRead, GlobalContentUpdate
+from app.schemas.global_content import GlobalContentAdminRead, GlobalContentUpdate
 from app.services.image_uploads import (
     create_uploaded_image,
     delete_uploaded_image_files,
@@ -21,8 +21,8 @@ from app.services.image_uploads import (
 router = APIRouter()
 
 
-def _to_global_content_read(global_content: GlobalContent) -> GlobalContentRead:
-    return GlobalContentRead.model_validate(global_content)
+def _to_global_content_admin_read(global_content: GlobalContent) -> GlobalContentAdminRead:
+    return GlobalContentAdminRead.model_validate(global_content)
 
 
 async def _get_or_create_global_content(session: AsyncSession) -> GlobalContent:
@@ -63,21 +63,21 @@ def _assign_uploaded_image(global_content: GlobalContent, uploaded: dict[str, ob
     global_content.hero_original_filename = uploaded["original_filename"]  # type: ignore[assignment]
 
 
-@router.get("", response_model=GlobalContentRead)
+@router.get("", response_model=GlobalContentAdminRead)
 async def get_global_content(
     _: Annotated[AdminUser, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
-) -> GlobalContentRead:
+) -> GlobalContentAdminRead:
     global_content = await _get_or_create_global_content(session)
-    return _to_global_content_read(global_content)
+    return _to_global_content_admin_read(global_content)
 
 
-@router.patch("", response_model=GlobalContentRead)
+@router.patch("", response_model=GlobalContentAdminRead)
 async def update_global_content(
     payload: GlobalContentUpdate,
     _: Annotated[AdminUser, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
-) -> GlobalContentRead:
+) -> GlobalContentAdminRead:
     global_content = await _get_or_create_global_content(session)
 
     for field, value in payload.model_dump(exclude_unset=True).items():
@@ -85,10 +85,14 @@ async def update_global_content(
 
     await session.commit()
     await session.refresh(global_content)
-    return _to_global_content_read(global_content)
+    return _to_global_content_admin_read(global_content)
 
 
-@router.post("/hero-image", response_model=GlobalContentRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/hero-image",
+    response_model=GlobalContentAdminRead,
+    status_code=status.HTTP_201_CREATED,
+)
 async def upload_global_content_hero_image(
     _: Annotated[AdminUser, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -96,7 +100,7 @@ async def upload_global_content_hero_image(
     resize_mode: Annotated[str, Form()] = "keep",
     resize_width: Annotated[int | None, Form()] = None,
     resize_height: Annotated[int | None, Form()] = None,
-) -> GlobalContentRead:
+) -> GlobalContentAdminRead:
     global_content = await _get_or_create_global_content(session)
 
     if resize_mode not in {"keep", "resize"}:
@@ -145,14 +149,14 @@ async def upload_global_content_hero_image(
             tiny_thumbnail_storage_path=old_tiny_path,
         )
 
-    return _to_global_content_read(global_content)
+    return _to_global_content_admin_read(global_content)
 
 
-@router.delete("/hero-image", response_model=GlobalContentRead)
+@router.delete("/hero-image", response_model=GlobalContentAdminRead)
 async def delete_global_content_hero_image(
     _: Annotated[AdminUser, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
-) -> GlobalContentRead:
+) -> GlobalContentAdminRead:
     global_content = await _get_or_create_global_content(session)
     previous_paths = (
         global_content.hero_storage_path,
@@ -186,14 +190,14 @@ async def delete_global_content_hero_image(
             tiny_thumbnail_storage_path=old_tiny_path,
         )
 
-    return _to_global_content_read(global_content)
+    return _to_global_content_admin_read(global_content)
 
 
-@router.patch("/hero-image/rotate", response_model=GlobalContentRead)
+@router.patch("/hero-image/rotate", response_model=GlobalContentAdminRead)
 async def rotate_global_content_hero_image(
     _: Annotated[AdminUser, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
-) -> GlobalContentRead:
+) -> GlobalContentAdminRead:
     global_content = await _get_or_create_global_content(session)
     if not global_content.hero_storage_path or not global_content.hero_thumbnail_storage_path:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hero image not found")
@@ -214,4 +218,4 @@ async def rotate_global_content_hero_image(
     _assign_uploaded_image(global_content, asdict(rotated))
     await session.commit()
     await session.refresh(global_content)
-    return _to_global_content_read(global_content)
+    return _to_global_content_admin_read(global_content)

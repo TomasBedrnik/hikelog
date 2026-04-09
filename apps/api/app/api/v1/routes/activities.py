@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Annotated
 
+import anyio
 from fastapi import (
     APIRouter,
     Depends,
@@ -25,6 +26,7 @@ from app.models.activity_audio import ActivityAudio
 from app.models.activity_comment import ActivityComment
 from app.models.activity_photo import ActivityPhoto
 from app.models.admin_user import AdminUser
+from app.models.global_content import GlobalContent
 from app.models.trip import Trip
 from app.schemas.activity import (
     ActivityAdminRead,
@@ -42,6 +44,12 @@ from app.services.image_uploads import (
     create_uploaded_image,
     delete_uploaded_image_files,
     rotate_uploaded_image,
+)
+from app.services.speech_to_text import (
+    SpeechToTextConfigurationError,
+    SpeechToTextTranscriptionError,
+    build_gcs_uri,
+    speech_to_text_service,
 )
 
 router = APIRouter()
@@ -78,6 +86,19 @@ async def _get_activity_or_404(session: AsyncSession, activity_id: int) -> Activ
     if activity is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Activity not found")
     return activity
+
+
+async def _get_or_create_global_content(session: AsyncSession) -> GlobalContent:
+    stmt = select(GlobalContent).order_by(GlobalContent.id.asc())
+    global_content = (await session.scalars(stmt)).first()
+    if global_content is not None:
+        return global_content
+
+    global_content = GlobalContent()
+    session.add(global_content)
+    await session.commit()
+    await session.refresh(global_content)
+    return global_content
 
 
 @router.get("", response_model=list[ActivityAdminRead])
@@ -355,6 +376,53 @@ async def delete_activity_audio(
     await session.delete(audio)
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{activity_id}/audios/{audio_id}/transcribe", response_model=ActivityAudioRead)
+async def transcribe_activity_audio(
+    activity_id: int,
+    audio_id: int,
+    _: Annotated[AdminUser, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> ActivityAudioRead:
+    audio = await session.get(ActivityAudio, audio_id)
+    if audio is None or audio.activity_id != activity_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Activity audio not found"
+        )
+
+    global_content = await _get_or_create_global_content(session)
+    language_code = (
+        (global_content.activity_audio_transcription_language_code or "").strip() or None
+    )
+    model = (global_content.activity_audio_transcription_model or "").strip() or "latest_long"
+    if language_code is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Set activity audio transcription language in global content first.",
+        )
+
+    try:
+        gcs_uri = build_gcs_uri(storage_path=audio.storage_path, audio_url=audio.audio_url)
+        audio.transcription_raw = await anyio.to_thread.run_sync(
+            lambda: speech_to_text_service.transcribe_gcs_uri(
+                gcs_uri=gcs_uri,
+                language_codes=[language_code],
+                model=model,
+                enable_automatic_punctuation=(
+                    global_content.activity_audio_transcription_enable_automatic_punctuation
+                ),
+                profanity_filter=global_content.activity_audio_transcription_profanity_filter,
+            ),
+        )
+    except SpeechToTextConfigurationError as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
+    except SpeechToTextTranscriptionError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+
+    await session.commit()
+    await session.refresh(audio)
+    return ActivityAudioRead.model_validate(audio)
 
 
 @router.delete("/{activity_id}/photos/{photo_id}", status_code=status.HTTP_204_NO_CONTENT)

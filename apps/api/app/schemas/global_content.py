@@ -10,6 +10,14 @@ class GlobalContentUpdate(BaseModel):
     main_headline: str | None = Field(default=None, max_length=300)
     home_content: dict[str, Any] | None = None
     activity_photo_resize_long_side: int | None = Field(default=None, ge=1)
+    activity_audio_transcription_language_code: str | None = Field(
+        default=None, min_length=2, max_length=32
+    )
+    activity_audio_transcription_model: str | None = Field(
+        default=None, min_length=1, max_length=64
+    )
+    activity_audio_transcription_enable_automatic_punctuation: bool | None = None
+    activity_audio_transcription_profanity_filter: bool | None = None
 
 
 class GlobalContentRead(BaseModel):
@@ -32,3 +40,10 @@ class GlobalContentRead(BaseModel):
     hero_original_filename: str | None
     created_at: datetime
     updated_at: datetime
+
+
+class GlobalContentAdminRead(GlobalContentRead):
+    activity_audio_transcription_language_code: str | None = None
+    activity_audio_transcription_model: str
+    activity_audio_transcription_enable_automatic_punctuation: bool
+    activity_audio_transcription_profanity_filter: bool

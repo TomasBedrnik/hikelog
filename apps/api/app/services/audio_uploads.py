@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from uuid import uuid4
 
 from fastapi import HTTPException, UploadFile, status
@@ -33,6 +35,8 @@ SUPPORTED_AUDIO_CONTENT_TYPES = {
     "audio/x-wav": "wav",
     "audio/wave": "wav",
 }
+CONVERTED_AUDIO_CONTENT_TYPE = "audio/flac"
+CONVERTED_AUDIO_EXTENSION = "flac"
 
 
 @dataclass(slots=True)
@@ -48,6 +52,54 @@ def _normalized_extension(filename: str | None) -> str | None:
         return None
     suffix = Path(filename).suffix.lower()
     return suffix or None
+
+
+def _converted_audio_payload(payload: bytes, *, extension: str) -> bytes:
+    with TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+        input_path = temp_path / f"input.{extension}"
+        output_path = temp_path / "output.flac"
+        input_path.write_bytes(payload)
+
+        try:
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-y",
+                    "-i",
+                    str(input_path),
+                    "-ac",
+                    "1",
+                    "-ar",
+                    "16000",
+                    str(output_path),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except FileNotFoundError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Audio conversion is not available on this server.",
+            ) from exc
+        except subprocess.CalledProcessError as exc:
+            detail = (exc.stderr or "").strip()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=detail or "Audio file could not be converted.",
+            ) from exc
+
+        converted = output_path.read_bytes()
+        if not converted:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Audio file could not be converted.",
+            )
+        return converted
 
 
 async def create_uploaded_audio(*, upload: UploadFile, storage_prefix: str) -> UploadedAudioPayload:
@@ -70,31 +122,19 @@ async def create_uploaded_audio(*, upload: UploadFile, storage_prefix: str) -> U
             detail="Unsupported audio file. Use MP3, WAV, M4A, OGG, AAC, FLAC, or WEBM.",
         )
 
-    normalized_content_type = (
-        content_type
-        if content_type.startswith("audio/")
-        else {
-            "aac": "audio/aac",
-            "flac": "audio/flac",
-            "m4a": "audio/mp4",
-            "mp3": "audio/mpeg",
-            "ogg": "audio/ogg",
-            "wav": "audio/wav",
-            "webm": "audio/webm",
-        }[extension]
-    )
+    converted_payload = _converted_audio_payload(payload, extension=extension)
 
-    storage_path = f"{storage_prefix}/{uuid4().hex}.{extension}"
+    storage_path = f"{storage_prefix}/{uuid4().hex}.{CONVERTED_AUDIO_EXTENSION}"
     audio_url = firebase_storage.upload_bytes(
         path=storage_path,
-        data=payload,
-        content_type=normalized_content_type,
+        data=converted_payload,
+        content_type=CONVERTED_AUDIO_CONTENT_TYPE,
         download_token=str(uuid4()),
     )
     return UploadedAudioPayload(
         storage_path=storage_path,
         audio_url=audio_url,
-        content_type=normalized_content_type,
+        content_type=CONVERTED_AUDIO_CONTENT_TYPE,
         original_filename=upload.filename,
     )
 

@@ -20,6 +20,8 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 For Firebase Storage, flatten the service account JSON into `apps/api/.env`.
 Keep `FIREBASE_PRIVATE_KEY` quoted and preserve newlines as `\n`.
+For Speech-to-Text V2, prefer the flattened `GOOGLE_CLOUD_*` variables in `.env`.
+If you would rather keep the original JSON file, leave `GOOGLE_CLOUD_*` empty and set `GOOGLE_APPLICATION_CREDENTIALS` instead.
 Set `ADMIN_SESSION_SECRET` in production so admin logins use a stable long-lived app token instead of falling back to the Firebase private key.
 
 ## Ngrok

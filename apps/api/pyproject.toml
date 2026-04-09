@@ -13,6 +13,7 @@ dependencies = [
     "PyMySQL>=1.1",
     "psycopg[binary]>=3.1",
     "google-auth>=2.38",
+    "google-cloud-speech>=2.35",
     "google-cloud-storage>=2.18",
     "requests>=2.31",
     "email-validator>=2.1",

@@ -7,6 +7,7 @@ import {
   ActivityAudioRead,
   ActivityRead,
   deleteActivityAudio,
+  transcribeActivityAudio,
   uploadActivityAudios,
 } from "@/lib/activities";
 import { useI18n } from "@/components/i18n-provider";
@@ -22,7 +23,9 @@ export function ActivityAudioManager({
   const router = useRouter();
   const { dict, locale } = useI18n();
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"uploading" | `delete-${number}` | null>(null);
+  const [busy, setBusy] = useState<
+    "uploading" | `delete-${number}` | `transcribe-${number}` | null
+  >(null);
   const [files, setFiles] = useState<File[]>([]);
   const [inputKey, setInputKey] = useState(0);
 
@@ -142,6 +145,35 @@ export function ActivityAudioManager({
     }
   };
 
+  const handleTranscribe = async (audio: ActivityAudioRead) => {
+    if (!activity?.id) {
+      return;
+    }
+
+    const token = requireToken();
+    if (!token) {
+      return;
+    }
+
+    setBusy(`transcribe-${audio.id}`);
+    setError(null);
+    try {
+      const transcribed = await transcribeActivityAudio(token, activity.id, audio.id);
+      startTransition(() => {
+        onAudiosChange(
+          audios.map((item) => (item.id === transcribed.id ? transcribed : item)),
+        );
+      });
+    } catch (e: unknown) {
+      if (handleAuthError(e)) {
+        return;
+      }
+      setError(e instanceof Error ? e.message : dict.common.unknownError);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <section className="rounded-[1.5rem] border border-stone-200 bg-stone-50/70 p-5">
       <div className="flex flex-col gap-2">
@@ -215,19 +247,45 @@ export function ActivityAudioManager({
                       </audio>
                     </div>
 
-                    <button
-                      className="rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={busy !== null}
-                      onClick={() => {
-                        void handleDelete(audio);
-                      }}
-                      type="button"
-                    >
-                      {busy === `delete-${audio.id}`
-                        ? dict.activityAudios.deleting
-                        : dict.activityAudios.delete}
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={busy !== null}
+                        onClick={() => {
+                          void handleTranscribe(audio);
+                        }}
+                        type="button"
+                      >
+                        {busy === `transcribe-${audio.id}`
+                          ? dict.activityAudios.transcribing
+                          : dict.activityAudios.transcribe}
+                      </button>
+                      <button
+                        className="rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={busy !== null}
+                        onClick={() => {
+                          void handleDelete(audio);
+                        }}
+                        type="button"
+                      >
+                        {busy === `delete-${audio.id}`
+                          ? dict.activityAudios.deleting
+                          : dict.activityAudios.delete}
+                      </button>
+                    </div>
                   </div>
+
+                  <label className="mt-4 block">
+                    <span className="text-sm font-medium text-stone-700">
+                      {dict.activityAudios.transcriptionRaw}
+                    </span>
+                    <textarea
+                      className="mt-2 min-h-32 w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-800 outline-none"
+                      placeholder={dict.activityAudios.transcriptionEmpty}
+                      readOnly
+                      value={audio.transcription_raw ?? ""}
+                    />
+                  </label>
                 </article>
               ))}
             </div>

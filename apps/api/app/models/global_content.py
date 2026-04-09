@@ -32,6 +32,18 @@ class GlobalContent(Base):
     activity_photo_resize_long_side: Mapped[int] = mapped_column(
         Integer, nullable=False, default=1920
     )
+    activity_audio_transcription_language_code: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    activity_audio_transcription_model: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="latest_long"
+    )
+    activity_audio_transcription_enable_automatic_punctuation: Mapped[bool] = mapped_column(
+        nullable=False, default=True
+    )
+    activity_audio_transcription_profanity_filter: Mapped[bool] = mapped_column(
+        nullable=False, default=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

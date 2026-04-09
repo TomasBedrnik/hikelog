@@ -20,12 +20,17 @@ import { TripContentEditor } from "@/components/trip-content-editor";
 
 const DEFAULT_LONG_SIDE = "1920";
 const DEFAULT_ACTIVITY_PHOTO_RESIZE_LONG_SIDE = "1920";
+const DEFAULT_AUDIO_TRANSCRIPTION_MODEL = "latest_long";
 const EMPTY_BLOCKS: PartialBlock[] = [{ type: "paragraph" }];
 
 function toUpdatePayload(
   headline: string,
   blocks: PartialBlock[],
   activityPhotoResizeLongSide: number,
+  audioTranscriptionLanguageCode: string,
+  audioTranscriptionModel: string,
+  audioTranscriptionEnableAutomaticPunctuation: boolean,
+  audioTranscriptionProfanityFilter: boolean,
 ) {
   return {
     main_headline: headline.trim() || null,
@@ -34,6 +39,12 @@ function toUpdatePayload(
       blocks,
     },
     activity_photo_resize_long_side: activityPhotoResizeLongSide,
+    activity_audio_transcription_language_code: audioTranscriptionLanguageCode.trim() || null,
+    activity_audio_transcription_model:
+      audioTranscriptionModel.trim() || DEFAULT_AUDIO_TRANSCRIPTION_MODEL,
+    activity_audio_transcription_enable_automatic_punctuation:
+      audioTranscriptionEnableAutomaticPunctuation,
+    activity_audio_transcription_profanity_filter: audioTranscriptionProfanityFilter,
   };
 }
 
@@ -51,6 +62,16 @@ export function AdminGlobalContentPage() {
   const [activityPhotoResizeLongSide, setActivityPhotoResizeLongSide] = useState(
     DEFAULT_ACTIVITY_PHOTO_RESIZE_LONG_SIDE,
   );
+  const [audioTranscriptionLanguageCode, setAudioTranscriptionLanguageCode] = useState("");
+  const [audioTranscriptionModel, setAudioTranscriptionModel] = useState(
+    DEFAULT_AUDIO_TRANSCRIPTION_MODEL,
+  );
+  const [
+    audioTranscriptionEnableAutomaticPunctuation,
+    setAudioTranscriptionEnableAutomaticPunctuation,
+  ] = useState(true);
+  const [audioTranscriptionProfanityFilter, setAudioTranscriptionProfanityFilter] =
+    useState(false);
   const [inputKey, setInputKey] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
@@ -67,6 +88,18 @@ export function AdminGlobalContentPage() {
         setHeadline(loaded.main_headline ?? "");
         setContentBlocks(getTripContentBlocks(loaded.home_content));
         setActivityPhotoResizeLongSide(String(loaded.activity_photo_resize_long_side));
+        setAudioTranscriptionLanguageCode(
+          loaded.activity_audio_transcription_language_code ?? "",
+        );
+        setAudioTranscriptionModel(
+          loaded.activity_audio_transcription_model || DEFAULT_AUDIO_TRANSCRIPTION_MODEL,
+        );
+        setAudioTranscriptionEnableAutomaticPunctuation(
+          loaded.activity_audio_transcription_enable_automatic_punctuation,
+        );
+        setAudioTranscriptionProfanityFilter(
+          loaded.activity_audio_transcription_profanity_filter,
+        );
       })
       .catch((e: unknown) => {
         if (e instanceof Error && e.message === "AUTH_REQUIRED") {
@@ -116,11 +149,31 @@ export function AdminGlobalContentPage() {
     try {
       const updated = await updateGlobalContent(
         token,
-        toUpdatePayload(headline, contentBlocks, parsedActivityPhotoResizeLongSide),
+        toUpdatePayload(
+          headline,
+          contentBlocks,
+          parsedActivityPhotoResizeLongSide,
+          audioTranscriptionLanguageCode,
+          audioTranscriptionModel,
+          audioTranscriptionEnableAutomaticPunctuation,
+          audioTranscriptionProfanityFilter,
+        ),
       );
       startTransition(() => {
         setContent(updated);
         setActivityPhotoResizeLongSide(String(updated.activity_photo_resize_long_side));
+        setAudioTranscriptionLanguageCode(
+          updated.activity_audio_transcription_language_code ?? "",
+        );
+        setAudioTranscriptionModel(
+          updated.activity_audio_transcription_model || DEFAULT_AUDIO_TRANSCRIPTION_MODEL,
+        );
+        setAudioTranscriptionEnableAutomaticPunctuation(
+          updated.activity_audio_transcription_enable_automatic_punctuation,
+        );
+        setAudioTranscriptionProfanityFilter(
+          updated.activity_audio_transcription_profanity_filter,
+        );
       });
     } catch (e: unknown) {
       if (handleAuthError(e)) {
@@ -283,6 +336,102 @@ export function AdminGlobalContentPage() {
                 <p className="mt-2 text-xs text-stone-500">
                   {dict.globalContent.activityPhotoResizeLongSideHelp}
                 </p>
+              </label>
+            </div>
+
+            <div>
+              <button
+                className="rounded-full bg-stone-900 px-5 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={busy !== null}
+                onClick={saveContent}
+                type="button"
+              >
+                {busy === "saving" ? dict.globalContent.saving : dict.globalContent.save}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-6 border-t border-stone-200 pt-6">
+          <h2 className="text-lg font-semibold text-stone-900">
+            {dict.globalContent.audioTranscriptionSection}
+          </h2>
+          <p className="mt-2 text-sm text-stone-500">
+            {dict.globalContent.audioTranscriptionDescription}
+          </p>
+
+          <div className="mt-5 grid gap-5 rounded-[1.5rem] border border-stone-200 bg-stone-50/70 p-5">
+            <label className="block">
+              <span className="text-sm font-medium text-stone-700">
+                {dict.globalContent.audioTranscriptionLanguageCode}
+              </span>
+              <input
+                className="mt-2 w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-emerald-600"
+                onChange={(event) => {
+                  setAudioTranscriptionLanguageCode(event.target.value);
+                }}
+                placeholder={dict.globalContent.audioTranscriptionLanguageCodePlaceholder}
+                value={audioTranscriptionLanguageCode}
+              />
+              <p className="mt-2 text-xs text-stone-500">
+                {dict.globalContent.audioTranscriptionLanguageCodeHelp}
+              </p>
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-medium text-stone-700">
+                {dict.globalContent.audioTranscriptionModel}
+              </span>
+              <input
+                className="mt-2 w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-emerald-600"
+                onChange={(event) => {
+                  setAudioTranscriptionModel(event.target.value);
+                }}
+                placeholder={dict.globalContent.audioTranscriptionModelPlaceholder}
+                value={audioTranscriptionModel}
+              />
+              <p className="mt-2 text-xs text-stone-500">
+                {dict.globalContent.audioTranscriptionModelHelp}
+              </p>
+            </label>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex items-start gap-3 rounded-2xl border border-stone-200 bg-white p-4 text-sm text-stone-700">
+                <input
+                  checked={audioTranscriptionEnableAutomaticPunctuation}
+                  className="mt-0.5 size-4 accent-emerald-700"
+                  onChange={(event) => {
+                    setAudioTranscriptionEnableAutomaticPunctuation(event.target.checked);
+                  }}
+                  type="checkbox"
+                />
+                <span>
+                  <span className="block font-medium text-stone-900">
+                    {dict.globalContent.audioTranscriptionAutomaticPunctuation}
+                  </span>
+                  <span className="mt-1 block text-xs text-stone-500">
+                    {dict.globalContent.audioTranscriptionAutomaticPunctuationHelp}
+                  </span>
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 rounded-2xl border border-stone-200 bg-white p-4 text-sm text-stone-700">
+                <input
+                  checked={audioTranscriptionProfanityFilter}
+                  className="mt-0.5 size-4 accent-emerald-700"
+                  onChange={(event) => {
+                    setAudioTranscriptionProfanityFilter(event.target.checked);
+                  }}
+                  type="checkbox"
+                />
+                <span>
+                  <span className="block font-medium text-stone-900">
+                    {dict.globalContent.audioTranscriptionProfanityFilter}
+                  </span>
+                  <span className="mt-1 block text-xs text-stone-500">
+                    {dict.globalContent.audioTranscriptionProfanityFilterHelp}
+                  </span>
+                </span>
               </label>
             </div>
 

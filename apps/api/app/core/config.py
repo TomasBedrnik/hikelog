@@ -13,6 +13,19 @@ load_dotenv(BASE_DIR / ".env", override=False)
 
 class Settings(BaseModel):
     google_oauth_client_id: str = Field(..., alias="GOOGLE_OAUTH_CLIENT_ID")
+    google_cloud_project_id: str | None = Field(default=None, alias="GOOGLE_CLOUD_PROJECT_ID")
+    google_cloud_private_key_id: str | None = Field(
+        default=None, alias="GOOGLE_CLOUD_PRIVATE_KEY_ID"
+    )
+    google_cloud_private_key: str | None = Field(default=None, alias="GOOGLE_CLOUD_PRIVATE_KEY")
+    google_cloud_client_email: str | None = Field(default=None, alias="GOOGLE_CLOUD_CLIENT_EMAIL")
+    google_cloud_client_id: str | None = Field(default=None, alias="GOOGLE_CLOUD_CLIENT_ID")
+    google_cloud_client_x509_cert_url: str | None = Field(
+        default=None, alias="GOOGLE_CLOUD_CLIENT_X509_CERT_URL"
+    )
+    google_application_credentials: str | None = Field(
+        default=None, alias="GOOGLE_APPLICATION_CREDENTIALS"
+    )
     admin_session_secret: str | None = Field(default=None, alias="ADMIN_SESSION_SECRET")
     admin_session_days: int = Field(default=30, alias="ADMIN_SESSION_DAYS")
     firebase_project_id: str = Field(..., alias="FIREBASE_PROJECT_ID")
@@ -29,9 +42,16 @@ class Settings(BaseModel):
     strava_admin_redirect_url: str | None = Field(default=None, alias="STRAVA_ADMIN_REDIRECT_URL")
     webpushr_api_key: str | None = Field(default=None, alias="WEBPUSHR_API_KEY")
     webpushr_auth_token: str | None = Field(default=None, alias="WEBPUSHR_AUTH_TOKEN")
+    speech_to_text_location: str = Field(default="global", alias="SPEECH_TO_TEXT_LOCATION")
 
     def firebase_private_key_value(self) -> str:
         return self.firebase_private_key.replace("\\n", "\n")
+
+    def google_cloud_project_id_value(self) -> str:
+        return self.google_cloud_project_id or self.firebase_project_id
+
+    def google_cloud_private_key_value(self) -> str:
+        return (self.google_cloud_private_key or self.firebase_private_key).replace("\\n", "\n")
 
     def admin_session_secret_value(self) -> str:
         if self.admin_session_secret:
