@@ -1,5 +1,6 @@
 from app.schemas.activity import ActivityCreate, ActivityRead, ActivitySummaryRead, ActivityUpdate
 from app.schemas.activity_photo import ActivityPhotoOrderUpdate, ActivityPhotoRead
+from app.schemas.admin_auth import AdminLoginRequest, AdminLoginResponse
 from app.schemas.admin_user import AdminUserCreate, AdminUserRead
 from app.schemas.gallery_image import GalleryImageRead
 from app.schemas.global_content import GlobalContentRead, GlobalContentUpdate
@@ -21,6 +22,8 @@ __all__ = [
     "GalleryImageRead",
     "GlobalContentRead",
     "GlobalContentUpdate",
+    "AdminLoginRequest",
+    "AdminLoginResponse",
     "AdminUserCreate",
     "AdminUserRead",
 ]

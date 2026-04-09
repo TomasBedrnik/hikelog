@@ -13,6 +13,8 @@ load_dotenv(BASE_DIR / ".env", override=False)
 
 class Settings(BaseModel):
     google_oauth_client_id: str = Field(..., alias="GOOGLE_OAUTH_CLIENT_ID")
+    admin_session_secret: str | None = Field(default=None, alias="ADMIN_SESSION_SECRET")
+    admin_session_days: int = Field(default=30, alias="ADMIN_SESSION_DAYS")
     firebase_project_id: str = Field(..., alias="FIREBASE_PROJECT_ID")
     firebase_private_key_id: str = Field(..., alias="FIREBASE_PRIVATE_KEY_ID")
     firebase_private_key: str = Field(..., alias="FIREBASE_PRIVATE_KEY")
@@ -30,6 +32,11 @@ class Settings(BaseModel):
 
     def firebase_private_key_value(self) -> str:
         return self.firebase_private_key.replace("\\n", "\n")
+
+    def admin_session_secret_value(self) -> str:
+        if self.admin_session_secret:
+            return self.admin_session_secret
+        return f"{self.google_oauth_client_id}:{self.firebase_private_key}"
 
     def cors_allowed_origins(self) -> list[str]:
         raw = self.cors_allowed_origins_raw

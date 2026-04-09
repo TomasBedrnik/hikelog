@@ -10,6 +10,7 @@ from google.oauth2 import id_token as google_id_token
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.session import verify_admin_session_token
 from app.core.config import settings
 from app.db.session import get_session
 from app.models.admin_user import AdminUser
@@ -17,18 +18,7 @@ from app.models.admin_user import AdminUser
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
-async def require_admin(
-    creds: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
-    session: Annotated[AsyncSession, Depends(get_session)],
-) -> AdminUser:
-    if creds is None or creds.scheme.lower() != "bearer":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing bearer token",
-        )
-
-    token = creds.credentials
-
+def verify_google_token(token: str) -> tuple[str, str]:
     try:
         claims = google_id_token.verify_oauth2_token(
             token,
@@ -51,6 +41,12 @@ async def require_admin(
             detail="Google identity not verified",
         )
 
+    return email.strip().lower(), str(sub)
+
+
+async def get_admin_by_identity(
+    *, session: AsyncSession, email: str, sub: str
+) -> AdminUser:
     email_norm = email.strip().lower()
 
     stmt = select(AdminUser).where(AdminUser.email == email_norm)
@@ -67,6 +63,11 @@ async def require_admin(
     if admin.google_sub is None:
         admin.google_sub = str(sub)
         should_commit = True
+    elif admin.google_sub != str(sub):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Admin identity changed",
+        )
 
     admin.last_login_at = datetime.now(timezone.utc)
     should_commit = True
@@ -76,3 +77,25 @@ async def require_admin(
         await session.refresh(admin)
 
     return admin
+
+
+async def require_admin(
+    creds: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> AdminUser:
+    if creds is None or creds.scheme.lower() != "bearer":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing bearer token",
+        )
+
+    token = creds.credentials
+
+    try:
+        session_claims = verify_admin_session_token(token)
+    except ValueError:
+        email, sub = verify_google_token(token)
+    else:
+        email, sub = session_claims.email, session_claims.sub
+
+    return await get_admin_by_identity(session=session, email=email, sub=sub)

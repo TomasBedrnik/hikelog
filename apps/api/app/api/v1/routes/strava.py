@@ -124,14 +124,21 @@ def _to_activity_read(activity: Activity) -> ActivityRead:
 def _apply_token_payload(
     connection: StravaConnection, token_payload: StravaTokenPayload, scopes: list[str]
 ) -> None:
-    connection.access_token = token_payload.access_token
-    connection.refresh_token = token_payload.refresh_token
+    if token_payload.access_token:
+        connection.access_token = token_payload.access_token
+    if token_payload.refresh_token:
+        connection.refresh_token = token_payload.refresh_token
     connection.expires_at = token_payload.expires_at
-    connection.athlete_id = token_payload.athlete_id
-    connection.username = token_payload.username
-    connection.firstname = token_payload.firstname
-    connection.lastname = token_payload.lastname
-    connection.profile_medium = token_payload.profile_medium
+    if token_payload.athlete_id is not None:
+        connection.athlete_id = token_payload.athlete_id
+    if token_payload.username is not None:
+        connection.username = token_payload.username
+    if token_payload.firstname is not None:
+        connection.firstname = token_payload.firstname
+    if token_payload.lastname is not None:
+        connection.lastname = token_payload.lastname
+    if token_payload.profile_medium is not None:
+        connection.profile_medium = token_payload.profile_medium
     connection.scopes = ",".join(scopes)
     connection.oauth_state = None
     connection.oauth_state_created_at = None

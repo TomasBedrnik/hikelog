@@ -4,7 +4,7 @@ import { GoogleLogin } from "@react-oauth/google";
 import { useRouter } from "next/navigation";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { useI18n } from "@/components/i18n-provider";
-import { setIdToken } from "@/lib/auth";
+import { exchangeGoogleIdToken, setIdToken } from "@/lib/auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,11 +20,16 @@ export default function LoginPage() {
 
       <div className="mt-6">
         <GoogleLogin
-          onSuccess={(cred) => {
+          onSuccess={async (cred) => {
             const token = cred.credential;
             if (!token) return;
-            setIdToken(token);
-            router.push("/admin");
+            try {
+              const accessToken = await exchangeGoogleIdToken(token);
+              setIdToken(accessToken);
+              router.push("/admin");
+            } catch (error: unknown) {
+              alert(error instanceof Error ? error.message : dict.login.googleError);
+            }
           }}
           onError={() => {
             alert(dict.login.googleError);

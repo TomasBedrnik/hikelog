@@ -24,8 +24,8 @@ class StravaServiceError(RuntimeError):
 
 @dataclass
 class StravaTokenPayload:
-    access_token: str
-    refresh_token: str
+    access_token: str | None
+    refresh_token: str | None
     expires_at: datetime
     athlete_id: int | None
     username: str | None
@@ -151,8 +151,8 @@ def _parse_token_response(response: requests.Response) -> StravaTokenPayload:
         raise StravaServiceError("Strava token response is missing expires_at", status_code=502)
 
     return StravaTokenPayload(
-        access_token=str(payload.get("access_token") or ""),
-        refresh_token=str(payload.get("refresh_token") or ""),
+        access_token=_str_or_none(payload.get("access_token")),
+        refresh_token=_str_or_none(payload.get("refresh_token")),
         expires_at=datetime.fromtimestamp(expires_at_raw, tz=timezone.utc),
         athlete_id=_int_or_none(athlete.get("id")),
         username=_str_or_none(athlete.get("username")),

@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.routes.activities import router as activities_router
+from app.api.v1.routes.admin_auth import router as admin_auth_router
 from app.api.v1.routes.admin_users import router as admin_users_router
 from app.api.v1.routes.gallery import router as gallery_router
 from app.api.v1.routes.global_content import router as global_content_router
@@ -20,6 +21,7 @@ router.include_router(
     public_global_content_router, prefix="/public/global-content", tags=["public"]
 )
 router.include_router(public_trips_router, prefix="/public/trips", tags=["public"])
+router.include_router(admin_auth_router, prefix="/admin-auth", tags=["admin-auth"])
 router.include_router(admin_users_router, prefix="/admin-users", tags=["admin"])
 router.include_router(activities_router, prefix="/activities", tags=["activities"])
 router.include_router(gallery_router, prefix="/gallery", tags=["gallery"])
