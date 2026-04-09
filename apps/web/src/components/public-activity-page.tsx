@@ -116,16 +116,20 @@ export function PublicActivityPage({
       value: activity.total_elevation_gain?.toLocaleString(locale) ?? dict.publicSite.metaEmpty,
     },
   ];
+  const hasPhotos = photoItems.length > 0;
   const desktopGridClassName =
-    photoItems.length > 0
+    hasPhotos
       ? "lg:grid-cols-[26rem_minmax(0,1fr)] lg:grid-rows-[11rem_minmax(0,1fr)]"
       : "lg:grid-cols-[26rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]";
+  const sidebarClassName = hasPhotos
+    ? "order-2 w-full min-w-0 bg-white/95 px-5 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur lg:order-1 lg:row-span-2 lg:min-h-0 lg:overflow-auto lg:border-r lg:border-stone-200"
+    : "order-2 w-full min-w-0 bg-white/95 px-5 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur lg:order-1 lg:min-h-0 lg:overflow-auto lg:border-r lg:border-stone-200";
 
   return (
     <main className="min-h-screen w-full overflow-x-hidden bg-stone-200 lg:h-screen lg:overflow-hidden">
       <div className={`grid w-full min-w-0 gap-0 lg:h-full ${desktopGridClassName}`}>
-        <section className="order-1 w-full min-w-0 overflow-hidden border-b border-stone-200 bg-white/90 px-4 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur lg:order-2 lg:h-[11rem] lg:border-b lg:border-l">
-          {photoItems.length > 0 ? (
+        {hasPhotos ? (
+          <section className="order-1 w-full min-w-0 overflow-hidden border-b border-stone-200 bg-white/90 px-4 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur lg:order-2 lg:h-[11rem] lg:border-b lg:border-l">
             <ActivityPhotoGallery
               items={photoItems}
               layout="strip"
@@ -133,10 +137,10 @@ export function PublicActivityPage({
                 setSelectedPhotoIndex(index);
               }}
             />
-          ) : null}
-        </section>
+          </section>
+        ) : null}
 
-        <section className="order-2 w-full min-w-0 bg-white/95 px-5 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur lg:order-1 lg:row-span-2 lg:min-h-0 lg:overflow-auto lg:border-r lg:border-stone-200">
+        <section className={sidebarClassName}>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950">
             {activity.name}
           </h1>
