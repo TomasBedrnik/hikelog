@@ -5,6 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.activity_audio import ActivityAudioRead
 from app.schemas.activity_photo import ActivityPhotoRead
 from app.schemas.comment import CommentRead
 
@@ -59,6 +60,10 @@ class ActivityRead(ActivityBase):
     trip_name: str | None = None
     comments: list[CommentRead] = Field(default_factory=list)
     photos: list[ActivityPhotoRead] = Field(default_factory=list)
+
+
+class ActivityAdminRead(ActivityRead):
+    audios: list[ActivityAudioRead] = Field(default_factory=list)
 
 
 class ActivitySummaryRead(BaseModel):

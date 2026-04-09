@@ -21,13 +21,22 @@ from sqlalchemy.orm import selectinload
 from app.auth.admin import require_admin
 from app.db.session import get_session
 from app.models.activity import Activity
+from app.models.activity_audio import ActivityAudio
 from app.models.activity_comment import ActivityComment
 from app.models.activity_photo import ActivityPhoto
 from app.models.admin_user import AdminUser
 from app.models.trip import Trip
-from app.schemas.activity import ActivityCreate, ActivityListItemRead, ActivityRead, ActivityUpdate
+from app.schemas.activity import (
+    ActivityAdminRead,
+    ActivityCreate,
+    ActivityListItemRead,
+    ActivityRead,
+    ActivityUpdate,
+)
+from app.schemas.activity_audio import ActivityAudioRead
 from app.schemas.activity_photo import ActivityPhotoOrderUpdate, ActivityPhotoRead
 from app.schemas.comment import CommentRead
+from app.services.audio_uploads import create_uploaded_audio, delete_uploaded_audio_file
 from app.services.gpx_polylines import build_polylines_from_gpx
 from app.services.image_uploads import (
     create_uploaded_image,
@@ -38,10 +47,10 @@ from app.services.image_uploads import (
 router = APIRouter()
 
 
-def _to_activity_read(activity: Activity) -> ActivityRead:
-    return ActivityRead.model_validate(
+def _to_activity_admin_read(activity: Activity) -> ActivityAdminRead:
+    return ActivityAdminRead.model_validate(
         {
-            **ActivityRead.model_validate(activity).model_dump(),
+            **ActivityAdminRead.model_validate(activity).model_dump(),
             "trip_name": activity.trip.name if activity.trip else None,
         }
     )
@@ -60,6 +69,7 @@ async def _get_activity_or_404(session: AsyncSession, activity_id: int) -> Activ
         .options(
             selectinload(Activity.trip),
             selectinload(Activity.comments),
+            selectinload(Activity.audios),
             selectinload(Activity.photos),
         )
         .where(Activity.id == activity_id)
@@ -70,7 +80,7 @@ async def _get_activity_or_404(session: AsyncSession, activity_id: int) -> Activ
     return activity
 
 
-@router.get("", response_model=list[ActivityRead])
+@router.get("", response_model=list[ActivityAdminRead])
 async def list_activities(
     _: Annotated[AdminUser, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -81,6 +91,7 @@ async def list_activities(
         .options(
             selectinload(Activity.trip),
             selectinload(Activity.comments),
+            selectinload(Activity.audios),
             selectinload(Activity.photos),
         )
         .order_by(
@@ -92,7 +103,7 @@ async def list_activities(
     if trip_id is not None:
         stmt = stmt.where(Activity.trip_id == trip_id)
     activities = (await session.scalars(stmt)).all()
-    return [_to_activity_read(activity) for activity in activities]
+    return [_to_activity_admin_read(activity) for activity in activities]
 
 
 @router.get("/summaries", response_model=list[ActivityListItemRead])
@@ -114,7 +125,7 @@ async def list_activity_summaries(
     return [ActivityListItemRead.model_validate(activity) for activity in activities]
 
 
-@router.post("", response_model=ActivityRead, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ActivityAdminRead, status_code=status.HTTP_201_CREATED)
 async def create_activity(
     payload: ActivityCreate,
     _: Annotated[AdminUser, Depends(require_admin)],
@@ -125,20 +136,20 @@ async def create_activity(
     session.add(activity)
     await session.commit()
     activity = await _get_activity_or_404(session, activity.id)
-    return _to_activity_read(activity)
+    return _to_activity_admin_read(activity)
 
 
-@router.get("/{activity_id}", response_model=ActivityRead)
+@router.get("/{activity_id}", response_model=ActivityAdminRead)
 async def get_activity(
     activity_id: int,
     _: Annotated[AdminUser, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> ActivityRead:
     activity = await _get_activity_or_404(session, activity_id)
-    return _to_activity_read(activity)
+    return _to_activity_admin_read(activity)
 
 
-@router.patch("/{activity_id}", response_model=ActivityRead)
+@router.patch("/{activity_id}", response_model=ActivityAdminRead)
 async def update_activity(
     activity_id: int,
     payload: ActivityUpdate,
@@ -156,10 +167,10 @@ async def update_activity(
 
     await session.commit()
     activity = await _get_activity_or_404(session, activity_id)
-    return _to_activity_read(activity)
+    return _to_activity_admin_read(activity)
 
 
-@router.post("/{activity_id}/gpx", response_model=ActivityRead)
+@router.post("/{activity_id}/gpx", response_model=ActivityAdminRead)
 async def upload_activity_gpx(
     activity_id: int,
     _: Annotated[AdminUser, Depends(require_admin)],
@@ -180,7 +191,7 @@ async def upload_activity_gpx(
 
     await session.commit()
     activity = await _get_activity_or_404(session, activity_id)
-    return _to_activity_read(activity)
+    return _to_activity_admin_read(activity)
 
 
 @router.delete("/{activity_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -204,6 +215,10 @@ def _delete_activity_photo_files(photo: ActivityPhoto) -> None:
         thumbnail_storage_path=photo.thumbnail_storage_path,
         tiny_thumbnail_storage_path=photo.tiny_thumbnail_storage_path,
     )
+
+
+def _delete_activity_audio_file(audio: ActivityAudio) -> None:
+    delete_uploaded_audio_file(audio.storage_path)
 
 
 @router.post(
@@ -273,6 +288,73 @@ async def upload_activity_photos(
         await session.refresh(photo)
 
     return [ActivityPhotoRead.model_validate(photo) for photo in created_photos]
+
+
+@router.post(
+    "/{activity_id}/audios",
+    response_model=list[ActivityAudioRead],
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_activity_audios(
+    activity_id: int,
+    _: Annotated[AdminUser, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+    files: Annotated[list[UploadFile], File(...)],
+) -> list[ActivityAudioRead]:
+    await _get_activity_or_404(session, activity_id)
+
+    if not files:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="No files were uploaded"
+        )
+
+    created_audios: list[ActivityAudio] = []
+    try:
+        for file in files:
+            uploaded = await create_uploaded_audio(
+                upload=file,
+                storage_prefix=f"activities/{activity_id}/audio",
+            )
+            audio = ActivityAudio(
+                activity_id=activity_id,
+                storage_path=uploaded.storage_path,
+                audio_url=uploaded.audio_url,
+                content_type=uploaded.content_type,
+                original_filename=uploaded.original_filename,
+            )
+            session.add(audio)
+            created_audios.append(audio)
+
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        for audio in created_audios:
+            _delete_activity_audio_file(audio)
+        raise
+
+    for audio in created_audios:
+        await session.refresh(audio)
+
+    return [ActivityAudioRead.model_validate(audio) for audio in created_audios]
+
+
+@router.delete("/{activity_id}/audios/{audio_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_activity_audio(
+    activity_id: int,
+    audio_id: int,
+    _: Annotated[AdminUser, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> Response:
+    audio = await session.get(ActivityAudio, audio_id)
+    if audio is None or audio.activity_id != activity_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Activity audio not found"
+        )
+
+    _delete_activity_audio_file(audio)
+    await session.delete(audio)
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.delete("/{activity_id}/photos/{photo_id}", status_code=status.HTTP_204_NO_CONTENT)

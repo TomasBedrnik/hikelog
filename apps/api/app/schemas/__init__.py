@@ -1,4 +1,11 @@
-from app.schemas.activity import ActivityCreate, ActivityRead, ActivitySummaryRead, ActivityUpdate
+from app.schemas.activity import (
+    ActivityAdminRead,
+    ActivityCreate,
+    ActivityRead,
+    ActivitySummaryRead,
+    ActivityUpdate,
+)
+from app.schemas.activity_audio import ActivityAudioRead
 from app.schemas.activity_photo import ActivityPhotoOrderUpdate, ActivityPhotoRead
 from app.schemas.admin_auth import AdminLoginRequest, AdminLoginResponse
 from app.schemas.admin_user import AdminUserCreate, AdminUserRead
@@ -11,6 +18,8 @@ __all__ = [
     "ActivityPhotoOrderUpdate",
     "ActivityPhotoRead",
     "ActivityCreate",
+    "ActivityAdminRead",
+    "ActivityAudioRead",
     "ActivityRead",
     "ActivitySummaryRead",
     "ActivityUpdate",

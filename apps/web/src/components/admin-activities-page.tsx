@@ -4,6 +4,7 @@ import { PartialBlock } from "@blocknote/core";
 import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearIdToken, getIdToken } from "@/lib/auth";
+import { ActivityAudioManager } from "@/components/activity-audio-manager";
 import { ActivityPhotoManager } from "@/components/activity-photo-manager";
 import { CommentsSection } from "@/components/comments-section";
 import { TripContentEditor } from "@/components/trip-content-editor";
@@ -295,6 +296,12 @@ export function AdminActivitiesPage() {
   const replaceActivityPhotos = (activityId: number, photos: ActivityPhotoRead[]) => {
     setSelectedActivity((current) =>
       current?.id === activityId ? { ...current, photos } : current,
+    );
+  };
+
+  const replaceActivityAudios = (activityId: number, audios: ActivityRead["audios"]) => {
+    setSelectedActivity((current) =>
+      current?.id === activityId ? { ...current, audios } : current,
     );
   };
 
@@ -894,6 +901,16 @@ export function AdminActivitiesPage() {
                       />
                     </label>
                   </div>
+
+                  <ActivityAudioManager
+                    activity={selectedActivity}
+                    onAudiosChange={(audios) => {
+                      if (!selectedActivity) {
+                        return;
+                      }
+                      replaceActivityAudios(selectedActivity.id, audios);
+                    }}
+                  />
 
                   <ActivityPhotoManager
                     activity={selectedActivity}

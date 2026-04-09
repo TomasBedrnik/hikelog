@@ -354,6 +354,23 @@
     "copied": "Copied",
     "rotate": "Rotate"
   },
+  "activityAudios": {
+    "title": "Activity Audio",
+    "description": "Upload audio recordings for this activity, listen to them here, and remove anything you do not want to keep.",
+    "empty": "No audio files uploaded for this activity yet.",
+    "saveActivityFirst": "Save the activity first before uploading audio.",
+    "files": "Audio files",
+    "filesHelp": "Supported formats: MP3, WAV, M4A, OGG, AAC, FLAC, and WEBM. You can select multiple files.",
+    "filesRequired": "Select at least one audio file to upload.",
+    "upload": "Upload audio",
+    "uploading": "Uploading…",
+    "uploadPartialFailure": "Some audio files failed to upload.",
+    "uploadFailedAudio": "Failed to upload \"{name}\"",
+    "audioFallback": "Audio recording",
+    "playbackUnsupported": "Your browser does not support audio playback.",
+    "delete": "Remove",
+    "deleting": "Deleting…"
+  },
   "comments": {
     "tripTitle": "Comments",
     "activityTitle": "Comments",

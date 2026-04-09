@@ -1,4 +1,5 @@
 from app.models.activity import Activity  # noqa: F401
+from app.models.activity_audio import ActivityAudio  # noqa: F401
 from app.models.activity_comment import ActivityComment  # noqa: F401
 from app.models.activity_photo import ActivityPhoto  # noqa: F401
 from app.models.admin_user import AdminUser  # noqa: F401

@@ -354,6 +354,23 @@
     "copied": "Zkopírováno",
     "rotate": "Otočit"
   },
+  "activityAudios": {
+    "title": "Audio aktivity",
+    "description": "Nahrajte zvukové záznamy k této aktivitě, přehrávejte je přímo zde a smažte vše, co nechcete zachovat.",
+    "empty": "Pro tuto aktivitu zatím nejsou nahrané žádné audio soubory.",
+    "saveActivityFirst": "Nejdřív aktivitu uložte, teprve potom lze nahrávat audio.",
+    "files": "Audio soubory",
+    "filesHelp": "Podporované formáty: MP3, WAV, M4A, OGG, AAC, FLAC a WEBM. Můžete vybrat více souborů.",
+    "filesRequired": "Vyberte alespoň jeden audio soubor k nahrání.",
+    "upload": "Nahrát audio",
+    "uploading": "Nahrávání…",
+    "uploadPartialFailure": "Některé audio soubory se nepodařilo nahrát.",
+    "uploadFailedAudio": "Nepodařilo se nahrát „{name}“",
+    "audioFallback": "Zvukový záznam",
+    "playbackUnsupported": "Váš prohlížeč nepodporuje přehrávání audia.",
+    "delete": "Odstranit",
+    "deleting": "Mazání…"
+  },
   "comments": {
     "tripTitle": "Komentáře",
     "activityTitle": "Komentáře",
