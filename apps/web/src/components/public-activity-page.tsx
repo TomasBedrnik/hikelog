@@ -96,20 +96,24 @@ export function PublicActivityPage({
     {
       label: dict.activities.movingTime,
       value:
-          activity.moving_time != null
-              ? `${Math.floor(activity.moving_time / 3600)}:${Math.floor((activity.moving_time % 3600) / 60)
-                  .toString()
-                  .padStart(2, "0")}`
-              : dict.publicSite.metaEmpty,
+        activity.moving_time != null
+          ? `${Math.floor(activity.moving_time / 3600)}:${Math.floor(
+              (activity.moving_time % 3600) / 60,
+            )
+              .toString()
+              .padStart(2, "0")}`
+          : dict.publicSite.metaEmpty,
     },
     {
       label: dict.activities.elapsedTime,
       value:
-          activity.elapsed_time != null
-              ? `${Math.floor(activity.elapsed_time / 3600)}:${Math.floor((activity.elapsed_time % 3600) / 60)
-                  .toString()
-                  .padStart(2, "0")}`
-              : dict.publicSite.metaEmpty,
+        activity.elapsed_time != null
+          ? `${Math.floor(activity.elapsed_time / 3600)}:${Math.floor(
+              (activity.elapsed_time % 3600) / 60,
+            )
+              .toString()
+              .padStart(2, "0")}`
+          : dict.publicSite.metaEmpty,
     },
     {
       label: dict.activities.totalElevationGain,
@@ -117,10 +121,9 @@ export function PublicActivityPage({
     },
   ];
   const hasPhotos = photoItems.length > 0;
-  const desktopGridClassName =
-    hasPhotos
-      ? "lg:grid-cols-[26rem_minmax(0,1fr)] lg:grid-rows-[11rem_minmax(0,1fr)]"
-      : "lg:grid-cols-[26rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]";
+  const desktopGridClassName = hasPhotos
+    ? "lg:grid-cols-[26rem_minmax(0,1fr)] lg:grid-rows-[11rem_minmax(0,1fr)]"
+    : "lg:grid-cols-[26rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]";
   const sidebarClassName = hasPhotos
     ? "order-2 w-full min-w-0 bg-white/95 px-5 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur lg:order-1 lg:row-span-2 lg:min-h-0 lg:overflow-auto lg:border-r lg:border-stone-200"
     : "order-2 w-full min-w-0 bg-white/95 px-5 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur lg:order-1 lg:min-h-0 lg:overflow-auto lg:border-r lg:border-stone-200";

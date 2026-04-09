@@ -205,7 +205,9 @@ export function AdminWebpushrPage() {
               />
             </label>
             <label className="grid gap-2">
-              <span className="text-sm font-medium text-stone-700">{dict.webpushr.messageLabel}</span>
+              <span className="text-sm font-medium text-stone-700">
+                {dict.webpushr.messageLabel}
+              </span>
               <textarea
                 className="min-h-28 rounded-2xl border border-stone-300 px-4 py-3 text-sm outline-none transition focus:border-stone-900"
                 onChange={(event) => {
@@ -215,7 +217,9 @@ export function AdminWebpushrPage() {
               />
             </label>
             <label className="grid gap-2">
-              <span className="text-sm font-medium text-stone-700">{dict.webpushr.targetUrlLabel}</span>
+              <span className="text-sm font-medium text-stone-700">
+                {dict.webpushr.targetUrlLabel}
+              </span>
               <input
                 className="rounded-2xl border border-stone-300 px-4 py-3 text-sm outline-none transition focus:border-stone-900"
                 onChange={(event) => {
@@ -227,7 +231,9 @@ export function AdminWebpushrPage() {
             </label>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-2">
-                <span className="text-sm font-medium text-stone-700">{dict.webpushr.iconLabel}</span>
+                <span className="text-sm font-medium text-stone-700">
+                  {dict.webpushr.iconLabel}
+                </span>
                 <input
                   className="rounded-2xl border border-stone-300 px-4 py-3 text-sm outline-none transition focus:border-stone-900"
                   onChange={(event) => {
@@ -238,7 +244,9 @@ export function AdminWebpushrPage() {
                 />
               </label>
               <label className="grid gap-2">
-                <span className="text-sm font-medium text-stone-700">{dict.webpushr.imageLabel}</span>
+                <span className="text-sm font-medium text-stone-700">
+                  {dict.webpushr.imageLabel}
+                </span>
                 <input
                   className="rounded-2xl border border-stone-300 px-4 py-3 text-sm outline-none transition focus:border-stone-900"
                   onChange={(event) => {
@@ -312,7 +320,9 @@ export function AdminWebpushrPage() {
           <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold text-stone-900">{dict.webpushr.campaignTitle}</h2>
+                <h2 className="text-lg font-semibold text-stone-900">
+                  {dict.webpushr.campaignTitle}
+                </h2>
                 <p className="mt-1 text-sm text-stone-500">{dict.webpushr.campaignDescription}</p>
               </div>
               <button
@@ -327,7 +337,9 @@ export function AdminWebpushrPage() {
             </div>
 
             <label className="mt-5 grid gap-2">
-              <span className="text-sm font-medium text-stone-700">{dict.webpushr.campaignIdLabel}</span>
+              <span className="text-sm font-medium text-stone-700">
+                {dict.webpushr.campaignIdLabel}
+              </span>
               <input
                 className="rounded-2xl border border-stone-300 px-4 py-3 text-sm outline-none transition focus:border-stone-900"
                 onChange={(event) => {

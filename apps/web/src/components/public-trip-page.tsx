@@ -71,14 +71,14 @@ export function PublicTripPage({
   const totalMovingHours = totalMovingTimeSeconds > 0 ? totalMovingTimeSeconds / 3600 : null;
   const totalTripDays = activities.length > 0 ? activities.length : null;
   const activityPhotoItems = sortedActivities.flatMap((activity) =>
-      activity.photos.map((photo) => ({
-        id: photo.id,
-        imageUrl: photo.image_url,
-        thumbnailUrl: photo.thumbnail_url,
-        alt: photo.original_filename ?? activity.name,
-        label: activity.name,
-        href: `/activities/${activity.id}`,
-      })),
+    activity.photos.map((photo) => ({
+      id: photo.id,
+      imageUrl: photo.image_url,
+      thumbnailUrl: photo.thumbnail_url,
+      alt: photo.original_filename ?? activity.name,
+      label: activity.name,
+      href: `/activities/${activity.id}`,
+    })),
   );
 
   const metaItems = [
