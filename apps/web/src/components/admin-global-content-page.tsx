@@ -59,9 +59,8 @@ export function AdminGlobalContentPage() {
   const [content, setContent] = useState<GlobalContentRead | null>(null);
   const [headline, setHeadline] = useState("");
   const [contentBlocks, setContentBlocks] = useState<PartialBlock[]>(EMPTY_BLOCKS);
-  const [enabledLanguageCodes, setEnabledLanguageCodes] = useState<Locale[]>(
-    DEFAULT_ENABLED_LOCALES,
-  );
+  const [enabledLanguageCodes, setEnabledLanguageCodes] =
+    useState<Locale[]>(DEFAULT_ENABLED_LOCALES);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<"saving" | "uploading" | "deleting" | "rotating" | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -374,9 +373,7 @@ export function AdminGlobalContentPage() {
                       }}
                       type="checkbox"
                     />
-                    <span>
-                      {languageCode === "en" ? dict.common.english : dict.common.czech}
-                    </span>
+                    <span>{languageCode === "en" ? dict.common.english : dict.common.czech}</span>
                   </label>
                 ))}
               </div>

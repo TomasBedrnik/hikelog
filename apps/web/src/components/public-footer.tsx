@@ -26,9 +26,7 @@ export function PublicFooter({ enabledLocales }: { enabledLocales?: Locale[] }) 
               {dict.publicSite.adminLink}
             </Link>
           </div>
-          {allowedLocales.length > 1 ? (
-            <LocaleSwitcher enabledLocales={allowedLocales} />
-          ) : null}
+          {allowedLocales.length > 1 ? <LocaleSwitcher enabledLocales={allowedLocales} /> : null}
         </div>
       </footer>
     </>

@@ -8,8 +8,9 @@ Create Date: 2026-04-09 18:00:00.000000
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "2026_04_09_180000"
@@ -25,7 +26,7 @@ def upgrade() -> None:
             "enabled_language_codes",
             postgresql.JSONB(),
             nullable=False,
-            server_default=sa.text("'[\"en\", \"cs\"]'::jsonb"),
+            server_default=sa.text('\'["en", "cs"]\'::jsonb'),
         ),
     )
 

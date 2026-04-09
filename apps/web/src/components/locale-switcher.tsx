@@ -28,23 +28,25 @@ export function LocaleSwitcher({ enabledLocales }: { enabledLocales?: Locale[] }
         {dict.nav.language}
       </span>
       <div className="flex rounded-full border border-stone-300 bg-white p-1">
-        {localeOptions.filter((option) => allowedLocales.includes(option)).map((option) => {
-          const active = locale === option;
-          return (
-            <button
-              key={option}
-              className={`rounded-full px-3 py-1 text-sm transition ${
-                active ? "bg-stone-900 text-white" : "text-stone-700 hover:bg-stone-100"
-              }`}
-              onClick={() => {
-                setLocale(option);
-              }}
-              type="button"
-            >
-              {option === "en" ? dict.common.english : dict.common.czech}
-            </button>
-          );
-        })}
+        {localeOptions
+          .filter((option) => allowedLocales.includes(option))
+          .map((option) => {
+            const active = locale === option;
+            return (
+              <button
+                key={option}
+                className={`rounded-full px-3 py-1 text-sm transition ${
+                  active ? "bg-stone-900 text-white" : "text-stone-700 hover:bg-stone-100"
+                }`}
+                onClick={() => {
+                  setLocale(option);
+                }}
+                type="button"
+              >
+                {option === "en" ? dict.common.english : dict.common.czech}
+              </button>
+            );
+          })}
       </div>
     </div>
   );
