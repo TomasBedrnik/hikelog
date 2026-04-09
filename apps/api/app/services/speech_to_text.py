@@ -158,9 +158,7 @@ class SpeechToTextService:
         except GoogleAPICallError as exc:
             raise SpeechToTextTranscriptionError(str(exc)) from exc
         except Exception as exc:
-            raise SpeechToTextTranscriptionError(
-                f"Speech transcription failed: {exc}"
-            ) from exc
+            raise SpeechToTextTranscriptionError(f"Speech transcription failed: {exc}") from exc
 
         file_result = response.results.get(gcs_uri)
         print(file_result)

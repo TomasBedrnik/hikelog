@@ -138,6 +138,7 @@ export function AdminActivitiesPage() {
   const [activitiesLoading, setActivitiesLoading] = useState(false);
   const [activityGpxFile, setActivityGpxFile] = useState<File | null>(null);
   const [activityGpxInputKey, setActivityGpxInputKey] = useState(0);
+  const [descriptionEditorVersion, setDescriptionEditorVersion] = useState(0);
 
   const resetActivityGpxSelection = () => {
     setActivityGpxFile(null);
@@ -303,6 +304,11 @@ export function AdminActivitiesPage() {
     setSelectedActivity((current) =>
       current?.id === activityId ? { ...current, audios } : current,
     );
+  };
+
+  const replaceActivityFromAudioCopy = (activity: ActivityRead) => {
+    replaceActivity(activity);
+    setDescriptionEditorVersion((current) => current + 1);
   };
 
   const startNewActivity = () => {
@@ -699,7 +705,7 @@ export function AdminActivitiesPage() {
                     editorKey={
                       activityDraft.id === null
                         ? `new-${selectedTrip.id}`
-                        : `activity-${activityDraft.id}`
+                        : `activity-${activityDraft.id}-${descriptionEditorVersion}`
                     }
                     initialBlocks={activityDraft.descriptionBlocks}
                     onChangeAction={(descriptionBlocks) => {
@@ -910,6 +916,7 @@ export function AdminActivitiesPage() {
                       }
                       replaceActivityAudios(selectedActivity.id, audios);
                     }}
+                    onActivityChange={replaceActivityFromAudioCopy}
                   />
 
                   <ActivityPhotoManager

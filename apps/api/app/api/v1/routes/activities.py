@@ -45,6 +45,11 @@ from app.services.image_uploads import (
     delete_uploaded_image_files,
     rotate_uploaded_image,
 )
+from app.services.openai_text import (
+    OpenAIConfigurationError,
+    OpenAIEnhancementError,
+    openai_text_service,
+)
 from app.services.speech_to_text import (
     SpeechToTextConfigurationError,
     SpeechToTextTranscriptionError,
@@ -99,6 +104,24 @@ async def _get_or_create_global_content(session: AsyncSession) -> GlobalContent:
     await session.commit()
     await session.refresh(global_content)
     return global_content
+
+
+def _plain_text_to_blocknote_description(text: str) -> dict[str, object]:
+    paragraphs = [paragraph.strip() for paragraph in text.split("\n\n") if paragraph.strip()]
+    if not paragraphs:
+        paragraphs = [text.strip()]
+
+    return {
+        "type": "blocknote",
+        "blocks": [
+            {
+                "type": "paragraph",
+                "content": [{"type": "text", "text": paragraph, "styles": {}}],
+            }
+            for paragraph in paragraphs
+            if paragraph
+        ],
+    }
 
 
 @router.get("", response_model=list[ActivityAdminRead])
@@ -393,8 +416,8 @@ async def transcribe_activity_audio(
 
     global_content = await _get_or_create_global_content(session)
     language_code = (
-        (global_content.activity_audio_transcription_language_code or "").strip() or None
-    )
+        global_content.activity_audio_transcription_language_code or ""
+    ).strip() or None
     model = (global_content.activity_audio_transcription_model or "").strip() or "latest_long"
     if language_code is None:
         raise HTTPException(
@@ -423,6 +446,79 @@ async def transcribe_activity_audio(
     await session.commit()
     await session.refresh(audio)
     return ActivityAudioRead.model_validate(audio)
+
+
+@router.post("/{activity_id}/audios/{audio_id}/enhance", response_model=ActivityAudioRead)
+async def enhance_activity_audio_transcription(
+    activity_id: int,
+    audio_id: int,
+    _: Annotated[AdminUser, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> ActivityAudioRead:
+    audio = await session.get(ActivityAudio, audio_id)
+    if audio is None or audio.activity_id != activity_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Activity audio not found"
+        )
+
+    transcription_raw = (audio.transcription_raw or "").strip()
+    if not transcription_raw:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Raw transcription is empty"
+        )
+
+    global_content = await _get_or_create_global_content(session)
+    prompt = (global_content.activity_audio_transcription_ai_prompt or "").strip()
+    if not prompt:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Set AI transcription prompt in global content first.",
+        )
+
+    try:
+        audio.transcription_enhanced = await anyio.to_thread.run_sync(
+            lambda: openai_text_service.enhance_transcription(
+                prompt=prompt,
+                transcription_raw=transcription_raw,
+            )
+        )
+    except OpenAIConfigurationError as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
+    except OpenAIEnhancementError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+
+    await session.commit()
+    await session.refresh(audio)
+    return ActivityAudioRead.model_validate(audio)
+
+
+@router.post(
+    "/{activity_id}/audios/{audio_id}/copy-enhanced-to-description",
+    response_model=ActivityAdminRead,
+)
+async def copy_activity_audio_enhanced_transcription_to_description(
+    activity_id: int,
+    audio_id: int,
+    _: Annotated[AdminUser, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> ActivityAdminRead:
+    audio = await session.get(ActivityAudio, audio_id)
+    if audio is None or audio.activity_id != activity_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Activity audio not found"
+        )
+
+    transcription_enhanced = (audio.transcription_enhanced or "").strip()
+    if not transcription_enhanced:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Enhanced transcription is empty"
+        )
+
+    activity = await _get_activity_or_404(session, activity_id)
+    activity.description = _plain_text_to_blocknote_description(transcription_enhanced)
+    await session.commit()
+    activity = await _get_activity_or_404(session, activity_id)
+    return _to_activity_admin_read(activity)
 
 
 @router.delete("/{activity_id}/photos/{photo_id}", status_code=status.HTTP_204_NO_CONTENT)

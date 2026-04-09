@@ -8,6 +8,7 @@ Create Date: 2026-04-09 15:00:00.000000
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -20,7 +21,9 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     op.add_column(
         "global_contents",
-        sa.Column("activity_audio_transcription_language_code", sa.String(length=32), nullable=True),
+        sa.Column(
+            "activity_audio_transcription_language_code", sa.String(length=32), nullable=True
+        ),
     )
     op.add_column(
         "global_contents",
@@ -49,12 +52,15 @@ def upgrade() -> None:
             server_default=sa.false(),
         ),
     )
+    op.add_column(
+        "global_contents",
+        sa.Column("activity_audio_transcription_ai_prompt", sa.Text(), nullable=True),
+    )
 
 
 def downgrade() -> None:
+    op.drop_column("global_contents", "activity_audio_transcription_ai_prompt")
     op.drop_column("global_contents", "activity_audio_transcription_profanity_filter")
-    op.drop_column(
-        "global_contents", "activity_audio_transcription_enable_automatic_punctuation"
-    )
-    # op.drop_column("global_contents", "activity_audio_transcription_model")
+    op.drop_column("global_contents", "activity_audio_transcription_enable_automatic_punctuation")
+    op.drop_column("global_contents", "activity_audio_transcription_model")
     op.drop_column("global_contents", "activity_audio_transcription_language_code")

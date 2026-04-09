@@ -18,6 +18,7 @@ class GlobalContentUpdate(BaseModel):
     )
     activity_audio_transcription_enable_automatic_punctuation: bool | None = None
     activity_audio_transcription_profanity_filter: bool | None = None
+    activity_audio_transcription_ai_prompt: str | None = None
 
 
 class GlobalContentRead(BaseModel):
@@ -47,3 +48,4 @@ class GlobalContentAdminRead(GlobalContentRead):
     activity_audio_transcription_model: str
     activity_audio_transcription_enable_automatic_punctuation: bool
     activity_audio_transcription_profanity_filter: bool
+    activity_audio_transcription_ai_prompt: str | None = None

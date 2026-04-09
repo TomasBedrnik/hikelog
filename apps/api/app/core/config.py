@@ -43,6 +43,8 @@ class Settings(BaseModel):
     webpushr_api_key: str | None = Field(default=None, alias="WEBPUSHR_API_KEY")
     webpushr_auth_token: str | None = Field(default=None, alias="WEBPUSHR_AUTH_TOKEN")
     speech_to_text_location: str = Field(default="global", alias="SPEECH_TO_TEXT_LOCATION")
+    openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
+    openai_model: str = Field(default="gpt-4.1-mini", alias="OPENAI_MODEL")
 
     def firebase_private_key_value(self) -> str:
         return self.firebase_private_key.replace("\\n", "\n")

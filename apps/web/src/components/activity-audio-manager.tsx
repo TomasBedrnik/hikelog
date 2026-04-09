@@ -6,7 +6,9 @@ import { clearIdToken, getIdToken } from "@/lib/auth";
 import {
   ActivityAudioRead,
   ActivityRead,
+  copyActivityAudioEnhancedTranscriptionToDescription,
   deleteActivityAudio,
+  enhanceActivityAudioTranscription,
   transcribeActivityAudio,
   uploadActivityAudios,
 } from "@/lib/activities";
@@ -16,15 +18,22 @@ import { getDateLocale } from "@/lib/i18n";
 export function ActivityAudioManager({
   activity,
   onAudiosChange,
+  onActivityChange,
 }: {
   activity: ActivityRead | null;
   onAudiosChange: (audios: ActivityAudioRead[]) => void;
+  onActivityChange?: (activity: ActivityRead) => void;
 }) {
   const router = useRouter();
   const { dict, locale } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<
-    "uploading" | `delete-${number}` | `transcribe-${number}` | null
+    | "uploading"
+    | `delete-${number}`
+    | `transcribe-${number}`
+    | `enhance-${number}`
+    | `copy-${number}`
+    | null
   >(null);
   const [files, setFiles] = useState<File[]>([]);
   const [inputKey, setInputKey] = useState(0);
@@ -160,9 +169,65 @@ export function ActivityAudioManager({
     try {
       const transcribed = await transcribeActivityAudio(token, activity.id, audio.id);
       startTransition(() => {
-        onAudiosChange(
-          audios.map((item) => (item.id === transcribed.id ? transcribed : item)),
-        );
+        onAudiosChange(audios.map((item) => (item.id === transcribed.id ? transcribed : item)));
+      });
+    } catch (e: unknown) {
+      if (handleAuthError(e)) {
+        return;
+      }
+      setError(e instanceof Error ? e.message : dict.common.unknownError);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleEnhance = async (audio: ActivityAudioRead) => {
+    if (!activity?.id) {
+      return;
+    }
+
+    const token = requireToken();
+    if (!token) {
+      return;
+    }
+
+    setBusy(`enhance-${audio.id}`);
+    setError(null);
+    try {
+      const enhanced = await enhanceActivityAudioTranscription(token, activity.id, audio.id);
+      startTransition(() => {
+        onAudiosChange(audios.map((item) => (item.id === enhanced.id ? enhanced : item)));
+      });
+    } catch (e: unknown) {
+      if (handleAuthError(e)) {
+        return;
+      }
+      setError(e instanceof Error ? e.message : dict.common.unknownError);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleCopyEnhancedToActivityText = async (audio: ActivityAudioRead) => {
+    if (!activity?.id) {
+      return;
+    }
+
+    const token = requireToken();
+    if (!token) {
+      return;
+    }
+
+    setBusy(`copy-${audio.id}`);
+    setError(null);
+    try {
+      const updatedActivity = await copyActivityAudioEnhancedTranscriptionToDescription(
+        token,
+        activity.id,
+        audio.id,
+      );
+      startTransition(() => {
+        onActivityChange?.(updatedActivity);
       });
     } catch (e: unknown) {
       if (handleAuthError(e)) {
@@ -260,6 +325,34 @@ export function ActivityAudioManager({
                           ? dict.activityAudios.transcribing
                           : dict.activityAudios.transcribe}
                       </button>
+                      {audio.transcription_raw?.trim() ? (
+                        <button
+                          className="rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-medium text-sky-800 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={busy !== null}
+                          onClick={() => {
+                            void handleEnhance(audio);
+                          }}
+                          type="button"
+                        >
+                          {busy === `enhance-${audio.id}`
+                            ? dict.activityAudios.enhancing
+                            : dict.activityAudios.enhance}
+                        </button>
+                      ) : null}
+                      {audio.transcription_enhanced?.trim() ? (
+                        <button
+                          className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={busy !== null}
+                          onClick={() => {
+                            void handleCopyEnhancedToActivityText(audio);
+                          }}
+                          type="button"
+                        >
+                          {busy === `copy-${audio.id}`
+                            ? dict.activityAudios.copyingToActivityText
+                            : dict.activityAudios.copyToActivityText}
+                        </button>
+                      ) : null}
                       <button
                         className="rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                         disabled={busy !== null}
@@ -284,6 +377,18 @@ export function ActivityAudioManager({
                       placeholder={dict.activityAudios.transcriptionEmpty}
                       readOnly
                       value={audio.transcription_raw ?? ""}
+                    />
+                  </label>
+
+                  <label className="mt-4 block">
+                    <span className="text-sm font-medium text-stone-700">
+                      {dict.activityAudios.transcriptionEnhanced}
+                    </span>
+                    <textarea
+                      className="mt-2 min-h-32 w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-800 outline-none"
+                      placeholder={dict.activityAudios.transcriptionEnhancedEmpty}
+                      readOnly
+                      value={audio.transcription_enhanced ?? ""}
                     />
                   </label>
                 </article>

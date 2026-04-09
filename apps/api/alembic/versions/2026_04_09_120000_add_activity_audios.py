@@ -8,6 +8,7 @@ Create Date: 2026-04-09 12:00:00.000000
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -28,11 +29,15 @@ def upgrade() -> None:
         sa.Column("original_filename", sa.String(length=255), nullable=True),
         sa.Column("transcription_raw", sa.Text(), nullable=True),
         sa.Column("transcription_enhanced", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.ForeignKeyConstraint(["activity_id"], ["activities.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_activity_audios_activity_id"), "activity_audios", ["activity_id"], unique=False)
+    op.create_index(
+        op.f("ix_activity_audios_activity_id"), "activity_audios", ["activity_id"], unique=False
+    )
 
 
 def downgrade() -> None:

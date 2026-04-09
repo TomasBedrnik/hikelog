@@ -31,6 +31,7 @@ function toUpdatePayload(
   audioTranscriptionModel: string,
   audioTranscriptionEnableAutomaticPunctuation: boolean,
   audioTranscriptionProfanityFilter: boolean,
+  audioTranscriptionAiPrompt: string,
 ) {
   return {
     main_headline: headline.trim() || null,
@@ -45,6 +46,7 @@ function toUpdatePayload(
     activity_audio_transcription_enable_automatic_punctuation:
       audioTranscriptionEnableAutomaticPunctuation,
     activity_audio_transcription_profanity_filter: audioTranscriptionProfanityFilter,
+    activity_audio_transcription_ai_prompt: audioTranscriptionAiPrompt.trim() || null,
   };
 }
 
@@ -70,8 +72,8 @@ export function AdminGlobalContentPage() {
     audioTranscriptionEnableAutomaticPunctuation,
     setAudioTranscriptionEnableAutomaticPunctuation,
   ] = useState(true);
-  const [audioTranscriptionProfanityFilter, setAudioTranscriptionProfanityFilter] =
-    useState(false);
+  const [audioTranscriptionProfanityFilter, setAudioTranscriptionProfanityFilter] = useState(false);
+  const [audioTranscriptionAiPrompt, setAudioTranscriptionAiPrompt] = useState("");
   const [inputKey, setInputKey] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
@@ -88,18 +90,15 @@ export function AdminGlobalContentPage() {
         setHeadline(loaded.main_headline ?? "");
         setContentBlocks(getTripContentBlocks(loaded.home_content));
         setActivityPhotoResizeLongSide(String(loaded.activity_photo_resize_long_side));
-        setAudioTranscriptionLanguageCode(
-          loaded.activity_audio_transcription_language_code ?? "",
-        );
+        setAudioTranscriptionLanguageCode(loaded.activity_audio_transcription_language_code ?? "");
         setAudioTranscriptionModel(
           loaded.activity_audio_transcription_model || DEFAULT_AUDIO_TRANSCRIPTION_MODEL,
         );
         setAudioTranscriptionEnableAutomaticPunctuation(
           loaded.activity_audio_transcription_enable_automatic_punctuation,
         );
-        setAudioTranscriptionProfanityFilter(
-          loaded.activity_audio_transcription_profanity_filter,
-        );
+        setAudioTranscriptionProfanityFilter(loaded.activity_audio_transcription_profanity_filter);
+        setAudioTranscriptionAiPrompt(loaded.activity_audio_transcription_ai_prompt ?? "");
       })
       .catch((e: unknown) => {
         if (e instanceof Error && e.message === "AUTH_REQUIRED") {
@@ -157,23 +156,21 @@ export function AdminGlobalContentPage() {
           audioTranscriptionModel,
           audioTranscriptionEnableAutomaticPunctuation,
           audioTranscriptionProfanityFilter,
+          audioTranscriptionAiPrompt,
         ),
       );
       startTransition(() => {
         setContent(updated);
         setActivityPhotoResizeLongSide(String(updated.activity_photo_resize_long_side));
-        setAudioTranscriptionLanguageCode(
-          updated.activity_audio_transcription_language_code ?? "",
-        );
+        setAudioTranscriptionLanguageCode(updated.activity_audio_transcription_language_code ?? "");
         setAudioTranscriptionModel(
           updated.activity_audio_transcription_model || DEFAULT_AUDIO_TRANSCRIPTION_MODEL,
         );
         setAudioTranscriptionEnableAutomaticPunctuation(
           updated.activity_audio_transcription_enable_automatic_punctuation,
         );
-        setAudioTranscriptionProfanityFilter(
-          updated.activity_audio_transcription_profanity_filter,
-        );
+        setAudioTranscriptionProfanityFilter(updated.activity_audio_transcription_profanity_filter);
+        setAudioTranscriptionAiPrompt(updated.activity_audio_transcription_ai_prompt ?? "");
       });
     } catch (e: unknown) {
       if (handleAuthError(e)) {
@@ -434,6 +431,23 @@ export function AdminGlobalContentPage() {
                 </span>
               </label>
             </div>
+
+            <label className="block">
+              <span className="text-sm font-medium text-stone-700">
+                {dict.globalContent.audioTranscriptionAiPrompt}
+              </span>
+              <textarea
+                className="mt-2 min-h-40 w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-600"
+                onChange={(event) => {
+                  setAudioTranscriptionAiPrompt(event.target.value);
+                }}
+                placeholder={dict.globalContent.audioTranscriptionAiPromptPlaceholder}
+                value={audioTranscriptionAiPrompt}
+              />
+              <p className="mt-2 text-xs text-stone-500">
+                {dict.globalContent.audioTranscriptionAiPromptHelp}
+              </p>
+            </label>
 
             <div>
               <button
