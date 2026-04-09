@@ -183,41 +183,57 @@ export function TripMapPage({
                 rounded-[1.75rem] border border-stone-200 bg-white/95 px-5 py-4
                 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur"
       >
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950 flex justify-between w-full">
+        <h1 className="mt-2 flex w-full justify-between gap-3 text-2xl font-semibold tracking-tight text-stone-950">
           <span>{trip.name || dict.publicSite.untitledTrip}</span>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-stone-50 px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
-            onClick={() => {
-              setIsPanelCollapsed((current) => !current);
-            }}
-          >
-            {isPanelCollapsed ? (
-              <>
-                <Image
-                  alt=""
-                  aria-hidden="true"
-                  className="size-4"
-                  height={16}
-                  src="/icons/eye-light.svg"
-                  width={16}
-                />
-                <span>Show</span>
-              </>
-            ) : (
-              <>
-                <Image
-                  alt=""
-                  aria-hidden="true"
-                  className="size-4"
-                  height={16}
-                  src="/icons/eye-slash-light.svg"
-                  width={16}
-                />
-                <span>Hide</span>
-              </>
-            )}
-          </button>
+          <span className="flex shrink-0 items-center gap-2">
+            <Link
+              aria-label="Home"
+              className="inline-flex size-9 items-center justify-center rounded-full border border-stone-300 bg-stone-50 text-stone-700 transition hover:bg-stone-100"
+              href="/"
+            >
+              <Image
+                alt=""
+                aria-hidden="true"
+                className="size-4"
+                height={16}
+                src="/icons/home.svg"
+                width={16}
+              />
+            </Link>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-stone-50 px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
+              onClick={() => {
+                setIsPanelCollapsed((current) => !current);
+              }}
+            >
+              {isPanelCollapsed ? (
+                <>
+                  <Image
+                    alt=""
+                    aria-hidden="true"
+                    className="size-4"
+                    height={16}
+                    src="/icons/eye-light.svg"
+                    width={16}
+                  />
+                  <span>Show</span>
+                </>
+              ) : (
+                <>
+                  <Image
+                    alt=""
+                    aria-hidden="true"
+                    className="size-4"
+                    height={16}
+                    src="/icons/eye-slash-light.svg"
+                    width={16}
+                  />
+                  <span>Hide</span>
+                </>
+              )}
+            </button>
+          </span>
         </h1>
         {!isPanelCollapsed ? (
           <>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import { ActivityRead, ActivitySummaryRead, sortActivitiesByStartDate } from "@/lib/activities";
 import { ActivityPhotoGallery } from "@/components/activity-photo-gallery";
@@ -144,9 +145,25 @@ export function PublicActivityPage({
         ) : null}
 
         <section className={sidebarClassName}>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950">
-            {activity.name}
-          </h1>
+          <div className="mt-2 flex items-start justify-between gap-3">
+            <h1 className="min-w-0 text-2xl font-semibold tracking-tight text-stone-950">
+              {activity.name}
+            </h1>
+            <Link
+              aria-label="Home"
+              className="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-stone-300 bg-stone-50 text-stone-700 transition hover:bg-stone-100"
+              href="/"
+            >
+              <Image
+                alt=""
+                aria-hidden="true"
+                className="size-4"
+                height={16}
+                src="/icons/home.svg"
+                width={16}
+              />
+            </Link>
+          </div>
 
           <div className="mt-4 flex flex-wrap gap-3">
             {previousActivity ? (
