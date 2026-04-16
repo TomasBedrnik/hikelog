@@ -22,6 +22,7 @@ import { DEFAULT_ENABLED_LOCALES, Locale, normalizeEnabledLocales } from "@/lib/
 const DEFAULT_LONG_SIDE = "1920";
 const DEFAULT_ACTIVITY_PHOTO_RESIZE_LONG_SIDE = "1920";
 const DEFAULT_AUDIO_TRANSCRIPTION_MODEL = "latest_long";
+const DEFAULT_OPENAI_MODEL = "gpt-4.1-mini";
 const EMPTY_BLOCKS: PartialBlock[] = [{ type: "paragraph" }];
 
 function toUpdatePayload(
@@ -34,6 +35,7 @@ function toUpdatePayload(
   audioTranscriptionEnableAutomaticPunctuation: boolean,
   audioTranscriptionProfanityFilter: boolean,
   audioTranscriptionAiPrompt: string,
+  audioEnhancementOpenAiModel: string,
 ) {
   return {
     main_headline: headline.trim() || null,
@@ -50,6 +52,8 @@ function toUpdatePayload(
       audioTranscriptionEnableAutomaticPunctuation,
     activity_audio_transcription_profanity_filter: audioTranscriptionProfanityFilter,
     activity_audio_transcription_ai_prompt: audioTranscriptionAiPrompt.trim() || null,
+    activity_audio_enhancement_openai_model:
+      audioEnhancementOpenAiModel.trim() || DEFAULT_OPENAI_MODEL,
   };
 }
 
@@ -79,6 +83,8 @@ export function AdminGlobalContentPage() {
   ] = useState(true);
   const [audioTranscriptionProfanityFilter, setAudioTranscriptionProfanityFilter] = useState(false);
   const [audioTranscriptionAiPrompt, setAudioTranscriptionAiPrompt] = useState("");
+  const [audioEnhancementOpenAiModel, setAudioEnhancementOpenAiModel] =
+    useState(DEFAULT_OPENAI_MODEL);
   const [inputKey, setInputKey] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
@@ -105,6 +111,9 @@ export function AdminGlobalContentPage() {
         );
         setAudioTranscriptionProfanityFilter(loaded.activity_audio_transcription_profanity_filter);
         setAudioTranscriptionAiPrompt(loaded.activity_audio_transcription_ai_prompt ?? "");
+        setAudioEnhancementOpenAiModel(
+          loaded.activity_audio_enhancement_openai_model || DEFAULT_OPENAI_MODEL,
+        );
       })
       .catch((e: unknown) => {
         if (e instanceof Error && e.message === "AUTH_REQUIRED") {
@@ -164,6 +173,7 @@ export function AdminGlobalContentPage() {
           audioTranscriptionEnableAutomaticPunctuation,
           audioTranscriptionProfanityFilter,
           audioTranscriptionAiPrompt,
+          audioEnhancementOpenAiModel,
         ),
       );
       startTransition(() => {
@@ -179,6 +189,9 @@ export function AdminGlobalContentPage() {
         );
         setAudioTranscriptionProfanityFilter(updated.activity_audio_transcription_profanity_filter);
         setAudioTranscriptionAiPrompt(updated.activity_audio_transcription_ai_prompt ?? "");
+        setAudioEnhancementOpenAiModel(
+          updated.activity_audio_enhancement_openai_model || DEFAULT_OPENAI_MODEL,
+        );
       });
     } catch (e: unknown) {
       if (handleAuthError(e)) {
@@ -489,6 +502,23 @@ export function AdminGlobalContentPage() {
               />
               <p className="mt-2 text-xs text-stone-500">
                 {dict.globalContent.audioTranscriptionAiPromptHelp}
+              </p>
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-medium text-stone-700">
+                {dict.globalContent.audioEnhancementOpenAiModel}
+              </span>
+              <input
+                className="mt-2 w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-emerald-600"
+                onChange={(event) => {
+                  setAudioEnhancementOpenAiModel(event.target.value);
+                }}
+                placeholder={dict.globalContent.audioEnhancementOpenAiModelPlaceholder}
+                value={audioEnhancementOpenAiModel}
+              />
+              <p className="mt-2 text-xs text-stone-500">
+                {dict.globalContent.audioEnhancementOpenAiModelHelp}
               </p>
             </label>
 

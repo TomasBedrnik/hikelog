@@ -469,15 +469,22 @@ async def enhance_activity_audio_transcription(
 
     global_content = await _get_or_create_global_content(session)
     prompt = (global_content.activity_audio_transcription_ai_prompt or "").strip()
+    openai_model = (global_content.activity_audio_enhancement_openai_model or "").strip()
     if not prompt:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Set AI transcription prompt in global content first.",
         )
+    if not openai_model:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Set OpenAI model in global content first.",
+        )
 
     try:
         audio.transcription_enhanced = await anyio.to_thread.run_sync(
             lambda: openai_text_service.enhance_transcription(
+                model=openai_model,
                 prompt=prompt,
                 transcription_raw=transcription_raw,
             )

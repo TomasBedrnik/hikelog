@@ -19,9 +19,12 @@ class OpenAITextService:
             raise OpenAIConfigurationError("OPENAI_API_KEY is not configured.")
         return OpenAI(api_key=settings.openai_api_key)
 
-    def enhance_transcription(self, *, prompt: str, transcription_raw: str) -> str:
+    def enhance_transcription(self, *, model: str, prompt: str, transcription_raw: str) -> str:
+        normalized_model = model.strip()
         normalized_prompt = prompt.strip()
         normalized_transcription = transcription_raw.strip()
+        if not normalized_model:
+            raise OpenAIConfigurationError("OpenAI model is not configured.")
         if not normalized_prompt:
             raise OpenAIConfigurationError("AI transcription prompt is not configured.")
         if not normalized_transcription:
@@ -29,7 +32,7 @@ class OpenAITextService:
 
         try:
             response = self._build_client().responses.create(
-                model=settings.openai_model,
+                model=normalized_model,
                 input=(f"{normalized_prompt}\n\nRaw transcription:\n{normalized_transcription}"),
             )
         except OpenAIError as exc:

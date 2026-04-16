@@ -6,6 +6,7 @@ from sqlalchemy import DateTime, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.config import settings
 from app.db.base import Base
 
 
@@ -48,6 +49,9 @@ class GlobalContent(Base):
         nullable=False, default=False
     )
     activity_audio_transcription_ai_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    activity_audio_enhancement_openai_model: Mapped[str] = mapped_column(
+        String(64), nullable=False, default=settings.openai_model
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
