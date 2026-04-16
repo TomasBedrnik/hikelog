@@ -29,6 +29,7 @@ type MapMarker = {
   longitude: number;
   title?: string | null;
   thumbnailUrl?: string | null;
+  accentColor?: string | null;
 };
 
 type MapyMapProps = {
@@ -93,10 +94,10 @@ function buildMarkerIcon(marker: MapMarker, leaflet: NonNullable<Window["L"]>) {
     iconAnchor: [22, 56],
     html: `
       <div style="display:flex;flex-direction:column;align-items:center;">
-        <div style="height:40px;width:40px;overflow:hidden;border:2px solid white;border-radius:9999px;background:#e7e5e4;box-shadow:0 10px 24px -12px rgba(0,0,0,0.7);">
+        <div style="height:40px;width:40px;overflow:hidden;border:2px solid ${marker.accentColor || "white"};border-radius:9999px;background:#e7e5e4;box-shadow:0 10px 24px -12px rgba(0,0,0,0.7);">
           <img src="${escapeHtml(marker.thumbnailUrl)}"${title} style="display:block;height:100%;width:100%;object-fit:cover;" />
         </div>
-        <div style="margin-top:-2px;height:0;width:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:14px solid white;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.35));"></div>
+        <div style="margin-top:-2px;height:0;width:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:14px solid ${marker.accentColor || "white"};filter:drop-shadow(0 4px 6px rgba(0,0,0,0.35));"></div>
       </div>
     `,
   });

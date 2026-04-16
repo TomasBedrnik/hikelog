@@ -4,14 +4,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { useMemo, useState } from "react";
 import { ActivityRead, ActivitySummaryRead, sortActivitiesByStartDate } from "@/lib/activities";
-import { ActivityPhotoGallery } from "@/components/activity-photo-gallery";
+import { ActivityMediaGallery } from "@/components/activity-media-gallery";
 import { CommentsSection } from "@/components/comments-section";
 import { useI18n } from "@/components/i18n-provider";
 import { getDateLocale } from "@/lib/i18n";
 import { getTripContentBlocks, hasTripContent } from "@/lib/blocknote";
 import { MapyMap } from "@/components/mapy-map";
 import { TripContentRenderer } from "@/components/trip-content-renderer";
-import { ImageLightbox } from "@/components/image-lightbox";
+import { MediaLightbox } from "@/components/media-lightbox";
 import { createPublicActivityComment } from "@/lib/comments";
 
 function formatDateTime(value: string | null, locale: "en" | "cs") {
@@ -42,7 +42,7 @@ export function PublicActivityPage({
 }) {
   const { dict, locale } = useI18n();
   const [error, setError] = useState<string | null>(null);
-  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
+  const [selectedMediaIndex, setSelectedMediaIndex] = useState<number | null>(null);
   const [comments, setComments] = useState(activity.comments);
   const sortedTripActivities = useMemo(
     () => sortActivitiesByStartDate(tripActivities).reverse(),
@@ -57,32 +57,57 @@ export function PublicActivityPage({
       : null;
   const descriptionBlocks = getTripContentBlocks(activity.description);
   const hasDescription = hasTripContent(activity.description);
-  const photoItems = useMemo(
-    () =>
-      activity.photos.map((photo) => ({
+  const mediaItems = useMemo(
+    () => [
+      ...activity.videos.map((video) => ({
+        id: video.id,
+        kind: "video" as const,
+        mediaUrl: video.compressed_video_url ?? video.original_video_url,
+        thumbnailUrl: video.thumbnail_url ?? video.tiny_thumbnail_url ?? "/default_map.jpg",
+        alt: video.original_filename ?? activity.name,
+      })),
+      ...activity.photos.map((photo) => ({
         id: photo.id,
-        imageUrl: photo.image_url,
+        kind: "photo" as const,
+        mediaUrl: photo.image_url,
         thumbnailUrl: photo.thumbnail_url,
         alt: photo.original_filename ?? activity.name,
       })),
-    [activity.name, activity.photos],
+    ],
+    [activity.name, activity.photos, activity.videos],
   );
   const mapMarkers = useMemo(
-    () =>
-      activity.photos.flatMap((photo, index) =>
-        photo.gps_latitude === null || photo.gps_longitude === null
+    () => [
+      ...activity.videos.flatMap((video, index) =>
+        video.gps_latitude === null || video.gps_longitude === null
           ? []
           : [
               {
                 id: index,
+                latitude: video.gps_latitude,
+                longitude: video.gps_longitude,
+                title: video.original_filename ?? activity.name,
+                thumbnailUrl: video.tiny_thumbnail_url ?? video.thumbnail_url ?? "/default_map.jpg",
+                accentColor: "#fef08a",
+              },
+            ],
+      ),
+      ...activity.photos.flatMap((photo, index) =>
+        photo.gps_latitude === null || photo.gps_longitude === null
+          ? []
+          : [
+              {
+                id: activity.videos.length + index,
                 latitude: photo.gps_latitude,
                 longitude: photo.gps_longitude,
                 title: photo.original_filename ?? activity.name,
                 thumbnailUrl: photo.tiny_thumbnail_url ?? photo.thumbnail_url,
+                accentColor: "white",
               },
             ],
       ),
-    [activity.name, activity.photos],
+    ],
+    [activity.name, activity.photos, activity.videos],
   );
 
   const infoItems = [
@@ -121,24 +146,24 @@ export function PublicActivityPage({
       value: activity.total_elevation_gain?.toLocaleString(locale) ?? dict.publicSite.metaEmpty,
     },
   ];
-  const hasPhotos = photoItems.length > 0;
-  const desktopGridClassName = hasPhotos
+  const hasMedia = mediaItems.length > 0;
+  const desktopGridClassName = hasMedia
     ? "lg:grid-cols-[26rem_minmax(0,1fr)] lg:grid-rows-[11rem_minmax(0,1fr)]"
     : "lg:grid-cols-[26rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]";
-  const sidebarClassName = hasPhotos
+  const sidebarClassName = hasMedia
     ? "order-2 w-full min-w-0 bg-white/95 px-5 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur lg:order-1 lg:row-span-2 lg:min-h-0 lg:overflow-auto lg:border-r lg:border-stone-200"
     : "order-2 w-full min-w-0 bg-white/95 px-5 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur lg:order-1 lg:min-h-0 lg:overflow-auto lg:border-r lg:border-stone-200";
 
   return (
     <main className="min-h-screen w-full overflow-x-hidden bg-stone-200 lg:h-screen lg:overflow-hidden">
       <div className={`grid w-full min-w-0 gap-0 lg:h-full ${desktopGridClassName}`}>
-        {hasPhotos ? (
+        {hasMedia ? (
           <section className="order-1 w-full min-w-0 overflow-hidden border-b border-stone-200 bg-white/90 px-4 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur lg:order-2 lg:h-[11rem] lg:border-b lg:border-l">
-            <ActivityPhotoGallery
-              items={photoItems}
+            <ActivityMediaGallery
+              items={mediaItems}
               layout="strip"
               onItemSelect={(index) => {
-                setSelectedPhotoIndex(index);
+                setSelectedMediaIndex(index);
               }}
             />
           </section>
@@ -237,7 +262,7 @@ export function PublicActivityPage({
               polyline={activity.polyline ?? activity.summary_polyline}
               markers={mapMarkers}
               onMarkerClick={(markerId) => {
-                setSelectedPhotoIndex(Number(markerId));
+                setSelectedMediaIndex(Number(markerId));
               }}
               onError={(message) => {
                 setError(message === "missing_api_key" ? dict.publicSite.mapMissingApiKey : null);
@@ -247,13 +272,13 @@ export function PublicActivityPage({
         </section>
       </div>
 
-      <ImageLightbox
-        items={photoItems}
+      <MediaLightbox
+        items={mediaItems}
         onClose={() => {
-          setSelectedPhotoIndex(null);
+          setSelectedMediaIndex(null);
         }}
-        onSelect={setSelectedPhotoIndex}
-        selectedIndex={selectedPhotoIndex}
+        onSelect={setSelectedMediaIndex}
+        selectedIndex={selectedMediaIndex}
       />
     </main>
   );

@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { PublicFooter } from "@/components/public-footer";
-import { ActivityPhotoGallery } from "@/components/activity-photo-gallery";
+import { ActivityMediaGallery } from "@/components/activity-media-gallery";
 import { CommentsSection } from "@/components/comments-section";
 import { TripContentRenderer } from "@/components/trip-content-renderer";
 import { TripList } from "@/components/trip-list";
-import { ImageLightbox } from "@/components/image-lightbox";
+import { MediaLightbox } from "@/components/media-lightbox";
 import { useI18n } from "@/components/i18n-provider";
 import { getTripContentBlocks, hasTripContent } from "@/lib/blocknote";
 import { GlobalContentRead } from "@/lib/global-content";
@@ -52,7 +52,7 @@ export function PublicTripPage({
 }) {
   const { dict, locale } = useI18n();
   const [comments, setComments] = useState(trip.comments);
-  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
+  const [selectedMediaIndex, setSelectedMediaIndex] = useState<number | null>(null);
   const contentBlocks = getTripContentBlocks(trip.content);
   const tripHasContent = hasTripContent(trip.content);
   const sortedActivities = sortActivitiesByStartDate(activities);
@@ -74,16 +74,26 @@ export function PublicTripPage({
   const totalDistanceKm = totalDistanceMeters > 0 ? totalDistanceMeters / 1000 : null;
   const totalMovingHours = totalMovingTimeSeconds > 0 ? totalMovingTimeSeconds / 3600 : null;
   const totalTripDays = activities.length > 0 ? activities.length : null;
-  const activityPhotoItems = sortedActivities.flatMap((activity) =>
-    activity.photos.map((photo) => ({
+  const activityMediaItems = sortedActivities.flatMap((activity) => [
+    ...activity.videos.map((video) => ({
+      id: video.id,
+      kind: "video" as const,
+      mediaUrl: video.compressed_video_url ?? video.original_video_url,
+      thumbnailUrl: video.thumbnail_url ?? video.tiny_thumbnail_url ?? "/default_map.jpg",
+      alt: video.original_filename ?? activity.name,
+      label: activity.name,
+      href: `/activities/${activity.id}`,
+    })),
+    ...activity.photos.map((photo) => ({
       id: photo.id,
-      imageUrl: photo.image_url,
+      kind: "photo" as const,
+      mediaUrl: photo.image_url,
       thumbnailUrl: photo.thumbnail_url,
       alt: photo.original_filename ?? activity.name,
       label: activity.name,
       href: `/activities/${activity.id}`,
     })),
-  );
+  ]);
 
   const metaItems = [
     {
@@ -254,21 +264,21 @@ export function PublicTripPage({
         <section className="mt-10 rounded-[2rem] border border-stone-200 bg-white p-6">
           <div className="flex items-center justify-between gap-4">
             <h2 className="text-xl font-semibold text-stone-900">
-              {dict.activityPhotos.tripTitle}
+              {dict.activityPhotos.tripMediaTitle}
             </h2>
-            <span className="text-sm text-stone-500">{activityPhotoItems.length}</span>
+            <span className="text-sm text-stone-500">{activityMediaItems.length}</span>
           </div>
 
-          {activityPhotoItems.length === 0 ? (
+          {activityMediaItems.length === 0 ? (
             <p className="mt-4 rounded-2xl bg-stone-50 px-4 py-4 text-sm text-stone-500">
-              {dict.activityPhotos.emptyTrip}
+              {dict.activityPhotos.emptyTripMedia}
             </p>
           ) : (
             <div className="mt-5">
-              <ActivityPhotoGallery
-                items={activityPhotoItems}
+              <ActivityMediaGallery
+                items={activityMediaItems}
                 layout="grid"
-                onItemSelect={setSelectedPhotoIndex}
+                onItemSelect={setSelectedMediaIndex}
               />
             </div>
           )}
@@ -278,13 +288,13 @@ export function PublicTripPage({
         <PublicFooter enabledLocales={enabledLocales} />
       </div>
 
-      <ImageLightbox
-        items={activityPhotoItems}
+      <MediaLightbox
+        items={activityMediaItems}
         onClose={() => {
-          setSelectedPhotoIndex(null);
+          setSelectedMediaIndex(null);
         }}
-        onSelect={setSelectedPhotoIndex}
-        selectedIndex={selectedPhotoIndex}
+        onSelect={setSelectedMediaIndex}
+        selectedIndex={selectedMediaIndex}
       />
     </main>
   );

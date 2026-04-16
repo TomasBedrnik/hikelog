@@ -84,6 +84,7 @@ class ActivitySummaryRead(BaseModel):
     description: dict[str, Any] | None = None
     summary_polyline: str | None = None
     photos: list[ActivityPhotoRead] = Field(default_factory=list)
+    videos: list[ActivityVideoRead] = Field(default_factory=list)
 
 
 class ActivityListItemRead(BaseModel):
