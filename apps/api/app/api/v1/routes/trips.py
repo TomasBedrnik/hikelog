@@ -316,6 +316,7 @@ async def rotate_trip_map_card_image(
         original_filename=None,
         gps_latitude=None,
         gps_longitude=None,
+        capture_datetime=None,
         create_thumbnails=False,
     )
 
@@ -418,6 +419,7 @@ async def rotate_trip_image(
         original_filename=image.original_filename,
         gps_latitude=image.gps_latitude,
         gps_longitude=image.gps_longitude,
+        capture_datetime=None,
     )
 
     for field, value in asdict(rotated).items():

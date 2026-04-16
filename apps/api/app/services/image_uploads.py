@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from io import BytesIO
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
@@ -17,6 +18,9 @@ GPS_LATITUDE_REF = 1
 GPS_LATITUDE = 2
 GPS_LONGITUDE_REF = 3
 GPS_LONGITUDE = 4
+EXIF_DATETIME = 306
+EXIF_DATETIME_ORIGINAL = 36867
+EXIF_DATETIME_DIGITIZED = 36868
 SUPPORTED_IMAGE_FORMATS = {
     "JPEG": ("jpg", "image/jpeg"),
     "PNG": ("png", "image/png"),
@@ -45,6 +49,7 @@ class UploadedImagePayload:
     original_filename: str | None
     gps_latitude: float | None
     gps_longitude: float | None
+    capture_datetime: datetime | None
 
 
 def _normalize_image_for_format(image: Image.Image, image_format: str) -> Image.Image:
@@ -161,6 +166,36 @@ def _extract_gps_coordinates(image: Image.Image) -> tuple[float | None, float | 
     return latitude, longitude
 
 
+def _parse_exif_datetime(value: object) -> datetime | None:
+    if isinstance(value, bytes):
+        text = value.decode("utf-8", errors="ignore").strip()
+    elif isinstance(value, str):
+        text = value.strip()
+    else:
+        return None
+
+    if not text:
+        return None
+
+    try:
+        return datetime.strptime(text, "%Y:%m:%d %H:%M:%S")
+    except ValueError:
+        return None
+
+
+def _extract_capture_datetime(image: Image.Image) -> datetime | None:
+    exif = image.getexif()
+    if not exif:
+        return None
+
+    for tag in (EXIF_DATETIME_ORIGINAL, EXIF_DATETIME_DIGITIZED, EXIF_DATETIME):
+        parsed = _parse_exif_datetime(exif.get(tag))
+        if parsed is not None:
+            return parsed
+
+    return None
+
+
 def _build_storage_path(storage_prefix: str, object_id: str, suffix: str, extension: str) -> str:
     return f"{storage_prefix}/{object_id}{suffix}.{extension}"
 
@@ -197,6 +232,7 @@ async def create_uploaded_image(
 
     extension, content_type = SUPPORTED_IMAGE_FORMATS[image_format]
     gps_latitude, gps_longitude = _extract_gps_coordinates(source_image)
+    capture_datetime = _extract_capture_datetime(source_image)
     transposed_image = ImageOps.exif_transpose(source_image)
     original_image = _normalize_image_for_format(transposed_image, image_format)
 
@@ -271,6 +307,7 @@ async def create_uploaded_image(
         original_filename=upload.filename,
         gps_latitude=gps_latitude,
         gps_longitude=gps_longitude,
+        capture_datetime=capture_datetime,
     )
 
 
@@ -308,6 +345,7 @@ def rotate_uploaded_image(
     original_filename: str | None,
     gps_latitude: float | None,
     gps_longitude: float | None,
+    capture_datetime: datetime | None,
     direction: str = "right",
     create_thumbnails: bool = True,
 ) -> UploadedImagePayload:
@@ -405,4 +443,5 @@ def rotate_uploaded_image(
         original_filename=original_filename,
         gps_latitude=gps_latitude,
         gps_longitude=gps_longitude,
+        capture_datetime=capture_datetime,
     )

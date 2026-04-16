@@ -7,6 +7,7 @@ import {
   ActivityPhotoRead,
   ActivityRead,
   deleteActivityPhoto,
+  orderActivityPhotosByCaptureDate,
   reorderActivityPhotos,
   rotateActivityPhoto,
   uploadActivityPhotos,
@@ -33,6 +34,7 @@ export function ActivityPhotoManager({
     | `move-${number}`
     | `rotate-left-${number}`
     | `rotate-right-${number}`
+    | "ordering-by-capture-date"
     | null
   >(null);
   const [files, setFiles] = useState<File[]>([]);
@@ -256,11 +258,41 @@ export function ActivityPhotoManager({
     }
   };
 
+  const handleOrderByCaptureDate = async () => {
+    if (!activity?.id || photos.length === 0) {
+      return;
+    }
+
+    const token = requireToken();
+    if (!token) {
+      return;
+    }
+
+    setBusy("ordering-by-capture-date");
+    setError(null);
+    try {
+      const ordered = await orderActivityPhotosByCaptureDate(token, activity.id);
+      startTransition(() => {
+        onPhotosChange(ordered);
+      });
+    } catch (e: unknown) {
+      if (handleAuthError(e)) {
+        return;
+      }
+      setError(e instanceof Error ? e.message : dict.common.unknownError);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <section className="rounded-[1.5rem] border border-stone-200 bg-stone-50/70 p-5">
       <div className="flex flex-col gap-2">
         <h3 className="text-lg font-semibold text-stone-900">{dict.activityPhotos.title}</h3>
         <p className="text-sm text-stone-500">{dict.activityPhotos.description}</p>
+        <p className="text-sm text-stone-600">
+          {dict.activityPhotos.totalCount.replace("{count}", String(photos.length))}
+        </p>
       </div>
 
       {error ? (
@@ -343,18 +375,32 @@ export function ActivityPhotoManager({
                   </div>
                 ) : null}
 
-                <button
-                  className="rounded-full bg-stone-900 px-5 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={busy !== null}
-                  onClick={() => {
-                    void handleUpload();
-                  }}
-                  type="button"
-                >
-                  {busy === "uploading"
-                    ? dict.activityPhotos.uploading
-                    : dict.activityPhotos.upload}
-                </button>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    className="rounded-full bg-stone-900 px-5 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={busy !== null}
+                    onClick={() => {
+                      void handleUpload();
+                    }}
+                    type="button"
+                  >
+                    {busy === "uploading"
+                      ? dict.activityPhotos.uploading
+                      : dict.activityPhotos.upload}
+                  </button>
+                  <button
+                    className="rounded-full border border-stone-300 bg-white px-5 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={busy !== null || photos.length < 2}
+                    onClick={() => {
+                      void handleOrderByCaptureDate();
+                    }}
+                    type="button"
+                  >
+                    {busy === "ordering-by-capture-date"
+                      ? dict.activityPhotos.orderingByCaptureDate
+                      : dict.activityPhotos.orderByCaptureDate}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

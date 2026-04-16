@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from datetime import datetime
 from typing import Annotated
 
 import anyio
@@ -259,6 +260,12 @@ def _delete_activity_photo_files(photo: ActivityPhoto) -> None:
         thumbnail_storage_path=photo.thumbnail_storage_path,
         tiny_thumbnail_storage_path=photo.tiny_thumbnail_storage_path,
     )
+
+
+def _activity_photo_sort_key(photo: ActivityPhoto) -> tuple[int, datetime, datetime, int]:
+    capture_datetime = photo.capture_datetime or datetime.max
+    has_capture_datetime = 0 if photo.capture_datetime is not None else 1
+    return (has_capture_datetime, capture_datetime, photo.created_at, photo.id)
 
 
 def _delete_activity_audio_file(audio: ActivityAudio) -> None:
@@ -607,6 +614,7 @@ async def rotate_activity_photo(
         original_filename=photo.original_filename,
         gps_latitude=photo.gps_latitude,
         gps_longitude=photo.gps_longitude,
+        capture_datetime=photo.capture_datetime,
         direction=direction,
     )
 
@@ -616,6 +624,31 @@ async def rotate_activity_photo(
     await session.commit()
     await session.refresh(photo)
     return ActivityPhotoRead.model_validate(photo)
+
+
+@router.post("/{activity_id}/photos/order-by-capture-date", response_model=list[ActivityPhotoRead])
+async def order_activity_photos_by_capture_date(
+    activity_id: int,
+    _: Annotated[AdminUser, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> list[ActivityPhotoRead]:
+    stmt = (
+        select(ActivityPhoto)
+        .where(ActivityPhoto.activity_id == activity_id)
+        .order_by(
+            ActivityPhoto.position.asc(), ActivityPhoto.created_at.asc(), ActivityPhoto.id.asc()
+        )
+    )
+    photos = list((await session.scalars(stmt)).all())
+    if not photos:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Activity has no photos")
+
+    ordered_photos = sorted(photos, key=_activity_photo_sort_key)
+    for index, photo in enumerate(ordered_photos):
+        photo.position = index
+
+    await session.commit()
+    return [ActivityPhotoRead.model_validate(photo) for photo in ordered_photos]
 
 
 @router.delete("/{activity_id}/comments/{comment_id}", response_model=CommentRead)

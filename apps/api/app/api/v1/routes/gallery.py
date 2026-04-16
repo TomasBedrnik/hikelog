@@ -128,6 +128,7 @@ async def rotate_gallery_image(
         original_filename=image.original_filename,
         gps_latitude=image.gps_latitude,
         gps_longitude=image.gps_longitude,
+        capture_datetime=None,
     )
 
     for field, value in asdict(rotated).items():

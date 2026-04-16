@@ -39,6 +39,9 @@ class ActivityPhoto(Base):
     original_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
     gps_latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     gps_longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    capture_datetime: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=False), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

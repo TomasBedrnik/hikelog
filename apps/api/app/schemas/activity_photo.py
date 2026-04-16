@@ -24,6 +24,7 @@ class ActivityPhotoRead(BaseModel):
     original_filename: str | None
     gps_latitude: float | None = Field(default=None, ge=-90, le=90)
     gps_longitude: float | None = Field(default=None, ge=-180, le=180)
+    capture_datetime: datetime | None = None
     created_at: datetime
 
 
