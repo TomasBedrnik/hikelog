@@ -162,46 +162,96 @@ def _render_jpeg_bytes(image: Image.Image) -> bytes:
     return output.getvalue()
 
 
+def _run_ffmpeg_thumbnail_command(command: list[str], output_path: Path) -> str:
+    try:
+        result = subprocess.run(
+            command,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Video thumbnail generation is not available on this server.",
+        ) from exc
+    except subprocess.CalledProcessError as exc:
+        detail = ((exc.stderr or "").strip() or (exc.stdout or "").strip()).strip()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=detail or "Video thumbnail could not be generated.",
+        ) from exc
+
+    if output_path.exists():
+        return ((result.stderr or "").strip() or (result.stdout or "").strip()).strip()
+
+    return ((result.stderr or "").strip() or (result.stdout or "").strip()).strip()
+
+
 def _extract_video_thumbnails(video_path: Path) -> tuple[bytes, bytes]:
     with TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
         frame_path = temp_path / "frame.jpg"
-        try:
-            subprocess.run(
-                [
-                    "ffmpeg",
-                    "-hide_banner",
-                    "-loglevel",
-                    "error",
-                    "-y",
-                    "-i",
-                    str(video_path),
-                    "-vf",
-                    "thumbnail",
-                    "-frames:v",
-                    "1",
-                    str(frame_path),
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-        except FileNotFoundError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Video thumbnail generation is not available on this server.",
-            ) from exc
-        except subprocess.CalledProcessError as exc:
-            detail = (exc.stderr or "").strip()
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=detail or "Video thumbnail could not be generated.",
-            ) from exc
+        attempts = [
+            [
+                "ffmpeg",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-i",
+                str(video_path),
+                "-vf",
+                "thumbnail",
+                "-frames:v",
+                "1",
+                str(frame_path),
+            ],
+            [
+                "ffmpeg",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-ss",
+                "00:00:01",
+                "-i",
+                str(video_path),
+                "-frames:v",
+                "1",
+                str(frame_path),
+            ],
+            [
+                "ffmpeg",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-ss",
+                "00:00:00",
+                "-i",
+                str(video_path),
+                "-frames:v",
+                "1",
+                str(frame_path),
+            ],
+        ]
+        last_detail = ""
+        for command in attempts:
+            if frame_path.exists():
+                frame_path.unlink()
+            try:
+                last_detail = _run_ffmpeg_thumbnail_command(command, frame_path)
+            except HTTPException as exc:
+                last_detail = str(exc.detail)
+                continue
+            if frame_path.exists():
+                break
 
         if not frame_path.exists():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Video thumbnail could not be generated.",
+                detail=last_detail or "Video thumbnail could not be generated.",
             )
 
         with Image.open(frame_path) as source_image:
