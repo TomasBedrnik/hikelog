@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from "next/headers";
+import Script from "next/script";
 import { normalizeLocale } from "@/lib/i18n";
 import Providers from "./providers";
 import "./globals.css";
@@ -40,10 +41,28 @@ export default async function RootLayout({
   const headerStore = await headers();
   const acceptLanguage = headerStore.get("accept-language");
   const initialLocale = normalizeLocale(acceptLanguage);
+  const webpushrPublicKey = process.env.NEXT_PUBLIC_WEBPUSHR_PUBLIC_KEY;
+  const googleAnalyticsId = process.env.GOOLE_ANALYTICS_ID;
 
   return (
     <html lang={initialLocale}>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        {webpushrPublicKey ? (
+          <Script id="webpushr-init" strategy="afterInteractive">
+            {`(function(w,d,s,id){if(typeof(w.webpushr)!=='undefined')return;w.webpushr=w.webpushr||function(){(w.webpushr.q=w.webpushr.q||[]).push(arguments)};var js,fjs=d.getElementsByTagName(s)[0];js=d.createElement(s);js.id=id;js.async=1;js.src='https://cdn.webpushr.com/app.min.js';fjs.parentNode.appendChild(js);}(window,document,'script','webpushr-jssdk'));webpushr('setup',{'key':'${webpushrPublicKey}'});`}
+          </Script>
+        ) : null}
+        {googleAnalyticsId ? (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsId}`}
+              strategy="afterInteractive"
+            />
+            <Script id="google-analytics" strategy="afterInteractive">
+              {`window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', '${googleAnalyticsId}');`}
+            </Script>
+          </>
+        ) : null}
         <Providers initialLocale={initialLocale}>{children}</Providers>
       </body>
     </html>
