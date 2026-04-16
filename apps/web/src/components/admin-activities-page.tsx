@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { clearIdToken, getIdToken } from "@/lib/auth";
 import { ActivityAudioManager } from "@/components/activity-audio-manager";
 import { ActivityPhotoManager } from "@/components/activity-photo-manager";
+import { ActivityVideoManager } from "@/components/activity-video-manager";
 import { CommentsSection } from "@/components/comments-section";
 import { TripContentEditor } from "@/components/trip-content-editor";
 import { useI18n } from "@/components/i18n-provider";
@@ -13,6 +14,7 @@ import {
   ActivityListItemRead,
   ActivityPhotoRead,
   ActivityRead,
+  ActivityVideoRead,
   ActivityWrite,
   createActivity,
   deleteActivity,
@@ -297,6 +299,12 @@ export function AdminActivitiesPage() {
   const replaceActivityPhotos = (activityId: number, photos: ActivityPhotoRead[]) => {
     setSelectedActivity((current) =>
       current?.id === activityId ? { ...current, photos } : current,
+    );
+  };
+
+  const replaceActivityVideos = (activityId: number, videos: ActivityVideoRead[]) => {
+    setSelectedActivity((current) =>
+      current?.id === activityId ? { ...current, videos } : current,
     );
   };
 
@@ -926,6 +934,16 @@ export function AdminActivitiesPage() {
                         return;
                       }
                       replaceActivityPhotos(selectedActivity.id, photos);
+                    }}
+                  />
+
+                  <ActivityVideoManager
+                    activity={selectedActivity}
+                    onVideosChange={(videos) => {
+                      if (!selectedActivity) {
+                        return;
+                      }
+                      replaceActivityVideos(selectedActivity.id, videos);
                     }}
                   />
 

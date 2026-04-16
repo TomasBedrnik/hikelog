@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { startTransition, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearIdToken, getIdToken } from "@/lib/auth";
@@ -520,34 +521,14 @@ export function ActivityPhotoManager({
                         }}
                         type="button"
                       >
-                        <svg aria-hidden="true" className="size-4" fill="none" viewBox="0 0 24 24">
-                          <path
-                            d="M4 7h16"
-                            stroke="currentColor"
-                            strokeLinecap="round"
-                            strokeWidth="2"
-                          />
-                          <path
-                            d="M9 7V5h6v2"
-                            stroke="currentColor"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                          />
-                          <path
-                            d="M8 7l1 11h6l1-11"
-                            stroke="currentColor"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                          />
-                          <path
-                            d="M10 11v4M14 11v4"
-                            stroke="currentColor"
-                            strokeLinecap="round"
-                            strokeWidth="2"
-                          />
-                        </svg>
+                        <Image
+                          alt=""
+                          aria-hidden="true"
+                          className="invert"
+                          height={16}
+                          src="/icons/trash-light.svg"
+                          width={16}
+                        />
                       </button>
                     </div>
                   </div>

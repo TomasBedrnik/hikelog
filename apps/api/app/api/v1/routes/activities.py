@@ -26,6 +26,7 @@ from app.models.activity import Activity
 from app.models.activity_audio import ActivityAudio
 from app.models.activity_comment import ActivityComment
 from app.models.activity_photo import ActivityPhoto
+from app.models.activity_video import ActivityVideo
 from app.models.admin_user import AdminUser
 from app.models.global_content import GlobalContent
 from app.models.trip import Trip
@@ -38,6 +39,7 @@ from app.schemas.activity import (
 )
 from app.schemas.activity_audio import ActivityAudioRead
 from app.schemas.activity_photo import ActivityPhotoOrderUpdate, ActivityPhotoRead
+from app.schemas.activity_video import ActivityVideoOrderUpdate, ActivityVideoRead
 from app.schemas.comment import CommentRead
 from app.services.audio_uploads import create_uploaded_audio, delete_uploaded_audio_file
 from app.services.gpx_polylines import build_polylines_from_gpx
@@ -57,6 +59,7 @@ from app.services.speech_to_text import (
     build_gcs_uri,
     speech_to_text_service,
 )
+from app.services.video_uploads import create_uploaded_video, delete_uploaded_video_files
 
 router = APIRouter()
 
@@ -85,6 +88,7 @@ async def _get_activity_or_404(session: AsyncSession, activity_id: int) -> Activ
             selectinload(Activity.comments),
             selectinload(Activity.audios),
             selectinload(Activity.photos),
+            selectinload(Activity.videos),
         )
         .where(Activity.id == activity_id)
     )
@@ -138,6 +142,7 @@ async def list_activities(
             selectinload(Activity.comments),
             selectinload(Activity.audios),
             selectinload(Activity.photos),
+            selectinload(Activity.videos),
         )
         .order_by(
             Activity.start_date.desc().nullslast(),
@@ -272,6 +277,15 @@ def _delete_activity_audio_file(audio: ActivityAudio) -> None:
     delete_uploaded_audio_file(audio.storage_path)
 
 
+def _delete_activity_video_files(video: ActivityVideo) -> None:
+    delete_uploaded_video_files(
+        original_storage_path=video.original_storage_path,
+        compressed_storage_path=video.compressed_storage_path,
+        thumbnail_storage_path=video.thumbnail_storage_path,
+        tiny_thumbnail_storage_path=video.tiny_thumbnail_storage_path,
+    )
+
+
 @router.post(
     "/{activity_id}/photos",
     response_model=list[ActivityPhotoRead],
@@ -389,6 +403,58 @@ async def upload_activity_audios(
     return [ActivityAudioRead.model_validate(audio) for audio in created_audios]
 
 
+@router.post(
+    "/{activity_id}/videos",
+    response_model=list[ActivityVideoRead],
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_activity_videos(
+    activity_id: int,
+    _: Annotated[AdminUser, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+    files: Annotated[list[UploadFile], File(...)],
+) -> list[ActivityVideoRead]:
+    await _get_activity_or_404(session, activity_id)
+
+    if not files:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="No files were uploaded"
+        )
+
+    current_max_position = await session.scalar(
+        select(func.max(ActivityVideo.position)).where(ActivityVideo.activity_id == activity_id)
+    )
+    next_position = (current_max_position or 0) + 1 if current_max_position is not None else 0
+
+    created_videos: list[ActivityVideo] = []
+    try:
+        for file in files:
+            uploaded = await create_uploaded_video(
+                upload=file,
+                storage_prefix=f"activities/{activity_id}/videos",
+            )
+            video = ActivityVideo(
+                activity_id=activity_id,
+                position=next_position,
+                **asdict(uploaded),
+            )
+            next_position += 1
+            session.add(video)
+            created_videos.append(video)
+
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        for video in created_videos:
+            _delete_activity_video_files(video)
+        raise
+
+    for video in created_videos:
+        await session.refresh(video)
+
+    return [ActivityVideoRead.model_validate(video) for video in created_videos]
+
+
 @router.delete("/{activity_id}/audios/{audio_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_activity_audio(
     activity_id: int,
@@ -404,6 +470,25 @@ async def delete_activity_audio(
 
     _delete_activity_audio_file(audio)
     await session.delete(audio)
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete("/{activity_id}/videos/{video_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_activity_video(
+    activity_id: int,
+    video_id: int,
+    _: Annotated[AdminUser, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> Response:
+    video = await session.get(ActivityVideo, video_id)
+    if video is None or video.activity_id != activity_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Activity video not found"
+        )
+
+    _delete_activity_video_files(video)
+    await session.delete(video)
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -587,6 +672,41 @@ async def reorder_activity_photos(
     await session.commit()
     ordered_photos = [photos_by_id[photo_id] for photo_id in ordered_ids]
     return [ActivityPhotoRead.model_validate(photo) for photo in ordered_photos]
+
+
+@router.put("/{activity_id}/videos/order", response_model=list[ActivityVideoRead])
+async def reorder_activity_videos(
+    activity_id: int,
+    payload: ActivityVideoOrderUpdate,
+    _: Annotated[AdminUser, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> list[ActivityVideoRead]:
+    stmt = (
+        select(ActivityVideo)
+        .where(ActivityVideo.activity_id == activity_id)
+        .order_by(
+            ActivityVideo.position.asc(), ActivityVideo.created_at.asc(), ActivityVideo.id.asc()
+        )
+    )
+    videos = list((await session.scalars(stmt)).all())
+    if not videos:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Activity has no videos")
+
+    current_ids = [video.id for video in videos]
+    ordered_ids = payload.ordered_video_ids
+    if len(ordered_ids) != len(current_ids) or set(ordered_ids) != set(current_ids):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Video order does not match activity videos",
+        )
+
+    videos_by_id = {video.id: video for video in videos}
+    for index, video_id in enumerate(ordered_ids):
+        videos_by_id[video_id].position = index
+
+    await session.commit()
+    ordered_videos = [videos_by_id[video_id] for video_id in ordered_ids]
+    return [ActivityVideoRead.model_validate(video) for video in ordered_videos]
 
 
 @router.patch("/{activity_id}/photos/{photo_id}/rotate", response_model=ActivityPhotoRead)

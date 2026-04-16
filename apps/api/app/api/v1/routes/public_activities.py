@@ -32,7 +32,11 @@ async def list_public_trip_activities(
 ) -> list[ActivitySummaryRead]:
     stmt = (
         select(Activity)
-        .options(selectinload(Activity.comments), selectinload(Activity.photos))
+        .options(
+            selectinload(Activity.comments),
+            selectinload(Activity.photos),
+            selectinload(Activity.videos),
+        )
         .where(Activity.trip_id == trip_id)
         .order_by(
             Activity.start_date.desc().nullslast(), Activity.created_at.desc(), Activity.id.desc()
@@ -53,6 +57,7 @@ async def get_public_activity(
             selectinload(Activity.trip),
             selectinload(Activity.comments),
             selectinload(Activity.photos),
+            selectinload(Activity.videos),
         )
         .where(Activity.id == activity_id)
     )

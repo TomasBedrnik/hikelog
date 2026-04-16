@@ -404,6 +404,27 @@
     "delete": "Remove",
     "deleting": "Deleting…"
   },
+  "activityVideos": {
+    "title": "Activity Videos",
+    "description": "Upload videos for this activity, play them here, and adjust the display order.",
+    "empty": "No videos uploaded for this activity yet.",
+    "saveActivityFirst": "Save the activity first before uploading videos.",
+    "files": "Videos",
+    "filesHelp": "Supported formats: MP4, MOV, AVI, MPEG, 3GP, OGV, and WEBM. You can select multiple files.",
+    "filesRequired": "Select at least one video to upload.",
+    "upload": "Upload videos",
+    "uploading": "Uploading…",
+    "uploadPartialFailure": "Some videos failed to upload.",
+    "uploadFailedVideo": "Failed to upload \"{name}\"",
+    "totalCount": "Total videos: {count}",
+    "moveEarlier": "Move earlier",
+    "moveLater": "Move later",
+    "moveEarlierArrow": "←",
+    "moveLaterArrow": "→",
+    "videoFallback": "Activity video",
+    "playbackUnsupported": "Your browser does not support video playback.",
+    "delete": "Remove"
+  },
   "comments": {
     "tripTitle": "Comments",
     "activityTitle": "Comments",

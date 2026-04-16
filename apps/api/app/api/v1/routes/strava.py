@@ -103,6 +103,7 @@ async def _get_activity_with_relations(session: AsyncSession, activity_id: int) 
             selectinload(Activity.trip),
             selectinload(Activity.comments),
             selectinload(Activity.photos),
+            selectinload(Activity.videos),
         )
         .where(Activity.id == activity_id)
     )

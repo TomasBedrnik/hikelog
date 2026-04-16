@@ -7,6 +7,7 @@ from app.schemas.activity import (
 )
 from app.schemas.activity_audio import ActivityAudioRead
 from app.schemas.activity_photo import ActivityPhotoOrderUpdate, ActivityPhotoRead
+from app.schemas.activity_video import ActivityVideoOrderUpdate, ActivityVideoRead
 from app.schemas.admin_auth import AdminLoginRequest, AdminLoginResponse
 from app.schemas.admin_user import AdminUserCreate, AdminUserRead
 from app.schemas.gallery_image import GalleryImageRead
@@ -24,6 +25,8 @@ __all__ = [
     "ActivityCreate",
     "ActivityAdminRead",
     "ActivityAudioRead",
+    "ActivityVideoOrderUpdate",
+    "ActivityVideoRead",
     "ActivityRead",
     "ActivitySummaryRead",
     "ActivityUpdate",
