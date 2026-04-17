@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActivityRead, ActivitySummaryRead, sortActivitiesByStartDate } from "@/lib/activities";
 import { ActivityMediaGallery } from "@/components/activity-media-gallery";
 import { CommentsSection } from "@/components/comments-section";
@@ -42,6 +42,7 @@ export function PublicActivityPage({
 }) {
   const { dict, locale } = useI18n();
   const [error, setError] = useState<string | null>(null);
+  const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [selectedMediaIndex, setSelectedMediaIndex] = useState<number | null>(null);
   const [comments, setComments] = useState(activity.comments);
   const sortedTripActivities = useMemo(
@@ -166,6 +167,55 @@ export function PublicActivityPage({
     ? "order-2 w-full min-w-0 bg-white/95 px-5 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur lg:order-1 lg:row-span-2 lg:min-h-0 lg:overflow-auto lg:border-r lg:border-stone-200"
     : "order-2 w-full min-w-0 bg-white/95 px-5 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur lg:order-1 lg:min-h-0 lg:overflow-auto lg:border-r lg:border-stone-200";
 
+  useEffect(() => {
+    if (!shareMessage) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setShareMessage(null);
+    }, 2500);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [shareMessage]);
+
+  const handleShare = async () => {
+    setError(null);
+    setShareMessage(null);
+
+    const shareUrl = window.location.href;
+    const shareData = {
+      title: activity.name,
+      text: activity.name,
+      url: shareUrl,
+    };
+
+    try {
+      if (typeof navigator.share === "function") {
+        await navigator.share(shareData);
+        return;
+      }
+    } catch (shareError) {
+      if (
+        shareError &&
+        typeof shareError === "object" &&
+        "name" in shareError &&
+        shareError.name === "AbortError"
+      ) {
+        return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareMessage(dict.activities.shareCopied);
+    } catch {
+      setError(dict.activities.shareUnavailable);
+    }
+  };
+
   return (
     <main className="min-h-screen w-full overflow-x-hidden bg-stone-200 lg:h-screen lg:overflow-hidden">
       <div className={`grid w-full min-w-0 gap-0 lg:h-full ${desktopGridClassName}`}>
@@ -186,20 +236,39 @@ export function PublicActivityPage({
             <h1 className="min-w-0 text-2xl font-semibold tracking-tight text-stone-950">
               {activity.name}
             </h1>
-            <Link
-              aria-label="Home"
-              className="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-stone-300 bg-stone-50 text-stone-700 transition  hover:border-emerald-600 hover:bg-emerald-50"
-              href="/"
-            >
-              <Image
-                alt=""
-                aria-hidden="true"
-                className="size-4"
-                height={16}
-                src="/icons/home.svg"
-                width={16}
-              />
-            </Link>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                aria-label={dict.activities.share}
+                className="inline-flex size-10 items-center justify-center rounded-full border border-stone-300 bg-stone-50 text-stone-700 transition hover:border-emerald-600 hover:bg-emerald-50"
+                onClick={() => {
+                  void handleShare();
+                }}
+                type="button"
+              >
+                <Image
+                  alt=""
+                  aria-hidden="true"
+                  className="size-4"
+                  height={16}
+                  src="/icons/share-network-light.svg"
+                  width={16}
+                />
+              </button>
+              <Link
+                aria-label="Home"
+                className="inline-flex size-10 items-center justify-center rounded-full border border-stone-300 bg-stone-50 text-stone-700 transition  hover:border-emerald-600 hover:bg-emerald-50"
+                href="/"
+              >
+                <Image
+                  alt=""
+                  aria-hidden="true"
+                  className="size-4"
+                  height={16}
+                  src="/icons/home.svg"
+                  width={16}
+                />
+              </Link>
+            </div>
           </div>
 
           <div className="mt-4 grid grid-cols-[1fr_auto_1fr] gap-3">
@@ -245,6 +314,7 @@ export function PublicActivityPage({
             ) : null}
           </div>
           {error ? <p className="mt-3 text-sm text-red-700">{error}</p> : null}
+          {shareMessage ? <p className="mt-3 text-sm text-emerald-700">{shareMessage}</p> : null}
 
           <dl className="mt-5 space-y-4 grid grid-cols-2">
             {infoItems.map((item) => (
