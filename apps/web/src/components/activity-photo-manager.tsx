@@ -11,6 +11,7 @@ import {
   orderActivityPhotosByCaptureDate,
   reorderActivityPhotos,
   rotateActivityPhoto,
+  UploadBatchProgress,
   uploadActivityPhotos,
 } from "@/lib/activities";
 import { getGlobalContent } from "@/lib/global-content";
@@ -29,6 +30,13 @@ function formatDateTime(value: string | null, locale: "en" | "cs") {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function ActivityPhotoManager({
@@ -53,6 +61,7 @@ export function ActivityPhotoManager({
   const [files, setFiles] = useState<File[]>([]);
   const [resizeMode, setResizeMode] = useState<"keep" | "resize">("resize");
   const [resizeLongSide, setResizeLongSide] = useState(DEFAULT_RESIZE_LONG_SIDE);
+  const [uploadProgress, setUploadProgress] = useState<UploadBatchProgress | null>(null);
   const [inputKey, setInputKey] = useState(0);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
 
@@ -127,6 +136,14 @@ export function ActivityPhotoManager({
 
     setBusy("uploading");
     setError(null);
+    setUploadProgress({
+      currentFileName: files[0]?.name ?? null,
+      loadedBytes: 0,
+      totalBytes: files.reduce((sum, file) => sum + file.size, 0),
+      uploadedFileCount: 0,
+      totalFileCount: files.length,
+      phase: "uploading",
+    });
     try {
       let nextPhotos = photos;
       const { uploaded, failures } = await uploadActivityPhotos(
@@ -147,6 +164,7 @@ export function ActivityPhotoManager({
               onPhotosChange(nextPhotos);
             });
           },
+          onBatchProgress: setUploadProgress,
         },
       );
 
@@ -176,6 +194,7 @@ export function ActivityPhotoManager({
       setError(e instanceof Error ? e.message : dict.common.unknownError);
     } finally {
       setBusy(null);
+      setUploadProgress(null);
     }
   };
 
@@ -312,6 +331,48 @@ export function ActivityPhotoManager({
         <p className="mt-4 whitespace-pre-line rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </p>
+      ) : null}
+      {busy === "uploading" && uploadProgress ? (
+        <div className="mt-4 rounded-2xl border border-stone-200 bg-white p-4">
+          <div className="flex items-center justify-between gap-4 text-sm text-stone-700">
+            <span>
+              {uploadProgress.phase === "processing"
+                ? dict.activityPhotos.uploadProcessing
+                : dict.activityPhotos.uploadProgress}
+            </span>
+            <span>
+              {Math.round(
+                uploadProgress.totalBytes > 0
+                  ? (uploadProgress.loadedBytes / uploadProgress.totalBytes) * 100
+                  : 0,
+              )}
+              %
+            </span>
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-stone-200">
+            <div
+              className="h-full rounded-full bg-emerald-600 transition-all"
+              style={{
+                width: `${Math.max(
+                  0,
+                  Math.min(
+                    100,
+                    uploadProgress.totalBytes > 0
+                      ? (uploadProgress.loadedBytes / uploadProgress.totalBytes) * 100
+                      : 0,
+                  ),
+                )}%`,
+              }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-stone-500">
+            {dict.activityPhotos.uploadProgressDetail
+              .replace("{loaded}", formatBytes(uploadProgress.loadedBytes))
+              .replace("{total}", formatBytes(uploadProgress.totalBytes))
+              .replace("{uploaded}", String(uploadProgress.uploadedFileCount))
+              .replace("{count}", String(uploadProgress.totalFileCount))}
+          </p>
+        </div>
       ) : null}
 
       {!activity?.id ? (

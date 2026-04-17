@@ -6,6 +6,7 @@ import { clearIdToken, getIdToken } from "@/lib/auth";
 import {
   ActivityAudioRead,
   ActivityRead,
+  UploadBatchProgress,
   copyActivityAudioEnhancedTranscriptionToDescription,
   deleteActivityAudio,
   enhanceActivityAudioTranscription,
@@ -14,6 +15,13 @@ import {
 } from "@/lib/activities";
 import { useI18n } from "@/components/i18n-provider";
 import { getDateLocale } from "@/lib/i18n";
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export function ActivityAudioManager({
   activity,
@@ -36,6 +44,7 @@ export function ActivityAudioManager({
     | null
   >(null);
   const [files, setFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<UploadBatchProgress | null>(null);
   const [inputKey, setInputKey] = useState(0);
 
   const audios = useMemo(
@@ -87,6 +96,14 @@ export function ActivityAudioManager({
 
     setBusy("uploading");
     setError(null);
+    setUploadProgress({
+      currentFileName: files[0]?.name ?? null,
+      loadedBytes: 0,
+      totalBytes: files.reduce((sum, file) => sum + file.size, 0),
+      uploadedFileCount: 0,
+      totalFileCount: files.length,
+      phase: "uploading",
+    });
     try {
       let nextAudios = audios;
       const { uploaded, failures } = await uploadActivityAudios(token, activity.id, files, {
@@ -96,6 +113,7 @@ export function ActivityAudioManager({
             onAudiosChange(nextAudios);
           });
         },
+        onBatchProgress: setUploadProgress,
       });
 
       setFiles([]);
@@ -124,6 +142,7 @@ export function ActivityAudioManager({
       setError(e instanceof Error ? e.message : dict.common.unknownError);
     } finally {
       setBusy(null);
+      setUploadProgress(null);
     }
   };
 
@@ -250,6 +269,48 @@ export function ActivityAudioManager({
         <p className="mt-4 whitespace-pre-line rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </p>
+      ) : null}
+      {busy === "uploading" && uploadProgress ? (
+        <div className="mt-4 rounded-2xl border border-stone-200 bg-white p-4">
+          <div className="flex items-center justify-between gap-4 text-sm text-stone-700">
+            <span>
+              {uploadProgress.phase === "processing"
+                ? dict.activityAudios.uploadProcessing
+                : dict.activityAudios.uploadProgress}
+            </span>
+            <span>
+              {Math.round(
+                uploadProgress.totalBytes > 0
+                  ? (uploadProgress.loadedBytes / uploadProgress.totalBytes) * 100
+                  : 0,
+              )}
+              %
+            </span>
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-stone-200">
+            <div
+              className="h-full rounded-full bg-emerald-600 transition-all"
+              style={{
+                width: `${Math.max(
+                  0,
+                  Math.min(
+                    100,
+                    uploadProgress.totalBytes > 0
+                      ? (uploadProgress.loadedBytes / uploadProgress.totalBytes) * 100
+                      : 0,
+                  ),
+                )}%`,
+              }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-stone-500">
+            {dict.activityAudios.uploadProgressDetail
+              .replace("{loaded}", formatBytes(uploadProgress.loadedBytes))
+              .replace("{total}", formatBytes(uploadProgress.totalBytes))
+              .replace("{uploaded}", String(uploadProgress.uploadedFileCount))
+              .replace("{count}", String(uploadProgress.totalFileCount))}
+          </p>
+        </div>
       ) : null}
 
       {!activity?.id ? (

@@ -10,6 +10,8 @@ import {
   deleteActivityVideo,
   orderActivityVideosByCaptureDate,
   reorderActivityVideos,
+  UploadBatchProgress,
+  UploadFileProgress,
   uploadActivityVideos,
 } from "@/lib/activities";
 import { getGlobalContent } from "@/lib/global-content";
@@ -30,6 +32,13 @@ function formatDateTime(value: string | null, locale: "en" | "cs") {
   }).format(new Date(value));
 }
 
+function formatBytes(bytes: number) {
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function ActivityVideoManager({
   activity,
   onVideosChange,
@@ -45,6 +54,8 @@ export function ActivityVideoManager({
   >(null);
   const [files, setFiles] = useState<File[]>([]);
   const [maxUploadSizeMb, setMaxUploadSizeMb] = useState(DEFAULT_MAX_VIDEO_UPLOAD_SIZE_MB);
+  const [uploadProgress, setUploadProgress] = useState<UploadBatchProgress | null>(null);
+  const [fileProgress, setFileProgress] = useState<Record<string, UploadFileProgress>>({});
   const [inputKey, setInputKey] = useState(0);
   const [selectedVideoIndex, setSelectedVideoIndex] = useState<number | null>(null);
 
@@ -121,6 +132,27 @@ export function ActivityVideoManager({
 
     setBusy("uploading");
     setError(null);
+    setUploadProgress({
+      currentFileName: files[0]?.name ?? null,
+      loadedBytes: 0,
+      totalBytes: files.reduce((sum, file) => sum + file.size, 0),
+      uploadedFileCount: 0,
+      totalFileCount: files.length,
+      phase: "uploading",
+    });
+    setFileProgress(
+      Object.fromEntries(
+        files.map((file) => [
+          file.name,
+          {
+            fileName: file.name,
+            loadedBytes: 0,
+            totalBytes: file.size,
+            phase: "pending" as const,
+          },
+        ]),
+      ),
+    );
     try {
       let nextVideos = videos;
       const { uploaded, failures } = await uploadActivityVideos(token, activity.id, files, {
@@ -131,6 +163,13 @@ export function ActivityVideoManager({
           startTransition(() => {
             onVideosChange(nextVideos);
           });
+        },
+        onBatchProgress: setUploadProgress,
+        onFileProgress: (progress) => {
+          setFileProgress((current) => ({
+            ...current,
+            [progress.fileName]: progress,
+          }));
         },
       });
 
@@ -160,6 +199,7 @@ export function ActivityVideoManager({
       setError(e instanceof Error ? e.message : dict.common.unknownError);
     } finally {
       setBusy(null);
+      setUploadProgress(null);
     }
   };
 
@@ -272,6 +312,98 @@ export function ActivityVideoManager({
         <p className="mt-4 whitespace-pre-line rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </p>
+      ) : null}
+      {busy === "uploading" && uploadProgress ? (
+        <div className="mt-4 rounded-2xl border border-stone-200 bg-white p-4">
+          <div className="flex items-center justify-between gap-4 text-sm text-stone-700">
+            <span>
+              {uploadProgress.phase === "processing"
+                ? dict.activityVideos.uploadProcessing
+                : dict.activityVideos.uploadProgress}
+            </span>
+            <span>
+              {Math.round(
+                uploadProgress.totalBytes > 0
+                  ? (uploadProgress.loadedBytes / uploadProgress.totalBytes) * 100
+                  : 0,
+              )}
+              %
+            </span>
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-stone-200">
+            <div
+              className="h-full rounded-full bg-emerald-600 transition-all"
+              style={{
+                width: `${Math.max(
+                  0,
+                  Math.min(
+                    100,
+                    uploadProgress.totalBytes > 0
+                      ? (uploadProgress.loadedBytes / uploadProgress.totalBytes) * 100
+                      : 0,
+                  ),
+                )}%`,
+              }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-stone-500">
+            {dict.activityVideos.uploadProgressDetail
+              .replace("{loaded}", formatBytes(uploadProgress.loadedBytes))
+              .replace("{total}", formatBytes(uploadProgress.totalBytes))
+              .replace("{uploaded}", String(uploadProgress.uploadedFileCount))
+              .replace("{count}", String(uploadProgress.totalFileCount))}
+          </p>
+        </div>
+      ) : null}
+      {busy === "uploading" && files.length > 0 ? (
+        <div className="mt-4 space-y-3 rounded-2xl border border-stone-200 bg-white p-4">
+          {files.map((file) => {
+            const progress = fileProgress[file.name] ?? {
+              fileName: file.name,
+              loadedBytes: 0,
+              totalBytes: file.size,
+              phase: "pending" as const,
+            };
+            const percent =
+              progress.totalBytes > 0 ? (progress.loadedBytes / progress.totalBytes) * 100 : 0;
+            const phaseLabel =
+              progress.phase === "completed"
+                ? dict.activityVideos.fileUploadCompleted
+                : progress.phase === "failed"
+                  ? dict.activityVideos.fileUploadFailed
+                  : progress.phase === "processing"
+                    ? dict.activityVideos.fileUploadProcessing
+                    : progress.phase === "uploading"
+                      ? dict.activityVideos.fileUploadUploading
+                      : dict.activityVideos.fileUploadPending;
+
+            return (
+              <div key={file.name}>
+                <div className="flex items-center justify-between gap-4 text-sm text-stone-700">
+                  <span className="truncate">{file.name}</span>
+                  <span>{phaseLabel}</span>
+                </div>
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-stone-200">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      progress.phase === "failed"
+                        ? "bg-red-500"
+                        : progress.phase === "completed"
+                          ? "bg-emerald-700"
+                          : "bg-emerald-600"
+                    }`}
+                    style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-stone-500">
+                  {dict.activityVideos.fileUploadDetail
+                    .replace("{loaded}", formatBytes(progress.loadedBytes))
+                    .replace("{total}", formatBytes(progress.totalBytes))}
+                </p>
+              </div>
+            );
+          })}
+        </div>
       ) : null}
 
       {!activity?.id ? (
