@@ -98,39 +98,38 @@ export function PublicTripPage({
   const metaItems = [
     {
       label: dict.publicSite.startDate,
-      value: formatDate(trip.start_date, locale) ?? dict.publicSite.metaEmpty,
+      value: formatDate(trip.start_date, locale),
     },
     {
       label: dict.publicSite.endDate,
-      value: formatDate(trip.end_date, locale) ?? dict.publicSite.metaEmpty,
+      value: formatDate(trip.end_date, locale),
     },
     {
       label: dict.publicSite.walkedDistance,
       value:
         totalDistanceKm === null
-          ? dict.publicSite.metaEmpty
+          ? null
           : `${formatNumber(totalDistanceKm, locale, { maximumFractionDigits: 1 })} km`,
     },
     {
       label: dict.publicSite.walkedTime,
       value:
         totalMovingHours === null
-          ? dict.publicSite.metaEmpty
+          ? null
           : `${formatNumber(totalMovingHours, locale, { maximumFractionDigits: 1 })} h`,
     },
     {
       label: dict.publicSite.tripDays,
-      value:
-        totalTripDays === null ? dict.publicSite.metaEmpty : formatNumber(totalTripDays, locale),
+      value: totalTripDays === null ? null : formatNumber(totalTripDays, locale),
     },
     {
       label: dict.publicSite.elevationGain,
       value:
         totalElevationGainMeters === null
-          ? dict.publicSite.metaEmpty
+          ? null
           : `${formatNumber(totalElevationGainMeters, locale, { maximumFractionDigits: 0 })} m`,
     },
-  ];
+  ].filter((item) => item.value !== null);
 
   return (
     <main className="min-h-screen bg-[#ece3cf] bg-[url('/topo_seamless_contours.svg')] bg-[length:3000px_3000px] bg-[position:0_0] bg-repeat px-6 py-8 text-stone-900 sm:px-10 lg:px-16">
@@ -197,10 +196,10 @@ export function PublicTripPage({
         </section>
 
         <section className="mt-6 rounded-[2rem] border border-stone-200 bg-white/90 p-6 shadow-[0_24px_80px_-48px_rgba(41,37,36,0.45)] backdrop-blur">
-          <dl className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          <dl className="grid gap-5 grid-cols-2 xl:grid-cols-3">
             {metaItems.map((item) => (
-              <div key={item.label} className="rounded-[1.25rem] bg-stone-50 px-5 py-4">
-                <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
+              <div key={item.label} className="bg-stone-50 px-2 py-2">
+                <dt className="text-[9px] font-semibold uppercase tracking-[0.2em] text-stone-400">
                   {item.label}
                 </dt>
                 <dd className="mt-1 text-sm text-stone-700">{item.value}</dd>

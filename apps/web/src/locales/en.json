@@ -6,7 +6,9 @@
     "czech": "Czech",
     "close": "Close",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "hide": "Hide",
+    "show": "Show"
   },
   "home": {
     "title": "HikeLog",
@@ -79,7 +81,7 @@
     "sectionPlaceholder": "Placeholder content for the final public trip page.",
     "openMap": "Open map",
     "mapWithRoute": "Map with Route",
-    "backToTrip": "Back to trip",
+    "backToTrip": "Back to trip map",
     "mapMissingApiKey": "Mapy.com API key is missing.",
     "contentTitle": "Trip content",
     "contentEmpty": "This trip does not have any published content yet.",

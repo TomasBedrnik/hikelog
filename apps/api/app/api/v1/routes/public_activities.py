@@ -34,6 +34,7 @@ async def list_public_trip_activities(
         select(Activity)
         .options(
             selectinload(Activity.comments),
+            selectinload(Activity.audios),
             selectinload(Activity.photos),
             selectinload(Activity.videos),
         )
@@ -56,6 +57,7 @@ async def get_public_activity(
         .options(
             selectinload(Activity.trip),
             selectinload(Activity.comments),
+            selectinload(Activity.audios),
             selectinload(Activity.photos),
             selectinload(Activity.videos),
         )

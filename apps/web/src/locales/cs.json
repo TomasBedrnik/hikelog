@@ -6,7 +6,9 @@
     "czech": "Čeština",
     "close": "Zavřít",
     "previous": "Předchozí",
-    "next": "Další"
+    "next": "Další",
+    "hide": "Skrýt",
+    "show": "Zobrazit"
   },
   "home": {
     "title": "HikeLog",
@@ -79,7 +81,7 @@
     "sectionPlaceholder": "Zástupný obsah pro finální veřejnou stránku trasy.",
     "openMap": "Otevřít mapu",
     "mapWithRoute": "Mapa s trasou",
-    "backToTrip": "Zpět na trasu",
+    "backToTrip": "Zpět na mapu trasu",
     "mapMissingApiKey": "Chybí API klíč Mapy.com.",
     "contentTitle": "Obsah trasy",
     "contentEmpty": "Tato trasa zatím nemá zveřejněný žádný obsah.",
@@ -253,7 +255,7 @@
     "movingTime": "Čas v pohybu",
     "elapsedTime": "Celkový čas",
     "totalElevationGain": "Nastoupané metry",
-    "descriptionTitle": "Popis",
+    "descriptionTitle": "Povídání",
     "descriptionHelp": "Volitelný popis v BlockNote uložený jako JSONB.",
     "gpxFile": "GPX soubor",
     "gpxHelp": "Nahrajte GPX trasu a polyline i souhrnná polyline se vygenerují automaticky.",

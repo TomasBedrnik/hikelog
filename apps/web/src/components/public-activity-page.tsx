@@ -55,6 +55,18 @@ export function PublicActivityPage({
     currentActivityIndex >= 0 && currentActivityIndex < sortedTripActivities.length - 1
       ? sortedTripActivities[currentActivityIndex + 1]
       : null;
+  const audios = useMemo(
+    () =>
+      [...activity.audios].sort((a, b) => {
+        const left = new Date(a.created_at).getTime();
+        const right = new Date(b.created_at).getTime();
+        if (left !== right) {
+          return right - left;
+        }
+        return b.id - a.id;
+      }),
+    [activity.audios],
+  );
   const descriptionBlocks = getTripContentBlocks(activity.description);
   const hasDescription = hasTripContent(activity.description);
   const mediaItems = useMemo(
@@ -113,11 +125,11 @@ export function PublicActivityPage({
   const infoItems = [
     {
       label: dict.activities.startDate,
-      value: formatDateTime(activity.start_date, locale) ?? dict.publicSite.metaEmpty,
+      value: formatDateTime(activity.start_date, locale),
     },
     {
       label: dict.activities.distance,
-      value: formatDistance(activity.distance, locale) ?? dict.publicSite.metaEmpty,
+      value: formatDistance(activity.distance, locale),
     },
     {
       label: dict.activities.movingTime,
@@ -128,7 +140,7 @@ export function PublicActivityPage({
             )
               .toString()
               .padStart(2, "0")}`
-          : dict.publicSite.metaEmpty,
+          : null,
     },
     {
       label: dict.activities.elapsedTime,
@@ -139,13 +151,13 @@ export function PublicActivityPage({
             )
               .toString()
               .padStart(2, "0")}`
-          : dict.publicSite.metaEmpty,
+          : null,
     },
     {
       label: dict.activities.totalElevationGain,
-      value: activity.total_elevation_gain?.toLocaleString(locale) ?? dict.publicSite.metaEmpty,
+      value: activity.total_elevation_gain?.toLocaleString(locale) ?? null,
     },
-  ];
+  ].filter((item) => item.value !== null);
   const hasMedia = mediaItems.length > 0;
   const desktopGridClassName = hasMedia
     ? "lg:grid-cols-[26rem_minmax(0,1fr)] lg:grid-rows-[11rem_minmax(0,1fr)]"
@@ -176,7 +188,7 @@ export function PublicActivityPage({
             </h1>
             <Link
               aria-label="Home"
-              className="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-stone-300 bg-stone-50 text-stone-700 transition hover:bg-stone-100"
+              className="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-stone-300 bg-stone-50 text-stone-700 transition  hover:border-emerald-600 hover:bg-emerald-50"
               href="/"
             >
               <Image
@@ -190,52 +202,80 @@ export function PublicActivityPage({
             </Link>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-3">
+          <div className="mt-4 grid grid-cols-[1fr_auto_1fr] gap-3">
             {previousActivity ? (
               <Link
-                className="inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+                className="inline-flex justify-between rounded-full border border-stone-300 pl-2 pr-4 py-2 text-xs font-medium text-stone-700 transition  hover:border-emerald-600 hover:bg-emerald-50"
                 href={`/activities/${previousActivity.id}`}
               >
+                <Image
+                  alt=""
+                  aria-hidden="true"
+                  className="size-4"
+                  height={16}
+                  src="/icons/caret-left.svg"
+                  width={16}
+                />
                 {dict.activities.previousDay}
               </Link>
-            ) : null}
+            ) : (
+              <div></div>
+            )}
             <Link
-              className="inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+              className="inline-flex rounded-full border border-stone-300 px-4 py-2 text-xs font-medium text-stone-700 transition  hover:border-emerald-600 hover:bg-emerald-50"
               href={`/trips/${activity.trip_id}/map`}
             >
               {dict.activities.wholeMap}
             </Link>
             {nextActivity ? (
               <Link
-                className="inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+                className="inline-flex justify-between rounded-full border border-stone-300 pr-2 pl-4 py-2 text-xs font-medium text-stone-700 transition  hover:border-emerald-600 hover:bg-emerald-50"
                 href={`/activities/${nextActivity.id}`}
               >
                 {dict.activities.nextDay}
+                <Image
+                  alt=""
+                  aria-hidden="true"
+                  className="size-4"
+                  height={16}
+                  src="/icons/caret-right.svg"
+                  width={16}
+                />
               </Link>
             ) : null}
           </div>
           {error ? <p className="mt-3 text-sm text-red-700">{error}</p> : null}
 
-          <dl className="mt-5 space-y-4">
+          <dl className="mt-5 space-y-4 grid grid-cols-2">
             {infoItems.map((item) => (
               <div key={item.label}>
-                <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
+                <dt className="text-[9px] font-semibold uppercase tracking-[0.2em] text-stone-400">
                   {item.label}
                 </dt>
                 <dd className="mt-1 text-sm text-stone-700">{item.value}</dd>
               </div>
             ))}
           </dl>
-
-          {hasDescription ? (
-            <div className="mt-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
-                {dict.activities.descriptionTitle}
-              </p>
+          <div className="mt-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
+              {dict.activities.descriptionTitle}
+            </p>
+            {audios.length > 0 ? (
+              <div className="mt-3 space-y-3">
+                {audios.map((audio) => (
+                  <audio className="mt-3 w-full" controls preload="none" src={audio.audio_url}>
+                    {dict.activityAudios.playbackUnsupported}
+                  </audio>
+                ))}
+              </div>
+            ) : (
+              <div></div>
+            )}
+            {hasDescription ? (
               <TripContentRenderer blocks={descriptionBlocks} className="mt-3" />
-            </div>
-          ) : null}
-
+            ) : null}
+          </div>
+          <hr className="my-5 border-stone-200" />
           <CommentsSection
             comments={comments}
             emptyText={dict.comments.emptyActivity}
@@ -253,6 +293,7 @@ export function PublicActivityPage({
             title={dict.comments.activityTitle}
             unknownError={dict.common.unknownError}
             validationError={dict.comments.validationError}
+            small={true}
           />
         </section>
 

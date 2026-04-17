@@ -60,12 +60,13 @@ class ActivityRead(ActivityBase):
     created_at: datetime
     trip_name: str | None = None
     comments: list[CommentRead] = Field(default_factory=list)
+    audios: list[ActivityAudioRead] = Field(default_factory=list)
     photos: list[ActivityPhotoRead] = Field(default_factory=list)
     videos: list[ActivityVideoRead] = Field(default_factory=list)
 
 
 class ActivityAdminRead(ActivityRead):
-    audios: list[ActivityAudioRead] = Field(default_factory=list)
+    pass
 
 
 class ActivitySummaryRead(BaseModel):

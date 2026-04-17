@@ -91,39 +91,38 @@ export function TripMapPage({
   const metaItems = [
     {
       label: dict.publicSite.startDate,
-      value: formatDate(trip.start_date, locale) ?? dict.publicSite.metaEmpty,
+      value: formatDate(trip.start_date, locale),
     },
     {
       label: dict.publicSite.endDate,
-      value: formatDate(trip.end_date, locale) ?? dict.publicSite.metaEmpty,
+      value: formatDate(trip.end_date, locale),
     },
     {
       label: dict.publicSite.walkedDistance,
       value:
         totalDistanceKm === null
-          ? dict.publicSite.metaEmpty
+          ? null
           : `${formatNumber(totalDistanceKm, locale, { maximumFractionDigits: 1 })} km`,
     },
     {
       label: dict.publicSite.walkedTime,
       value:
         totalMovingHours === null
-          ? dict.publicSite.metaEmpty
+          ? null
           : `${formatNumber(totalMovingHours, locale, { maximumFractionDigits: 1 })} h`,
     },
     {
       label: dict.publicSite.tripDays,
-      value:
-        totalTripDays === null ? dict.publicSite.metaEmpty : formatNumber(totalTripDays, locale),
+      value: totalTripDays === null ? null : formatNumber(totalTripDays, locale),
     },
     {
       label: dict.publicSite.elevationGain,
       value:
         totalElevationGainMeters === null
-          ? dict.publicSite.metaEmpty
+          ? null
           : `${formatNumber(totalElevationGainMeters, locale, { maximumFractionDigits: 0 })} m`,
     },
-  ];
+  ].filter((item) => item.value !== null);
   const activityRoutes = activities.flatMap((activity, index) => {
     if (!activity.summary_polyline) {
       return [];
@@ -179,7 +178,7 @@ export function TripMapPage({
 
       <div
         className="absolute left-4 top-4 z-[1000]
-                flex max-h-[calc(100vh-2rem)] w-[min(27rem,calc(100vw-2rem))] flex-col
+                flex max-h-[70vh] md:max-h-[calc(100vh-2rem)] w-[min(27rem,calc(100vw-2rem))] flex-col
                 rounded-[1.75rem] border border-stone-200 bg-white/95 px-5 py-4
                 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur"
       >
@@ -188,7 +187,7 @@ export function TripMapPage({
           <span className="flex shrink-0 items-center gap-2">
             <Link
               aria-label="Home"
-              className="inline-flex size-9 items-center justify-center rounded-full border border-stone-300 bg-stone-50 text-stone-700 transition hover:bg-stone-100"
+              className="inline-flex size-9 items-center justify-center rounded-full border border-stone-300 bg-stone-50 text-stone-700 transition hover:border-emerald-600 hover:bg-emerald-50"
               href="/"
             >
               <Image
@@ -202,7 +201,7 @@ export function TripMapPage({
             </Link>
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-stone-50 px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
+              className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-stone-50 px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:border-emerald-600 hover:bg-emerald-50"
               onClick={() => {
                 setIsPanelCollapsed((current) => !current);
               }}
@@ -217,7 +216,7 @@ export function TripMapPage({
                     src="/icons/eye-light.svg"
                     width={16}
                   />
-                  <span>Show</span>
+                  <span>{dict.common.show}</span>
                 </>
               ) : (
                 <>
@@ -229,7 +228,7 @@ export function TripMapPage({
                     src="/icons/eye-slash-light.svg"
                     width={16}
                   />
-                  <span>Hide</span>
+                  <span>{dict.common.hide}</span>
                 </>
               )}
             </button>
@@ -238,17 +237,26 @@ export function TripMapPage({
         {!isPanelCollapsed ? (
           <>
             <Link
-              className="mt-4 inline-flex justify-center rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+              className="mt-4 mr-auto inline-flex items-center gap-2 justify-center rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:border-emerald-600 hover:bg-emerald-50"
               href={`/trips/${trip.id}`}
             >
               {dict.publicSite.backToTrip}
+
+              <Image
+                alt=""
+                aria-hidden="true"
+                className="size-4"
+                height={16}
+                src="/icons/map-trifold-light.svg"
+                width={16}
+              />
             </Link>
             {error ? <p className="mt-3 text-sm text-red-700">{error}</p> : null}
 
-            <dl className="mt-6 grid gap-3 sm:grid-cols-2">
+            <dl className="mt-6 grid gap-3 grid-cols-2">
               {metaItems.map((item) => (
                 <div key={item.label} className="rounded-[1.25rem] bg-stone-50 px-4 py-3">
-                  <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-400">
+                  <dt className="text-[9px] font-semibold uppercase tracking-[0.2em] text-stone-400">
                     {item.label}
                   </dt>
                   <dd className="mt-1 text-sm text-stone-700">{item.value}</dd>

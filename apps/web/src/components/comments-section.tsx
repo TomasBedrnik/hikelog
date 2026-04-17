@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CommentRead } from "@/lib/comments";
 import { getDateLocale } from "@/lib/i18n";
+import clsx from "clsx";
 
 type CommentsSectionProps = {
   comments: CommentRead[];
@@ -17,6 +18,7 @@ type CommentsSectionProps = {
   deletingLabel?: string;
   namePlaceholder?: string;
   textPlaceholder?: string;
+  small?: boolean;
   validationError?: string;
   unknownError?: string;
   onCreate?: (payload: { name: string; text: string }) => Promise<void>;
@@ -47,6 +49,7 @@ export function CommentsSection({
   unknownError,
   onCreate,
   onDelete,
+  small,
 }: CommentsSectionProps) {
   const [name, setName] = useState("");
   const [text, setText] = useState("");
@@ -55,7 +58,9 @@ export function CommentsSection({
   const [deletingCommentId, setDeletingCommentId] = useState<number | null>(null);
 
   return (
-    <section className="mt-10 rounded-[2rem] border border-stone-200 bg-white p-6">
+    <section
+      className={clsx("bg-white", small ? "" : "mt-10 rounded-4xl border border-stone-200 p-6")}
+    >
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-xl font-semibold text-stone-900">{title}</h2>
         <span className="text-sm text-stone-500">{comments.length}</span>
@@ -134,13 +139,23 @@ export function CommentsSection({
       ) : null}
 
       {comments.length === 0 ? (
-        <p className="mt-5 rounded-2xl bg-stone-50 px-4 py-4 text-sm text-stone-500">{emptyText}</p>
+        <p
+          className={clsx(
+            "mt-5 text-sm text-stone-500",
+            small ? "pt-2 px-1" : "rounded-2xl px-4 py-4 bg-stone-50",
+          )}
+        >
+          {emptyText}
+        </p>
       ) : (
         <div className="mt-5 space-y-4">
           {comments.map((comment) => (
             <article
               key={comment.id}
-              className="rounded-[1.5rem] border border-stone-200 bg-stone-50 px-5 py-4"
+              className={clsx(
+                "border-stone-200 ",
+                small ? "border-t pt-2 px-1" : "rounded-3xl bg-stone-50 border px-5 py-4",
+              )}
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
