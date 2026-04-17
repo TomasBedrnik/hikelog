@@ -13,6 +13,8 @@ __pycache__
 .env
 .env.*
 !.env.example
+README-private.md
+deploy/env/
 
 apps/web/.next
 apps/web/node_modules
