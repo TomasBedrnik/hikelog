@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
+from pathlib import Path
 from urllib.parse import quote
 
 from google.cloud import storage
@@ -39,6 +40,19 @@ class FirebaseStorageService:
         blob = self.bucket.blob(path)
         blob.metadata = {"firebaseStorageDownloadTokens": download_token}
         blob.upload_from_file(BytesIO(data), size=len(data), content_type=content_type)
+        return self.build_download_url(path=path, download_token=download_token)
+
+    def upload_file(
+        self,
+        *,
+        path: str,
+        local_path: str | Path,
+        content_type: str,
+        download_token: str,
+    ) -> str:
+        blob = self.bucket.blob(path)
+        blob.metadata = {"firebaseStorageDownloadTokens": download_token}
+        blob.upload_from_filename(str(local_path), content_type=content_type)
         return self.build_download_url(path=path, download_token=download_token)
 
     def delete_object(self, path: str) -> None:

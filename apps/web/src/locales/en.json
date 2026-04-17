@@ -422,6 +422,8 @@
     "uploading": "Uploading…",
     "uploadPartialFailure": "Some videos failed to upload.",
     "uploadFailedVideo": "Failed to upload \"{name}\"",
+    "orderByCaptureDate": "Order by capture date",
+    "orderingByCaptureDate": "Ordering by capture date…",
     "totalCount": "Total videos: {count}",
     "moveEarlier": "Move earlier",
     "moveLater": "Move later",

@@ -42,6 +42,7 @@ SUPPORTED_VIDEO_CONTENT_TYPES = {
 THUMBNAIL_MAX_SIZE = (480, 480)
 TINY_THUMBNAIL_MAX_SIZE = (96, 96)
 THUMBNAIL_CONTENT_TYPE = "image/jpeg"
+UPLOAD_CHUNK_SIZE = 1024 * 1024
 
 
 @dataclass(slots=True)
@@ -264,78 +265,88 @@ def _extract_video_thumbnails(video_path: Path) -> tuple[bytes, bytes]:
 
 
 async def create_uploaded_video(*, upload: UploadFile, storage_prefix: str) -> UploadedVideoPayload:
-    payload = await upload.read()
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file is empty"
-        )
-
-    content_type = (upload.content_type or "").strip().lower()
-    extension = SUPPORTED_VIDEO_CONTENT_TYPES.get(content_type)
-
-    filename_extension = _normalized_extension(upload.filename)
-    if extension is None and filename_extension in SUPPORTED_VIDEO_EXTENSIONS:
-        extension = filename_extension.lstrip(".")
-
-    if extension is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unsupported video file. Use MP4, MOV, AVI, MPEG, 3GP, OGV, or WEBM.",
-        )
-
-    if not content_type:
-        content_type = mimetypes.guess_type(f"video.{extension}")[0] or "video/mp4"
-
-    object_id = uuid4().hex
-    original_storage_path = f"{storage_prefix}/{object_id}.{extension}"
-    thumbnail_storage_path = f"{storage_prefix}/{object_id}_thumb.jpg"
-    tiny_thumbnail_storage_path = f"{storage_prefix}/{object_id}_tiny.jpg"
-
-    with TemporaryDirectory() as temp_dir:
-        temp_path = Path(temp_dir)
-        video_path = temp_path / f"source.{extension}"
-        video_path.write_bytes(payload)
-
-        (
-            gps_latitude,
-            gps_longitude,
-            capture_datetime,
-            width,
-            height,
-            duration_seconds,
-        ) = _extract_video_metadata(video_path)
-        thumbnail_bytes, tiny_thumbnail_bytes = _extract_video_thumbnails(video_path)
-
-    uploaded_paths: list[str] = []
     try:
-        original_video_url = firebase_storage.upload_bytes(
-            path=original_storage_path,
-            data=payload,
-            content_type=content_type,
-            download_token=str(uuid4()),
-        )
-        uploaded_paths.append(original_storage_path)
-        thumbnail_url = firebase_storage.upload_bytes(
-            path=thumbnail_storage_path,
-            data=thumbnail_bytes,
-            content_type=THUMBNAIL_CONTENT_TYPE,
-            download_token=str(uuid4()),
-        )
-        uploaded_paths.append(thumbnail_storage_path)
-        tiny_thumbnail_url = firebase_storage.upload_bytes(
-            path=tiny_thumbnail_storage_path,
-            data=tiny_thumbnail_bytes,
-            content_type=THUMBNAIL_CONTENT_TYPE,
-            download_token=str(uuid4()),
-        )
-        uploaded_paths.append(tiny_thumbnail_storage_path)
-    except Exception:
-        for path in uploaded_paths:
+        content_type = (upload.content_type or "").strip().lower()
+        extension = SUPPORTED_VIDEO_CONTENT_TYPES.get(content_type)
+
+        filename_extension = _normalized_extension(upload.filename)
+        if extension is None and filename_extension in SUPPORTED_VIDEO_EXTENSIONS:
+            extension = filename_extension.lstrip(".")
+
+        if extension is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Unsupported video file. Use MP4, MOV, AVI, MPEG, 3GP, OGV, or WEBM.",
+            )
+
+        if not content_type:
+            content_type = mimetypes.guess_type(f"video.{extension}")[0] or "video/mp4"
+
+        object_id = uuid4().hex
+        original_storage_path = f"{storage_prefix}/{object_id}.{extension}"
+        thumbnail_storage_path = f"{storage_prefix}/{object_id}_thumb.jpg"
+        tiny_thumbnail_storage_path = f"{storage_prefix}/{object_id}_tiny.jpg"
+
+        with TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            video_path = temp_path / f"source.{extension}"
+
+            total_bytes = 0
+            with video_path.open("wb") as destination:
+                while True:
+                    chunk = await upload.read(UPLOAD_CHUNK_SIZE)
+                    if not chunk:
+                        break
+                    destination.write(chunk)
+                    total_bytes += len(chunk)
+
+            if total_bytes == 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file is empty"
+                )
+
+            (
+                gps_latitude,
+                gps_longitude,
+                capture_datetime,
+                width,
+                height,
+                duration_seconds,
+            ) = _extract_video_metadata(video_path)
+            thumbnail_bytes, tiny_thumbnail_bytes = _extract_video_thumbnails(video_path)
+
+            uploaded_paths: list[str] = []
             try:
-                firebase_storage.delete_object(path)
+                original_video_url = firebase_storage.upload_file(
+                    path=original_storage_path,
+                    local_path=video_path,
+                    content_type=content_type,
+                    download_token=str(uuid4()),
+                )
+                uploaded_paths.append(original_storage_path)
+                thumbnail_url = firebase_storage.upload_bytes(
+                    path=thumbnail_storage_path,
+                    data=thumbnail_bytes,
+                    content_type=THUMBNAIL_CONTENT_TYPE,
+                    download_token=str(uuid4()),
+                )
+                uploaded_paths.append(thumbnail_storage_path)
+                tiny_thumbnail_url = firebase_storage.upload_bytes(
+                    path=tiny_thumbnail_storage_path,
+                    data=tiny_thumbnail_bytes,
+                    content_type=THUMBNAIL_CONTENT_TYPE,
+                    download_token=str(uuid4()),
+                )
+                uploaded_paths.append(tiny_thumbnail_storage_path)
             except Exception:
-                continue
-        raise
+                for path in uploaded_paths:
+                    try:
+                        firebase_storage.delete_object(path)
+                    except Exception:
+                        continue
+                raise
+    finally:
+        await upload.close()
 
     return UploadedVideoPayload(
         original_storage_path=original_storage_path,

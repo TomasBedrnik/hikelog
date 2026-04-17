@@ -283,6 +283,12 @@ def _activity_photo_sort_key(photo: ActivityPhoto) -> tuple[int, datetime, datet
     return (has_capture_datetime, capture_datetime, photo.created_at, photo.id)
 
 
+def _activity_video_sort_key(video: ActivityVideo) -> tuple[int, datetime, datetime, int]:
+    capture_datetime = video.capture_datetime or datetime.max
+    has_capture_datetime = 0 if video.capture_datetime is not None else 1
+    return (has_capture_datetime, capture_datetime, video.created_at, video.id)
+
+
 def _delete_activity_audio_file(audio: ActivityAudio) -> None:
     delete_uploaded_audio_file(audio.storage_path)
 
@@ -733,6 +739,31 @@ async def reorder_activity_videos(
 
     await session.commit()
     ordered_videos = [videos_by_id[video_id] for video_id in ordered_ids]
+    return [ActivityVideoRead.model_validate(video) for video in ordered_videos]
+
+
+@router.post("/{activity_id}/videos/order-by-capture-date", response_model=list[ActivityVideoRead])
+async def order_activity_videos_by_capture_date(
+    activity_id: int,
+    _: Annotated[AdminUser, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> list[ActivityVideoRead]:
+    stmt = (
+        select(ActivityVideo)
+        .where(ActivityVideo.activity_id == activity_id)
+        .order_by(
+            ActivityVideo.position.asc(), ActivityVideo.created_at.asc(), ActivityVideo.id.asc()
+        )
+    )
+    videos = list((await session.scalars(stmt)).all())
+    if not videos:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Activity has no videos")
+
+    ordered_videos = sorted(videos, key=_activity_video_sort_key)
+    for index, video in enumerate(ordered_videos):
+        video.position = index
+
+    await session.commit()
     return [ActivityVideoRead.model_validate(video) for video in ordered_videos]
 
 

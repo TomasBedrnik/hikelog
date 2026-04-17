@@ -422,6 +422,8 @@
     "uploading": "Nahrávání…",
     "uploadPartialFailure": "Některá videa se nepodařilo nahrát.",
     "uploadFailedVideo": "Nepodařilo se nahrát „{name}“",
+    "orderByCaptureDate": "Seřadit podle času pořízení",
+    "orderingByCaptureDate": "Řazení podle času pořízení…",
     "totalCount": "Celkem videí: {count}",
     "moveEarlier": "Posunout dříve",
     "moveLater": "Posunout později",

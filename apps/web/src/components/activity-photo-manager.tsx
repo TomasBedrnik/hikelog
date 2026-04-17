@@ -16,8 +16,20 @@ import {
 import { getGlobalContent } from "@/lib/global-content";
 import { ImageLightbox } from "@/components/image-lightbox";
 import { useI18n } from "@/components/i18n-provider";
+import { getDateLocale } from "@/lib/i18n";
 
 const DEFAULT_RESIZE_LONG_SIDE = "1920";
+
+function formatDateTime(value: string | null, locale: "en" | "cs") {
+  if (!value) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat(getDateLocale(locale), {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
 
 export function ActivityPhotoManager({
   activity,
@@ -27,7 +39,7 @@ export function ActivityPhotoManager({
   onPhotosChange: (photos: ActivityPhotoRead[]) => void;
 }) {
   const router = useRouter();
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<
     | "uploading"
@@ -434,6 +446,10 @@ export function ActivityPhotoManager({
                       />
                     </button>
 
+                    <div className="flex flex-col p-2 pl-4 text-sm text-stone-700 items-start">
+                      <span>{photo.original_filename ?? ""}</span>
+                      <span>{formatDateTime(photo.capture_datetime, locale)}</span>
+                    </div>
                     <div className="absolute left-3 top-3 flex gap-2">
                       <button
                         aria-label={dict.activityPhotos.moveEarlier}

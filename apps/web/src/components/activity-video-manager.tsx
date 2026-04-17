@@ -8,14 +8,27 @@ import {
   ActivityRead,
   ActivityVideoRead,
   deleteActivityVideo,
+  orderActivityVideosByCaptureDate,
   reorderActivityVideos,
   uploadActivityVideos,
 } from "@/lib/activities";
 import { getGlobalContent } from "@/lib/global-content";
 import { useI18n } from "@/components/i18n-provider";
+import { getDateLocale } from "@/lib/i18n";
 import { VideoLightbox } from "@/components/video-lightbox";
 
 const DEFAULT_MAX_VIDEO_UPLOAD_SIZE_MB = 512;
+
+function formatDateTime(value: string | null, locale: "en" | "cs") {
+  if (!value) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat(getDateLocale(locale), {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
 
 export function ActivityVideoManager({
   activity,
@@ -25,11 +38,11 @@ export function ActivityVideoManager({
   onVideosChange: (videos: ActivityVideoRead[]) => void;
 }) {
   const router = useRouter();
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"uploading" | `delete-${number}` | `move-${number}` | null>(
-    null,
-  );
+  const [busy, setBusy] = useState<
+    "uploading" | `delete-${number}` | `move-${number}` | "ordering-by-capture-date" | null
+  >(null);
   const [files, setFiles] = useState<File[]>([]);
   const [maxUploadSizeMb, setMaxUploadSizeMb] = useState(DEFAULT_MAX_VIDEO_UPLOAD_SIZE_MB);
   const [inputKey, setInputKey] = useState(0);
@@ -218,6 +231,33 @@ export function ActivityVideoManager({
     }
   };
 
+  const handleOrderByCaptureDate = async () => {
+    if (!activity?.id || videos.length === 0) {
+      return;
+    }
+
+    const token = requireToken();
+    if (!token) {
+      return;
+    }
+
+    setBusy("ordering-by-capture-date");
+    setError(null);
+    try {
+      const ordered = await orderActivityVideosByCaptureDate(token, activity.id);
+      startTransition(() => {
+        onVideosChange(ordered);
+      });
+    } catch (e: unknown) {
+      if (handleAuthError(e)) {
+        return;
+      }
+      setError(e instanceof Error ? e.message : dict.common.unknownError);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <section className="rounded-[1.5rem] border border-stone-200 bg-stone-50/70 p-5">
       <div className="flex flex-col gap-2">
@@ -270,6 +310,18 @@ export function ActivityVideoManager({
             >
               {busy === "uploading" ? dict.activityVideos.uploading : dict.activityVideos.upload}
             </button>
+            <button
+              className="mt-4 ml-3 rounded-full border border-stone-300 bg-white px-5 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={busy !== null || videos.length === 0}
+              onClick={() => {
+                void handleOrderByCaptureDate();
+              }}
+              type="button"
+            >
+              {busy === "ordering-by-capture-date"
+                ? dict.activityVideos.orderingByCaptureDate
+                : dict.activityVideos.orderByCaptureDate}
+            </button>
           </div>
 
           {videos.length === 0 ? (
@@ -304,6 +356,10 @@ export function ActivityVideoManager({
                           {dict.activityVideos.videoFallback}
                         </div>
                       )}
+                      <div className="flex flex-col p-2 pl-4 text-sm text-stone-700 items-start">
+                        <span>{video.original_filename ?? ""}</span>
+                        <span>{formatDateTime(video.capture_datetime, locale)}</span>
+                      </div>
                       <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
                         <span className="rounded-full bg-white/92 p-4 shadow-lg backdrop-blur-sm">
                           <Image
