@@ -36,6 +36,9 @@ class GlobalContent(Base):
     activity_photo_resize_long_side: Mapped[int] = mapped_column(
         Integer, nullable=False, default=1920
     )
+    activity_video_max_upload_size_mb: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=512
+    )
     activity_audio_transcription_language_code: Mapped[str | None] = mapped_column(
         String(32), nullable=True
     )

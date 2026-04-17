@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { startTransition, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearIdToken, getIdToken } from "@/lib/auth";
 import {
@@ -11,8 +11,11 @@ import {
   reorderActivityVideos,
   uploadActivityVideos,
 } from "@/lib/activities";
+import { getGlobalContent } from "@/lib/global-content";
 import { useI18n } from "@/components/i18n-provider";
 import { VideoLightbox } from "@/components/video-lightbox";
+
+const DEFAULT_MAX_VIDEO_UPLOAD_SIZE_MB = 512;
 
 export function ActivityVideoManager({
   activity,
@@ -28,6 +31,7 @@ export function ActivityVideoManager({
     null,
   );
   const [files, setFiles] = useState<File[]>([]);
+  const [maxUploadSizeMb, setMaxUploadSizeMb] = useState(DEFAULT_MAX_VIDEO_UPLOAD_SIZE_MB);
   const [inputKey, setInputKey] = useState(0);
   const [selectedVideoIndex, setSelectedVideoIndex] = useState<number | null>(null);
 
@@ -35,6 +39,24 @@ export function ActivityVideoManager({
     () => [...(activity?.videos ?? [])].sort((a, b) => a.position - b.position || a.id - b.id),
     [activity?.videos],
   );
+
+  useEffect(() => {
+    const token = getIdToken();
+    if (!token) {
+      return;
+    }
+
+    getGlobalContent(token)
+      .then((loaded) => {
+        setMaxUploadSizeMb(loaded.activity_video_max_upload_size_mb);
+      })
+      .catch((e: unknown) => {
+        if (e instanceof Error && e.message === "AUTH_REQUIRED") {
+          clearIdToken();
+          router.push("/login");
+        }
+      });
+  }, [router]);
 
   const requireToken = () => {
     const token = getIdToken();
@@ -67,6 +89,20 @@ export function ActivityVideoManager({
 
     if (files.length === 0) {
       setError(dict.activityVideos.filesRequired);
+      return;
+    }
+
+    const maxUploadSizeBytes = maxUploadSizeMb * 1024 * 1024;
+    const oversizedFiles = files.filter((file) => file.size > maxUploadSizeBytes);
+    if (oversizedFiles.length > 0) {
+      setError(
+        [
+          dict.activityVideos.fileTooLarge.replace("{limit}", String(maxUploadSizeMb)),
+          ...oversizedFiles.map((file) =>
+            dict.activityVideos.uploadFailedVideo.replace("{name}", file.name),
+          ),
+        ].join("\n"),
+      );
       return;
     }
 
@@ -219,7 +255,9 @@ export function ActivityVideoManager({
                 }}
                 type="file"
               />
-              <p className="mt-2 text-xs text-stone-500">{dict.activityVideos.filesHelp}</p>
+              <p className="mt-2 text-xs text-stone-500">
+                {dict.activityVideos.filesHelp.replace("{limit}", String(maxUploadSizeMb))}
+              </p>
             </label>
 
             <button

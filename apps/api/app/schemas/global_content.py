@@ -13,6 +13,7 @@ class GlobalContentUpdate(BaseModel):
     home_content: dict[str, Any] | None = None
     enabled_language_codes: list[str] | None = None
     activity_photo_resize_long_side: int | None = Field(default=None, ge=1)
+    activity_video_max_upload_size_mb: int | None = Field(default=None, ge=1)
     activity_audio_transcription_language_code: str | None = Field(
         default=None, min_length=2, max_length=32
     )
@@ -63,6 +64,7 @@ class GlobalContentRead(BaseModel):
     hero_tiny_thumbnail_width: int | None = Field(default=None, ge=1)
     hero_tiny_thumbnail_height: int | None = Field(default=None, ge=1)
     activity_photo_resize_long_side: int = Field(ge=1)
+    activity_video_max_upload_size_mb: int = Field(ge=1)
     hero_content_type: str | None
     hero_original_filename: str | None
     created_at: datetime

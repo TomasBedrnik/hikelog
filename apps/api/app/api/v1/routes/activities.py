@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import asdict
 from datetime import datetime
 from typing import Annotated
@@ -127,6 +128,15 @@ def _plain_text_to_blocknote_description(text: str) -> dict[str, object]:
             if paragraph
         ],
     }
+
+
+def _get_upload_file_size(upload: UploadFile) -> int:
+    file_obj = upload.file
+    current_position = file_obj.tell()
+    file_obj.seek(0, os.SEEK_END)
+    size = file_obj.tell()
+    file_obj.seek(current_position)
+    return size
 
 
 @router.get("", response_model=list[ActivityAdminRead])
@@ -419,6 +429,23 @@ async def upload_activity_videos(
     if not files:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="No files were uploaded"
+        )
+
+    global_content = await _get_or_create_global_content(session)
+    max_video_size_mb = global_content.activity_video_max_upload_size_mb
+    max_video_size_bytes = max_video_size_mb * 1024 * 1024
+    oversized_uploads = [
+        file.filename or "video"
+        for file in files
+        if _get_upload_file_size(file) > max_video_size_bytes
+    ]
+    if oversized_uploads:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Video exceeds maximum upload size "
+                f"of {max_video_size_mb} MB: {', '.join(oversized_uploads)}"
+            ),
         )
 
     current_max_position = await session.scalar(

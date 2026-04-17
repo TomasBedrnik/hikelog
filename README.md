@@ -234,6 +234,10 @@ An example nginx config is in:
 
 * [`deploy/nginx/hikelog.example.conf`](/hikelog/deploy/nginx/hikelog.example.conf)
 
+The example sets `client_max_body_size 512m` so larger photo, audio, and video uploads are accepted through nginx.
+It also sets longer proxy timeouts for media uploads that spend time in server-side processing.
+If you expect bigger or slower uploads, raise those values in your deployed nginx config too.
+
 It assumes:
 
 * `example.com` and `www.example.com` -> frontend on `127.0.0.1:3000`

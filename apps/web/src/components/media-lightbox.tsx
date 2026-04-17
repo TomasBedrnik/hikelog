@@ -108,7 +108,7 @@ export function MediaLightbox({
             className="max-h-[calc(100vh-7rem)] max-w-full rounded-[1.5rem] object-contain shadow-[0_30px_100px_-40px_rgba(0,0,0,0.85)]"
             controls
             playsInline
-            preload="auto"
+            preload="metadata"
             src={item.mediaUrl}
           >
             {dict.activityVideos.playbackUnsupported}

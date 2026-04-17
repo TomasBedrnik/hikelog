@@ -21,6 +21,7 @@ import { DEFAULT_ENABLED_LOCALES, Locale, normalizeEnabledLocales } from "@/lib/
 
 const DEFAULT_LONG_SIDE = "1920";
 const DEFAULT_ACTIVITY_PHOTO_RESIZE_LONG_SIDE = "1920";
+const DEFAULT_ACTIVITY_VIDEO_MAX_UPLOAD_SIZE_MB = "512";
 const DEFAULT_AUDIO_TRANSCRIPTION_MODEL = "latest_long";
 const DEFAULT_OPENAI_MODEL = "gpt-4.1-mini";
 const EMPTY_BLOCKS: PartialBlock[] = [{ type: "paragraph" }];
@@ -30,6 +31,7 @@ function toUpdatePayload(
   blocks: PartialBlock[],
   enabledLanguageCodes: Locale[],
   activityPhotoResizeLongSide: number,
+  activityVideoMaxUploadSizeMb: number,
   audioTranscriptionLanguageCode: string,
   audioTranscriptionModel: string,
   audioTranscriptionEnableAutomaticPunctuation: boolean,
@@ -45,6 +47,7 @@ function toUpdatePayload(
     },
     enabled_language_codes: enabledLanguageCodes,
     activity_photo_resize_long_side: activityPhotoResizeLongSide,
+    activity_video_max_upload_size_mb: activityVideoMaxUploadSizeMb,
     activity_audio_transcription_language_code: audioTranscriptionLanguageCode.trim() || null,
     activity_audio_transcription_model:
       audioTranscriptionModel.trim() || DEFAULT_AUDIO_TRANSCRIPTION_MODEL,
@@ -72,6 +75,9 @@ export function AdminGlobalContentPage() {
   const [resizeLongSide, setResizeLongSide] = useState(DEFAULT_LONG_SIDE);
   const [activityPhotoResizeLongSide, setActivityPhotoResizeLongSide] = useState(
     DEFAULT_ACTIVITY_PHOTO_RESIZE_LONG_SIDE,
+  );
+  const [activityVideoMaxUploadSizeMb, setActivityVideoMaxUploadSizeMb] = useState(
+    DEFAULT_ACTIVITY_VIDEO_MAX_UPLOAD_SIZE_MB,
   );
   const [audioTranscriptionLanguageCode, setAudioTranscriptionLanguageCode] = useState("");
   const [audioTranscriptionModel, setAudioTranscriptionModel] = useState(
@@ -102,6 +108,7 @@ export function AdminGlobalContentPage() {
         setContentBlocks(getTripContentBlocks(loaded.home_content));
         setEnabledLanguageCodes(normalizeEnabledLocales(loaded.enabled_language_codes));
         setActivityPhotoResizeLongSide(String(loaded.activity_photo_resize_long_side));
+        setActivityVideoMaxUploadSizeMb(String(loaded.activity_video_max_upload_size_mb));
         setAudioTranscriptionLanguageCode(loaded.activity_audio_transcription_language_code ?? "");
         setAudioTranscriptionModel(
           loaded.activity_audio_transcription_model || DEFAULT_AUDIO_TRANSCRIPTION_MODEL,
@@ -158,6 +165,15 @@ export function AdminGlobalContentPage() {
       return;
     }
 
+    const parsedActivityVideoMaxUploadSizeMb = Number(activityVideoMaxUploadSizeMb);
+    if (
+      !Number.isInteger(parsedActivityVideoMaxUploadSizeMb) ||
+      parsedActivityVideoMaxUploadSizeMb <= 0
+    ) {
+      setError(dict.globalContent.activityVideoMaxUploadSizeInvalid);
+      return;
+    }
+
     setBusy("saving");
     setError(null);
     try {
@@ -168,6 +184,7 @@ export function AdminGlobalContentPage() {
           contentBlocks,
           enabledLanguageCodes,
           parsedActivityPhotoResizeLongSide,
+          parsedActivityVideoMaxUploadSizeMb,
           audioTranscriptionLanguageCode,
           audioTranscriptionModel,
           audioTranscriptionEnableAutomaticPunctuation,
@@ -180,6 +197,7 @@ export function AdminGlobalContentPage() {
         setContent(updated);
         setEnabledLanguageCodes(normalizeEnabledLocales(updated.enabled_language_codes));
         setActivityPhotoResizeLongSide(String(updated.activity_photo_resize_long_side));
+        setActivityVideoMaxUploadSizeMb(String(updated.activity_video_max_upload_size_mb));
         setAudioTranscriptionLanguageCode(updated.activity_audio_transcription_language_code ?? "");
         setAudioTranscriptionModel(
           updated.activity_audio_transcription_model || DEFAULT_AUDIO_TRANSCRIPTION_MODEL,
@@ -353,6 +371,25 @@ export function AdminGlobalContentPage() {
                 />
                 <p className="mt-2 text-xs text-stone-500">
                   {dict.globalContent.activityPhotoResizeLongSideHelp}
+                </p>
+              </label>
+            </div>
+
+            <div>
+              <label className="block">
+                <span className="text-sm font-medium text-stone-700">
+                  {dict.globalContent.activityVideoMaxUploadSizeMb}
+                </span>
+                <input
+                  className="mt-2 w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-emerald-600"
+                  inputMode="numeric"
+                  onChange={(event) => {
+                    setActivityVideoMaxUploadSizeMb(event.target.value);
+                  }}
+                  value={activityVideoMaxUploadSizeMb}
+                />
+                <p className="mt-2 text-xs text-stone-500">
+                  {dict.globalContent.activityVideoMaxUploadSizeMbHelp}
                 </p>
               </label>
             </div>
