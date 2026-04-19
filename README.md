@@ -28,6 +28,8 @@ and one compose file at [`compose.yaml`](/hikelog/compose.yaml) with three servi
 * `api`
 * `web`
 
+The default port bindings in `compose.yaml` are limited to `127.0.0.1`, so the intended production setup is a public nginx reverse proxy in front of locally bound containers.
+
 ### Important env rule
 
 Do not copy `apps/api/.env` or `apps/web/.env.local` into images.
@@ -37,6 +39,7 @@ Those files are for local development. For deployment:
 * backend secrets go to a runtime env file, for example `deploy/env/api.env`
 * frontend server-side runtime env goes to `deploy/env/web.env`
 * `NEXT_PUBLIC_*` frontend values are build-time values, not secrets
+* `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is only needed for the admin Google login flow
 
 This is the key security split:
 
@@ -44,6 +47,7 @@ This is the key security split:
   * `FIREBASE_PRIVATE_KEY`
   * `STRAVA_CLIENT_SECRET`
   * `WEBPUSHR_AUTH_TOKEN`
+  * `OPENAI_API_KEY`
   * backend `DATABASE_URL`
   * keep these only in `deploy/env/api.env` on the VPS
 * public or effectively public values:
@@ -118,6 +122,8 @@ This file is injected into the running backend container with `env_file:` and is
 Important:
 
 * put `DATABASE_URL` here, not in the root `.env`
+* put `OPENAI_API_KEY` and `OPENAI_MODEL` here if you use AI audio enhancement
+* set `ADMIN_SESSION_SECRET` in production so admin sessions do not depend on another credential value
 
 ### `deploy/env/web.env`
 
@@ -240,13 +246,13 @@ If you expect bigger or slower uploads, raise those values in your deployed ngin
 
 It assumes:
 
-* `example.com` and `www.example.com` -> frontend on `127.0.0.1:3000`
-* `api.example.com` -> backend on `127.0.0.1:8000`
+* `hikelog.org` and `www.hikelog.org` -> frontend on `127.0.0.1:3000`
+* `api.hikelog.org` -> backend on `127.0.0.1:8000`
 
 To use it:
 
 1. copy it to your nginx sites directory
-2. replace `example.com` and `api.example.com` with your real domains
+2. replace `hikelog.org` and `api.hikelog.org` with your real domains
 3. make sure nginx can reach the Docker-published ports on localhost
 4. issue TLS certificates with certbot
 5. reload nginx
@@ -263,8 +269,8 @@ sudo systemctl reload nginx
 If you use certbot with nginx:
 
 ```bash
-sudo certbot --nginx -d example.com -d www.example.com
-sudo certbot --nginx -d api.example.com
+sudo certbot --nginx -d your-web-domain.example.com -d www.your-web-domain.example.com
+sudo certbot --nginx -d your-api-domain.example.com
 ```
 
 For production you will usually place nginx in front of:
@@ -274,8 +280,8 @@ For production you will usually place nginx in front of:
 
 Typical setup:
 
-* `https://example.com` -> `web:3000`
-* `https://api.example.com` -> `api:8000`
+* `https://your-web-domain.example.com` -> `web:3000`
+* `https://your-api-domain.example.com` -> `api:8000`
 
 Then set:
 

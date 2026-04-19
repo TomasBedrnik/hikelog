@@ -2,7 +2,7 @@
 
 import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { clearIdToken, getIdToken } from "@/lib/auth";
+import { clearIdToken, getIdToken, isBootstrapOnly, setBootstrapOnly } from "@/lib/auth";
 import { useI18n } from "@/components/i18n-provider";
 import { createAdminUser, deleteAdminUser, listAdminUsers, AdminUserRead } from "@/lib/admin-users";
 import { getDateLocale } from "@/lib/i18n";
@@ -14,6 +14,7 @@ export function AdminUsersPage() {
   const [newEmail, setNewEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<"creating" | `deleting-${number}` | null>(null);
+  const [bootstrapOnly, setBootstrapOnlyState] = useState(false);
 
   const requireToken = () => {
     const token = getIdToken();
@@ -51,6 +52,7 @@ export function AdminUsersPage() {
   };
 
   useEffect(() => {
+    setBootstrapOnlyState(isBootstrapOnly());
     void loadAdmins();
   }, [dict.common.unknownError, router]);
 
@@ -75,6 +77,10 @@ export function AdminUsersPage() {
           return [...items, created].sort((left, right) => left.email.localeCompare(right.email));
         });
         setNewEmail("");
+        if (bootstrapOnly) {
+          setBootstrapOnly(false);
+          setBootstrapOnlyState(false);
+        }
       });
     } catch (e: unknown) {
       if (handleAuthError(e)) {
@@ -113,6 +119,11 @@ export function AdminUsersPage() {
     <div className="mx-auto mt-6 max-w-5xl border-t border-stone-300 pt-6">
       <h1 className="text-3xl font-semibold tracking-tight">{dict.adminUsers.title}</h1>
       <p className="mt-2 text-sm text-stone-600">{dict.adminUsers.subtitle}</p>
+      {bootstrapOnly ? (
+        <p className="mt-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {dict.adminUsers.bootstrapHelp}
+        </p>
+      ) : null}
 
       {error && <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
       {!admins && !error && <p className="mt-4 text-sm text-stone-600">{dict.common.loading}</p>}
@@ -126,6 +137,7 @@ export function AdminUsersPage() {
               onChange={(event) => {
                 setNewEmail(event.target.value);
               }}
+              disabled={busy !== null}
               placeholder={dict.adminUsers.emailPlaceholder}
               type="email"
               value={newEmail}

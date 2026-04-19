@@ -92,7 +92,8 @@
   "login": {
     "title": "Admin login",
     "subtitle": "Sign in with Google to access admin pages.",
-    "googleError": "Google login failed"
+    "googleError": "Google login failed",
+    "googleUnavailable": "Google login is not configured in this deployment."
   },
   "nav": {
     "brand": "HikeLog Admin",
@@ -109,8 +110,10 @@
   "adminHome": {
     "title": "Administration",
     "subtitle": "Choose a section to manage application access or edit trip content.",
+    "bootstrapSubtitle": "No admin user exists yet. Create the first admin account before the rest of the administration area becomes available.",
     "usersTitle": "Users",
     "usersDescription": "Review which Google accounts can access the administration area.",
+    "bootstrapUsersDescription": "Create the first admin account for this installation.",
     "siteTitle": "Site",
     "siteDescription": "Edit homepage hero content and the main image used on the public index page.",
     "tripsTitle": "Trips",
@@ -127,6 +130,7 @@
   "adminUsers": {
     "title": "Admin Users",
     "subtitle": "Authorized Google accounts that can access administration pages.",
+    "bootstrapHelp": "Bootstrap mode is active. Create the first admin using the same Google account you just used to sign in.",
     "email": "Admin email",
     "emailPlaceholder": "name@example.com",
     "emailRequired": "Email is required.",

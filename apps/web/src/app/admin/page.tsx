@@ -1,11 +1,27 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/components/i18n-provider";
+import { isBootstrapOnly } from "@/lib/auth";
 
 export default function AdminPage() {
   const { dict } = useI18n();
-  const sections = [
+  const [bootstrapOnly, setBootstrapOnly] = useState(false);
+
+  useEffect(() => {
+    setBootstrapOnly(isBootstrapOnly());
+  }, []);
+
+  const sections = bootstrapOnly
+    ? [
+        {
+          href: "/admin/users",
+          title: dict.adminHome.usersTitle,
+          description: dict.adminHome.bootstrapUsersDescription,
+        },
+      ]
+    : [
     {
       href: "/admin/users",
       title: dict.adminHome.usersTitle,
@@ -41,12 +57,14 @@ export default function AdminPage() {
       title: dict.adminHome.galleryTitle,
       description: dict.adminHome.galleryDescription,
     },
-  ];
+      ];
 
   return (
     <div className="mx-auto mt-6 max-w-5xl border-t border-stone-300 pt-6">
       <h1 className="text-4xl font-semibold tracking-tight">{dict.adminHome.title}</h1>
-      <p className="mt-3 max-w-2xl text-sm text-stone-600">{dict.adminHome.subtitle}</p>
+      <p className="mt-3 max-w-2xl text-sm text-stone-600">
+        {bootstrapOnly ? dict.adminHome.bootstrapSubtitle : dict.adminHome.subtitle}
+      </p>
 
       <div className="mt-8 divide-y border-y border-stone-200">
         {sections.map((section) => (

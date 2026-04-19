@@ -92,7 +92,8 @@
   "login": {
     "title": "Přihlášení do administrace",
     "subtitle": "Pro přístup do administrace se přihlaste přes Google.",
-    "googleError": "Přihlášení přes Google selhalo"
+    "googleError": "Přihlášení přes Google selhalo",
+    "googleUnavailable": "V tomto nasazení není přihlášení přes Google nastavené."
   },
   "nav": {
     "brand": "Administrace HikeLog",
@@ -109,8 +110,10 @@
   "adminHome": {
     "title": "Administrace",
     "subtitle": "Vyberte sekci pro správu přístupu do aplikace nebo úpravu obsahu tras.",
+    "bootstrapSubtitle": "Zatím neexistuje žádný administrátor. Nejprve vytvořte první admin účet, teprve potom se zpřístupní zbytek administrace.",
     "usersTitle": "Uživatelé",
     "usersDescription": "Zobrazte Google účty, které mají přístup do administrace.",
+    "bootstrapUsersDescription": "Vytvořte první administrátorský účet pro tuto instalaci.",
     "siteTitle": "Web",
     "siteDescription": "Upravte hlavní obsah úvodu a obrázek použitý na veřejské titulní stránce.",
     "tripsTitle": "Trasy",
@@ -127,6 +130,7 @@
   "adminUsers": {
     "title": "Administrátoři",
     "subtitle": "Google účty, které mají povolený přístup do administrace.",
+    "bootstrapHelp": "Je aktivní bootstrap režim. Vytvořte prvního administrátora pomocí stejného Google účtu, kterým jste se právě přihlásili.",
     "email": "E-mail administrátora",
     "emailPlaceholder": "jmeno@example.com",
     "emailRequired": "E-mail je povinný.",

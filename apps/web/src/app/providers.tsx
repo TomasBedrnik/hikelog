@@ -12,12 +12,13 @@ export default function Providers({
   initialLocale: Locale;
 }) {
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  const content = <I18nProvider initialLocale={initialLocale}>{children}</I18nProvider>;
   if (!clientId) {
-    throw new Error("Missing NEXT_PUBLIC_GOOGLE_CLIENT_ID");
+    return content;
   }
   return (
     <GoogleOAuthProvider clientId={clientId}>
-      <I18nProvider initialLocale={initialLocale}>{children}</I18nProvider>
+      {content}
     </GoogleOAuthProvider>
   );
 }

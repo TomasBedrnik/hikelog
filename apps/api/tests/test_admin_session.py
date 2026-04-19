@@ -9,6 +9,22 @@ def test_admin_session_round_trip():
     assert claims.email == "admin@example.com"
     assert claims.sub == "google-subject"
     assert claims.exp > 0
+    assert claims.bootstrap_only is False
+
+
+def test_admin_session_bootstrap_round_trip():
+    token = create_admin_session_token(
+        email="Admin@Example.com",
+        sub="google-subject",
+        bootstrap_only=True,
+    )
+
+    claims = verify_admin_session_token(token)
+
+    assert claims.email == "admin@example.com"
+    assert claims.sub == "google-subject"
+    assert claims.exp > 0
+    assert claims.bootstrap_only is True
 
 
 def test_admin_session_rejects_tampering():

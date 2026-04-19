@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-hikelog}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hikelog}
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
       - hikelog_db:/var/lib/postgresql/data
     healthcheck:
@@ -28,7 +28,7 @@ services:
     env_file:
       - ${API_ENV_FILE:-./deploy/env/api.env}
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "127.0.0.1:${API_PORT:-8000}:8000"
 
   web:
     image: ${WEB_IMAGE:-hikelog-web:latest}
@@ -48,7 +48,7 @@ services:
     env_file:
       - ${WEB_ENV_FILE:-./deploy/env/web.env}
     ports:
-      - "${WEB_PORT:-3000}:3000"
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
 
 volumes:
   hikelog_db:

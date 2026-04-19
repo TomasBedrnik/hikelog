@@ -8,3 +8,4 @@ class AdminLoginRequest(BaseModel):
 class AdminLoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    bootstrap_only: bool = False

@@ -15,6 +15,7 @@ class AdminSessionClaims:
     email: str
     sub: str
     exp: int
+    bootstrap_only: bool
 
 
 def _b64url_encode(value: bytes) -> str:
@@ -35,12 +36,13 @@ def _sign(payload_b64: str) -> str:
     return _b64url_encode(digest)
 
 
-def create_admin_session_token(*, email: str, sub: str) -> str:
+def create_admin_session_token(*, email: str, sub: str, bootstrap_only: bool = False) -> str:
     expires_at = datetime.now(timezone.utc) + timedelta(days=settings.admin_session_days)
     payload = {
         "email": email,
         "sub": sub,
         "exp": int(expires_at.timestamp()),
+        "bootstrap_only": bootstrap_only,
     }
     payload_b64 = _b64url_encode(
         json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
@@ -67,6 +69,7 @@ def verify_admin_session_token(token: str) -> AdminSessionClaims:
     email = payload.get("email")
     sub = payload.get("sub")
     exp = payload.get("exp")
+    bootstrap_only = payload.get("bootstrap_only", False)
 
     if not isinstance(email, str) or not email.strip():
         raise ValueError("Invalid session token email")
@@ -74,7 +77,14 @@ def verify_admin_session_token(token: str) -> AdminSessionClaims:
         raise ValueError("Invalid session token subject")
     if not isinstance(exp, int):
         raise ValueError("Invalid session token expiration")
+    if not isinstance(bootstrap_only, bool):
+        raise ValueError("Invalid session token bootstrap flag")
     if exp <= int(datetime.now(timezone.utc).timestamp()):
         raise ValueError("Session token expired")
 
-    return AdminSessionClaims(email=email.strip().lower(), sub=sub, exp=exp)
+    return AdminSessionClaims(
+        email=email.strip().lower(),
+        sub=sub,
+        exp=exp,
+        bootstrap_only=bootstrap_only,
+    )

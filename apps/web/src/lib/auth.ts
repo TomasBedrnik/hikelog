@@ -1,15 +1,26 @@
 export const TOKEN_KEY = "hikelog_google_id_token";
+export const BOOTSTRAP_ONLY_KEY = "hikelog_bootstrap_only";
 
-export function setIdToken(token: string) {
+export function setIdToken(token: string, options?: { bootstrapOnly?: boolean }) {
   localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(BOOTSTRAP_ONLY_KEY, options?.bootstrapOnly ? "true" : "false");
 }
 
 export function getIdToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
 
+export function isBootstrapOnly(): boolean {
+  return localStorage.getItem(BOOTSTRAP_ONLY_KEY) === "true";
+}
+
+export function setBootstrapOnly(value: boolean) {
+  localStorage.setItem(BOOTSTRAP_ONLY_KEY, value ? "true" : "false");
+}
+
 export function clearIdToken() {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(BOOTSTRAP_ONLY_KEY);
 }
 
 function getApiBaseUrl() {
@@ -20,7 +31,9 @@ function getApiBaseUrl() {
   return baseUrl;
 }
 
-export async function exchangeGoogleIdToken(idToken: string): Promise<string> {
+export async function exchangeGoogleIdToken(
+  idToken: string,
+): Promise<{ accessToken: string; bootstrapOnly: boolean }> {
   const res = await fetch(`${getApiBaseUrl()}/api/v1/admin-auth/login`, {
     method: "POST",
     headers: {
@@ -44,10 +57,13 @@ export async function exchangeGoogleIdToken(idToken: string): Promise<string> {
     throw new Error(detail || text || `Login failed: ${res.status}`);
   }
 
-  const payload = (await res.json()) as { access_token?: unknown };
+  const payload = (await res.json()) as { access_token?: unknown; bootstrap_only?: unknown };
   if (typeof payload.access_token !== "string" || !payload.access_token) {
     throw new Error("Login failed: missing access token");
   }
 
-  return payload.access_token;
+  return {
+    accessToken: payload.access_token,
+    bootstrapOnly: payload.bootstrap_only === true,
+  };
 }

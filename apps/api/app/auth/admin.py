@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Annotated
 
@@ -7,7 +8,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.session import verify_admin_session_token
@@ -16,6 +17,12 @@ from app.db.session import get_session
 from app.models.admin_user import AdminUser
 
 bearer_scheme = HTTPBearer(auto_error=False)
+
+
+@dataclass(slots=True)
+class BootstrapAdminIdentity:
+    email: str
+    sub: str
 
 
 def verify_google_token(token: str) -> tuple[str, str]:
@@ -87,6 +94,44 @@ async def get_admin_by_identity(
     return admin
 
 
+async def admin_users_exist(session: AsyncSession) -> bool:
+    stmt = select(func.count()).select_from(AdminUser)
+    count = await session.scalar(stmt)
+    return bool(count)
+
+
+async def _authenticate_admin_identity(
+    *,
+    token: str,
+    session: AsyncSession,
+) -> AdminUser | BootstrapAdminIdentity:
+    bootstrap_only = False
+
+    try:
+        session_claims = verify_admin_session_token(token)
+    except ValueError:
+        email, sub = verify_google_token(token)
+    else:
+        email, sub = session_claims.email, session_claims.sub
+        bootstrap_only = session_claims.bootstrap_only
+
+    if not bootstrap_only:
+        return await get_admin_by_identity(session=session, email=email, sub=sub)
+
+    stmt = select(AdminUser).where(AdminUser.email == email)
+    existing_admin = await session.scalar(stmt)
+    if existing_admin is not None:
+        return await get_admin_by_identity(session=session, email=email, sub=sub)
+
+    if await admin_users_exist(session):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bootstrap access is no longer available",
+        )
+
+    return BootstrapAdminIdentity(email=email, sub=sub)
+
+
 async def require_admin(
     creds: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -99,11 +144,23 @@ async def require_admin(
 
     token = creds.credentials
 
-    try:
-        session_claims = verify_admin_session_token(token)
-    except ValueError:
-        email, sub = verify_google_token(token)
-    else:
-        email, sub = session_claims.email, session_claims.sub
+    identity = await _authenticate_admin_identity(token=token, session=session)
+    if isinstance(identity, BootstrapAdminIdentity):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admin user setup is allowed until the first admin exists",
+        )
+    return identity
 
-    return await get_admin_by_identity(session=session, email=email, sub=sub)
+
+async def require_admin_user_setup_access(
+    creds: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> AdminUser | BootstrapAdminIdentity:
+    if creds is None or creds.scheme.lower() != "bearer":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing bearer token",
+        )
+
+    return await _authenticate_admin_identity(token=creds.credentials, session=session)
