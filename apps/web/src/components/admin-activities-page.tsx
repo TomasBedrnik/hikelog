@@ -11,6 +11,11 @@ import { CommentsSection } from "@/components/comments-section";
 import { TripContentEditor } from "@/components/trip-content-editor";
 import { useI18n } from "@/components/i18n-provider";
 import {
+  activityDateTimeInputToIso,
+  activityDateTimeInputValue,
+  formatActivityDate,
+} from "@/lib/activity-dates";
+import {
   ActivityListItemRead,
   ActivityPhotoRead,
   ActivityRead,
@@ -27,6 +32,7 @@ import {
 } from "@/lib/activities";
 import { getTripContentBlocks } from "@/lib/blocknote";
 import { formatMessage, getDateLocale } from "@/lib/i18n";
+import { getTimezoneOptions } from "@/lib/options";
 import { listTrips, TripRead } from "@/lib/trips";
 
 const EMPTY_BLOCKS: PartialBlock[] = [{ type: "paragraph" }];
@@ -41,6 +47,7 @@ type ActivityDraft = {
   type: string;
   sportType: string;
   startDate: string;
+  timezone: string;
   name: string;
   distance: string;
   movingTime: string;
@@ -52,34 +59,6 @@ type ActivityDraft = {
   createdAt: string | null;
 };
 
-function toDateTimeInput(value: string | null) {
-  if (!value) {
-    return "";
-  }
-
-  const date = new Date(value);
-  const formatter = new Intl.DateTimeFormat("sv-SE", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: "UTC",
-  });
-  return formatter.format(date).replace(" ", "T");
-}
-
-function formatActivityListDate(value: string | null, locale: "en" | "cs") {
-  if (!value) {
-    return "—";
-  }
-
-  return new Intl.DateTimeFormat(getDateLocale(locale), {
-    dateStyle: "medium",
-  }).format(new Date(value));
-}
-
 function toActivityDraft(activity: ActivityRead): ActivityDraft {
   return {
     id: activity.id,
@@ -90,7 +69,8 @@ function toActivityDraft(activity: ActivityRead): ActivityDraft {
     externalId: activity.external_id ?? "",
     type: activity.type ?? "",
     sportType: activity.sport_type ?? "",
-    startDate: toDateTimeInput(activity.start_date),
+    startDate: activityDateTimeInputValue(activity.start_date),
+    timezone: activity.timezone ?? "",
     name: activity.name,
     distance: activity.distance?.toString() ?? "",
     movingTime: activity.moving_time?.toString() ?? "",
@@ -114,6 +94,7 @@ function createEmptyActivityDraft(tripId: number | null): ActivityDraft {
     type: "",
     sportType: "",
     startDate: "",
+    timezone: "",
     name: "",
     distance: "",
     movingTime: "",
@@ -129,6 +110,8 @@ function createEmptyActivityDraft(tripId: number | null): ActivityDraft {
 export function AdminActivitiesPage() {
   const router = useRouter();
   const { dict, locale } = useI18n();
+  const timezoneOptions = getTimezoneOptions();
+  const timezoneSet = new Set(timezoneOptions);
   const [trips, setTrips] = useState<TripRead[] | null>(null);
   const [activities, setActivities] = useState<ActivityListItemRead[] | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<ActivityRead | null>(null);
@@ -287,6 +270,7 @@ export function AdminActivitiesPage() {
                 trip_id: saved.trip_id,
                 name: saved.name,
                 start_date: saved.start_date,
+                timezone: saved.timezone,
               }
             : activity,
         ),
@@ -356,6 +340,7 @@ export function AdminActivitiesPage() {
                     trip_id: saved.trip_id,
                     name: saved.name,
                     start_date: saved.start_date,
+                    timezone: saved.timezone,
                   }
                 : activity,
             ),
@@ -396,7 +381,11 @@ export function AdminActivitiesPage() {
       external_id: activityDraft.externalId.trim() || null,
       type: activityDraft.type.trim() || null,
       sport_type: activityDraft.sportType.trim() || null,
-      start_date: activityDraft.startDate ? new Date(activityDraft.startDate).toISOString() : null,
+      start_date: activityDateTimeInputToIso(
+        activityDraft.startDate,
+        activityDraft.timezone.trim() || null,
+      ),
+      timezone: activityDraft.timezone.trim() || null,
       name: activityDraft.name.trim(),
       distance: activityDraft.distance ? Number(activityDraft.distance) : null,
       moving_time: activityDraft.movingTime ? Number(activityDraft.movingTime) : null,
@@ -411,6 +400,11 @@ export function AdminActivitiesPage() {
       polyline: activityDraft.polyline.trim() || null,
       summary_polyline: activityDraft.summaryPolyline.trim() || null,
     };
+
+    if (payload.timezone && !timezoneSet.has(payload.timezone)) {
+      setError(dict.trips.timezoneInvalid);
+      return;
+    }
 
     if (
       [
@@ -444,6 +438,7 @@ export function AdminActivitiesPage() {
                     trip_id: saved.trip_id,
                     name: saved.name,
                     start_date: saved.start_date,
+                    timezone: saved.timezone,
                   },
                   ...items,
                 ]
@@ -454,6 +449,7 @@ export function AdminActivitiesPage() {
                         trip_id: saved.trip_id,
                         name: saved.name,
                         start_date: saved.start_date,
+                        timezone: saved.timezone,
                       }
                     : activity,
                 );
@@ -638,9 +634,13 @@ export function AdminActivitiesPage() {
                         }}
                         type="button"
                       >
-                        <div className="truncate text-sm font-medium">{activity.name}</div>
+                        <div className="truncate text-sm font-medium">
+                          {activity.name} · ID {activity.id}
+                        </div>
                         <div className="mt-1 text-xs text-stone-500">
-                          {formatActivityListDate(activity.start_date, locale)}
+                          {formatActivityDate(activity.start_date, locale, activity.timezone) ??
+                            "—"}
+                          {activity.timezone ? ` · ${activity.timezone}` : ""}
                         </div>
                       </button>
                     ))
@@ -680,6 +680,7 @@ export function AdminActivitiesPage() {
                         {activityDraft.createdAt
                           ? `${dict.activities.created} ${new Date(activityDraft.createdAt).toLocaleString(getDateLocale(locale))}`
                           : dict.activities.notSavedYet}
+                        {activityDraft.id !== null ? ` · ID ${activityDraft.id}` : ""}
                       </p>
                     </div>
 
@@ -761,6 +762,27 @@ export function AdminActivitiesPage() {
                         type="datetime-local"
                         value={activityDraft.startDate}
                       />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-medium text-stone-700">
+                        {dict.activities.timezone}
+                      </span>
+                      <input
+                        className="mt-2 w-full rounded-2xl border border-stone-300 px-4 py-3 outline-none transition focus:border-emerald-600"
+                        list="activity-timezones"
+                        onChange={(event) => {
+                          setActivityDraft((current) =>
+                            current ? { ...current, timezone: event.target.value } : current,
+                          );
+                        }}
+                        placeholder={selectedTrip?.timezone ?? "Europe/Prague"}
+                        value={activityDraft.timezone}
+                      />
+                      <datalist id="activity-timezones">
+                        {timezoneOptions.map((timezone) => (
+                          <option key={timezone} value={timezone} />
+                        ))}
+                      </datalist>
                     </label>
                     <label className="block">
                       <span className="text-sm font-medium text-stone-700">

@@ -16,9 +16,5 @@ export default function Providers({
   if (!clientId) {
     return content;
   }
-  return (
-    <GoogleOAuthProvider clientId={clientId}>
-      {content}
-    </GoogleOAuthProvider>
-  );
+  return <GoogleOAuthProvider clientId={clientId}>{content}</GoogleOAuthProvider>;
 }

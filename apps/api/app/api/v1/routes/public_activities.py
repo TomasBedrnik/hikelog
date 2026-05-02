@@ -12,6 +12,7 @@ from app.models.activity import Activity
 from app.models.activity_comment import ActivityComment
 from app.schemas.activity import ActivityRead, ActivitySummaryRead
 from app.schemas.comment import CommentCreate, CommentRead
+from app.services.activity_timezones import activity_read_overrides
 
 router = APIRouter()
 
@@ -21,6 +22,16 @@ def _to_activity_read(activity: Activity) -> ActivityRead:
         {
             **ActivityRead.model_validate(activity).model_dump(),
             "trip_name": activity.trip.name if activity.trip else None,
+            **activity_read_overrides(activity),
+        }
+    )
+
+
+def _to_activity_summary_read(activity: Activity) -> ActivitySummaryRead:
+    return ActivitySummaryRead.model_validate(
+        {
+            **ActivitySummaryRead.model_validate(activity).model_dump(),
+            **activity_read_overrides(activity),
         }
     )
 
@@ -37,6 +48,7 @@ async def list_public_trip_activities(
             selectinload(Activity.audios),
             selectinload(Activity.photos),
             selectinload(Activity.videos),
+            selectinload(Activity.trip),
         )
         .where(Activity.trip_id == trip_id)
         .order_by(
@@ -44,7 +56,7 @@ async def list_public_trip_activities(
         )
     )
     activities = (await session.scalars(stmt)).all()
-    return [ActivitySummaryRead.model_validate(activity) for activity in activities]
+    return [_to_activity_summary_read(activity) for activity in activities]
 
 
 @router.get("/activities/{activity_id}", response_model=ActivityRead)

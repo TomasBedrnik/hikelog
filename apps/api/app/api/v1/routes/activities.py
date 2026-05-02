@@ -42,6 +42,7 @@ from app.schemas.activity_audio import ActivityAudioRead
 from app.schemas.activity_photo import ActivityPhotoOrderUpdate, ActivityPhotoRead
 from app.schemas.activity_video import ActivityVideoOrderUpdate, ActivityVideoRead
 from app.schemas.comment import CommentRead
+from app.services.activity_timezones import activity_read_overrides
 from app.services.audio_uploads import create_uploaded_audio, delete_uploaded_audio_file
 from app.services.gpx_polylines import build_polylines_from_gpx
 from app.services.image_uploads import (
@@ -70,6 +71,16 @@ def _to_activity_admin_read(activity: Activity) -> ActivityAdminRead:
         {
             **ActivityAdminRead.model_validate(activity).model_dump(),
             "trip_name": activity.trip.name if activity.trip else None,
+            **activity_read_overrides(activity),
+        }
+    )
+
+
+def _to_activity_list_item_read(activity: Activity) -> ActivityListItemRead:
+    return ActivityListItemRead.model_validate(
+        {
+            **ActivityListItemRead.model_validate(activity).model_dump(),
+            **activity_read_overrides(activity),
         }
     )
 
@@ -174,6 +185,7 @@ async def list_activity_summaries(
 ) -> list[ActivityListItemRead]:
     stmt = (
         select(Activity)
+        .options(selectinload(Activity.trip))
         .where(Activity.trip_id == trip_id)
         .order_by(
             Activity.start_date.desc().nullslast(),
@@ -182,7 +194,7 @@ async def list_activity_summaries(
         )
     )
     activities = (await session.scalars(stmt)).all()
-    return [ActivityListItemRead.model_validate(activity) for activity in activities]
+    return [_to_activity_list_item_read(activity) for activity in activities]
 
 
 @router.post("", response_model=ActivityAdminRead, status_code=status.HTTP_201_CREATED)

@@ -7,23 +7,12 @@ import { ActivityRead, ActivitySummaryRead, sortActivitiesByStartDate } from "@/
 import { ActivityMediaGallery } from "@/components/activity-media-gallery";
 import { CommentsSection } from "@/components/comments-section";
 import { useI18n } from "@/components/i18n-provider";
-import { getDateLocale } from "@/lib/i18n";
+import { formatActivityDateTime } from "@/lib/activity-dates";
 import { getTripContentBlocks, hasTripContent } from "@/lib/blocknote";
 import { MapyMap } from "@/components/mapy-map";
 import { TripContentRenderer } from "@/components/trip-content-renderer";
 import { MediaLightbox } from "@/components/media-lightbox";
 import { createPublicActivityComment } from "@/lib/comments";
-
-function formatDateTime(value: string | null, locale: "en" | "cs") {
-  if (!value) {
-    return null;
-  }
-
-  return new Intl.DateTimeFormat(getDateLocale(locale), {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
 
 function formatDistance(value: number | null, locale: "en" | "cs") {
   if (value === null) {
@@ -126,7 +115,7 @@ export function PublicActivityPage({
   const infoItems = [
     {
       label: dict.activities.startDate,
-      value: formatDateTime(activity.start_date, locale),
+      value: formatActivityDateTime(activity.start_date, locale, activity.timezone),
     },
     {
       label: dict.activities.distance,

@@ -258,6 +258,7 @@
     "type": "Type",
     "sportType": "Sport type",
     "startDate": "Start date",
+    "timezone": "Timezone",
     "distance": "Distance",
     "movingTime": "Moving time",
     "elapsedTime": "Elapsed time",

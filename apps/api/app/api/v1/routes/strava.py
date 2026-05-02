@@ -4,6 +4,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from urllib.parse import urlencode
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
@@ -25,6 +26,7 @@ from app.schemas.strava import (
     StravaConnectionRead,
     StravaRecentActivityRead,
 )
+from app.services.activity_timezones import activity_read_overrides
 from app.services.strava import (
     StravaServiceError,
     StravaTokenPayload,
@@ -102,6 +104,7 @@ async def _get_activity_with_relations(session: AsyncSession, activity_id: int) 
         .options(
             selectinload(Activity.trip),
             selectinload(Activity.comments),
+            selectinload(Activity.audios),
             selectinload(Activity.photos),
             selectinload(Activity.videos),
         )
@@ -118,6 +121,7 @@ def _to_activity_read(activity: Activity) -> ActivityRead:
         {
             **ActivityRead.model_validate(activity).model_dump(),
             "trip_name": activity.trip.name if activity.trip else None,
+            **activity_read_overrides(activity),
         }
     )
 
@@ -331,7 +335,15 @@ async def get_recent_strava_activities(
             id=int(activity["id"]),
             name=str(activity.get("name") or f"Activity {activity['id']}"),
             sport_type=activity.get("sport_type"),
-            start_date=datetime.fromisoformat(str(activity["start_date"]).replace("Z", "+00:00")),
+            start_date=(
+                _strava_start_datetime_or_none(
+                    activity.get("start_date_local"),
+                    activity.get("timezone"),
+                    activity.get("start_date"),
+                )
+                or datetime.fromisoformat(str(activity["start_date"]).replace("Z", "+00:00"))
+            ),
+            timezone=_strava_timezone_or_none(activity.get("timezone")),
             distance=float(activity["distance"]) if activity.get("distance") is not None else None,
             moving_time=int(activity["moving_time"])
             if activity.get("moving_time") is not None
@@ -388,6 +400,7 @@ async def import_strava_activity(
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
     map_payload = strava_activity.get("map") if isinstance(strava_activity.get("map"), dict) else {}
+    activity_timezone = _strava_timezone_or_none(strava_activity.get("timezone"))
     local_activity = Activity(
         trip_id=payload.trip_id,
         strava_activity_id=activity_id,
@@ -396,7 +409,12 @@ async def import_strava_activity(
         external_id=_str_or_none(strava_activity.get("external_id")),
         type=_str_or_none(strava_activity.get("type")),
         sport_type=_str_or_none(strava_activity.get("sport_type")),
-        start_date=_datetime_or_none(strava_activity.get("start_date")),
+        start_date=_strava_start_datetime_or_none(
+            strava_activity.get("start_date_local"),
+            activity_timezone,
+            strava_activity.get("start_date"),
+        ),
+        timezone=activity_timezone,
         name=_str_or_none(strava_activity.get("name")) or f"Strava activity {activity_id}",
         distance=_float_or_none(strava_activity.get("distance")),
         moving_time=_int_or_none(strava_activity.get("moving_time")),
@@ -456,3 +474,40 @@ def _datetime_or_none(value: object) -> datetime | None:
         return datetime.fromisoformat(text.replace("Z", "+00:00"))
     except ValueError:
         return None
+
+
+def _strava_timezone_or_none(value: object) -> str | None:
+    text = _str_or_none(value)
+    if not text:
+        return None
+
+    candidates = [text]
+    if " " in text:
+        candidates.append(text.rsplit(" ", 1)[-1])
+
+    for candidate in candidates:
+        try:
+            ZoneInfo(candidate)
+        except ZoneInfoNotFoundError:
+            continue
+        return candidate
+
+    return None
+
+
+def _strava_start_datetime_or_none(
+    start_date_local: object,
+    strava_timezone: object,
+    start_date: object,
+) -> datetime | None:
+    timezone_name = _strava_timezone_or_none(strava_timezone)
+    local_text = _str_or_none(start_date_local)
+    if local_text and timezone_name:
+        try:
+            parsed = datetime.fromisoformat(local_text.replace("Z", "+00:00"))
+            local_wall_time = parsed.replace(tzinfo=None)
+            return local_wall_time.replace(tzinfo=ZoneInfo(timezone_name)).astimezone(timezone.utc)
+        except (ValueError, ZoneInfoNotFoundError):
+            pass
+
+    return _datetime_or_none(start_date)

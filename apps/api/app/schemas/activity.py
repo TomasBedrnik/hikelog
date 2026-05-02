@@ -20,6 +20,7 @@ class ActivityBase(BaseModel):
     type: str | None = Field(default=None, max_length=32)
     sport_type: str | None = Field(default=None, max_length=32)
     start_date: datetime | None = None
+    timezone: str | None = Field(default=None, max_length=64)
     name: str = Field(min_length=1, max_length=200)
     distance: float | None = Field(default=None, ge=0)
     moving_time: int | None = Field(default=None, ge=0)
@@ -43,6 +44,7 @@ class ActivityUpdate(BaseModel):
     type: str | None = Field(default=None, max_length=32)
     sport_type: str | None = Field(default=None, max_length=32)
     start_date: datetime | None = None
+    timezone: str | None = Field(default=None, max_length=64)
     name: str | None = Field(default=None, min_length=1, max_length=200)
     distance: float | None = Field(default=None, ge=0)
     moving_time: int | None = Field(default=None, ge=0)
@@ -78,6 +80,7 @@ class ActivitySummaryRead(BaseModel):
     type: str | None
     sport_type: str | None
     start_date: datetime | None
+    timezone: str | None = None
     distance: float | None
     moving_time: int | None
     elapsed_time: int | None
@@ -95,3 +98,4 @@ class ActivityListItemRead(BaseModel):
     trip_id: int
     name: str
     start_date: datetime | None
+    timezone: str | None = None

@@ -18,7 +18,9 @@ router = APIRouter()
 
 @router.get("", response_model=list[AdminUserRead])
 async def list_admin_users(
-    identity: Annotated[AdminUser | BootstrapAdminIdentity, Depends(require_admin_user_setup_access)],
+    identity: Annotated[
+        AdminUser | BootstrapAdminIdentity, Depends(require_admin_user_setup_access)
+    ],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> list[AdminUserRead]:
     if isinstance(identity, BootstrapAdminIdentity):
@@ -32,7 +34,9 @@ async def list_admin_users(
 @router.post("", response_model=AdminUserRead, status_code=status.HTTP_201_CREATED)
 async def create_admin_user(
     payload: AdminUserCreate,
-    identity: Annotated[AdminUser | BootstrapAdminIdentity, Depends(require_admin_user_setup_access)],
+    identity: Annotated[
+        AdminUser | BootstrapAdminIdentity, Depends(require_admin_user_setup_access)
+    ],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> AdminUserRead:
     email = payload.email.strip().lower()

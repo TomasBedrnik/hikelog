@@ -18,6 +18,7 @@ export type StravaRecentActivityRead = {
   name: string;
   sport_type: string | null;
   start_date: string;
+  timezone: string | null;
   distance: number | null;
   moving_time: number | null;
   total_elevation_gain: number | null;
@@ -34,6 +35,7 @@ export type StravaImportedActivityRead = {
   type: string | null;
   sport_type: string | null;
   start_date: string | null;
+  timezone: string | null;
   name: string;
   distance: number | null;
   moving_time: number | null;

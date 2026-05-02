@@ -8,6 +8,7 @@ import { TripContentRenderer } from "@/components/trip-content-renderer";
 import { TripList } from "@/components/trip-list";
 import { MediaLightbox } from "@/components/media-lightbox";
 import { useI18n } from "@/components/i18n-provider";
+import { formatActivityDateTime } from "@/lib/activity-dates";
 import { getTripContentBlocks, hasTripContent } from "@/lib/blocknote";
 import { GlobalContentRead } from "@/lib/global-content";
 import { getDateLocale, normalizeEnabledLocales } from "@/lib/i18n";
@@ -228,12 +229,8 @@ export function PublicTripPage({
                 >
                   <p className="text-lg font-semibold text-stone-900">{activity.name}</p>
                   <p className="mt-2 text-xs uppercase tracking-[0.2em] text-stone-400">
-                    {activity.start_date
-                      ? new Intl.DateTimeFormat(getDateLocale(locale), {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                        }).format(new Date(activity.start_date))
-                      : dict.publicSite.metaEmpty}
+                    {formatActivityDateTime(activity.start_date, locale, activity.timezone) ??
+                      dict.publicSite.metaEmpty}
                   </p>
                 </Link>
               ))}

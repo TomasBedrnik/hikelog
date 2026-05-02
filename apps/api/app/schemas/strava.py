@@ -25,6 +25,7 @@ class StravaRecentActivityRead(BaseModel):
     name: str
     sport_type: str | None
     start_date: datetime
+    timezone: str | None = None
     distance: float | None
     moving_time: int | None
     total_elevation_gain: float | None

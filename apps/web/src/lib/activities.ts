@@ -112,6 +112,7 @@ export type ActivityRead = {
   type: string | null;
   sport_type: string | null;
   start_date: string | null;
+  timezone: string | null;
   name: string;
   distance: number | null;
   moving_time: number | null;
@@ -134,6 +135,7 @@ export type ActivitySummaryRead = {
   type: string | null;
   sport_type: string | null;
   start_date: string | null;
+  timezone: string | null;
   distance: number | null;
   moving_time: number | null;
   elapsed_time: number | null;
@@ -149,6 +151,7 @@ export type ActivityListItemRead = {
   trip_id: number;
   name: string;
   start_date: string | null;
+  timezone: string | null;
 };
 
 export type ActivityWrite = {
@@ -160,6 +163,7 @@ export type ActivityWrite = {
   type: string | null;
   sport_type: string | null;
   start_date: string | null;
+  timezone: string | null;
   name: string;
   distance: number | null;
   moving_time: number | null;

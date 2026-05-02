@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useI18n } from "@/components/i18n-provider";
 import { MapyMap } from "@/components/mapy-map";
+import { formatActivityDateTime } from "@/lib/activity-dates";
 import { getFirstParagraphText } from "@/lib/blocknote";
 import { ActivitySummaryRead } from "@/lib/activities";
 import { getDateLocale } from "@/lib/i18n";
@@ -287,7 +288,19 @@ export function TripMapPage({
                       setHoveredActivityId((current) => (current === activity.id ? null : current));
                     }}
                   >
-                    <p className="text-sm font-semibold text-stone-900">{activity.name}</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-stone-900">{activity.name}</p>
+                      <p className="text-xs uppercase text-stone-400 text-nowrap">
+                        {formatActivityDateTime(activity.start_date, locale, activity.timezone, {
+                          day: "numeric",
+                          month: "short",
+                          hour: "numeric",
+                          minute: "2-digit",
+                          dateStyle: undefined,
+                          timeStyle: undefined,
+                        }) ?? dict.publicSite.metaEmpty}
+                      </p>
+                    </div>
                     <p className="mt-1 text-sm leading-6 text-stone-600">
                       {getFirstParagraphText(activity.description) ?? dict.publicSite.contentEmpty}
                     </p>

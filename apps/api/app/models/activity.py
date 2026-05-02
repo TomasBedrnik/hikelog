@@ -35,6 +35,7 @@ class Activity(Base):
     sport_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     start_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
 
     distance: Mapped[float | None] = mapped_column(Float, nullable=True)

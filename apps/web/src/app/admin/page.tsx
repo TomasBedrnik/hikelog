@@ -22,41 +22,41 @@ export default function AdminPage() {
         },
       ]
     : [
-    {
-      href: "/admin/users",
-      title: dict.adminHome.usersTitle,
-      description: dict.adminHome.usersDescription,
-    },
-    {
-      href: "/admin/site",
-      title: dict.adminHome.siteTitle,
-      description: dict.adminHome.siteDescription,
-    },
-    {
-      href: "/admin/trips",
-      title: dict.adminHome.tripsTitle,
-      description: dict.adminHome.tripsDescription,
-    },
-    {
-      href: "/admin/activities",
-      title: dict.adminHome.activitiesTitle,
-      description: dict.adminHome.activitiesDescription,
-    },
-    {
-      href: "/admin/strava",
-      title: dict.adminHome.stravaTitle,
-      description: dict.adminHome.stravaDescription,
-    },
-    {
-      href: "/admin/webpushr",
-      title: dict.adminHome.webpushrTitle,
-      description: dict.adminHome.webpushrDescription,
-    },
-    {
-      href: "/admin/gallery",
-      title: dict.adminHome.galleryTitle,
-      description: dict.adminHome.galleryDescription,
-    },
+        {
+          href: "/admin/users",
+          title: dict.adminHome.usersTitle,
+          description: dict.adminHome.usersDescription,
+        },
+        {
+          href: "/admin/site",
+          title: dict.adminHome.siteTitle,
+          description: dict.adminHome.siteDescription,
+        },
+        {
+          href: "/admin/trips",
+          title: dict.adminHome.tripsTitle,
+          description: dict.adminHome.tripsDescription,
+        },
+        {
+          href: "/admin/activities",
+          title: dict.adminHome.activitiesTitle,
+          description: dict.adminHome.activitiesDescription,
+        },
+        {
+          href: "/admin/strava",
+          title: dict.adminHome.stravaTitle,
+          description: dict.adminHome.stravaDescription,
+        },
+        {
+          href: "/admin/webpushr",
+          title: dict.adminHome.webpushrTitle,
+          description: dict.adminHome.webpushrDescription,
+        },
+        {
+          href: "/admin/gallery",
+          title: dict.adminHome.galleryTitle,
+          description: dict.adminHome.galleryDescription,
+        },
       ];
 
   return (
