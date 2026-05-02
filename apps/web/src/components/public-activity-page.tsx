@@ -8,6 +8,7 @@ import { ActivityMediaGallery } from "@/components/activity-media-gallery";
 import { CommentsSection } from "@/components/comments-section";
 import { useI18n } from "@/components/i18n-provider";
 import { formatActivityDateTime } from "@/lib/activity-dates";
+import { markActivitySeen } from "@/lib/activity-views";
 import { getTripContentBlocks, hasTripContent } from "@/lib/blocknote";
 import { MapyMap } from "@/components/mapy-map";
 import { TripContentRenderer } from "@/components/trip-content-renderer";
@@ -155,6 +156,10 @@ export function PublicActivityPage({
   const sidebarClassName = hasMedia
     ? "order-2 w-full min-w-0 bg-white/95 px-5 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur lg:order-1 lg:row-span-2 lg:min-h-0 lg:overflow-auto lg:border-r lg:border-stone-200"
     : "order-2 w-full min-w-0 bg-white/95 px-5 py-4 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.45)] backdrop-blur lg:order-1 lg:min-h-0 lg:overflow-auto lg:border-r lg:border-stone-200";
+
+  useEffect(() => {
+    markActivitySeen(activity.trip_id, activity.id);
+  }, [activity.id, activity.trip_id]);
 
   useEffect(() => {
     if (!shareMessage) {

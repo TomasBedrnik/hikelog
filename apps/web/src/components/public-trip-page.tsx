@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PublicFooter } from "@/components/public-footer";
 import { ActivityMediaGallery } from "@/components/activity-media-gallery";
 import { CommentsSection } from "@/components/comments-section";
@@ -9,6 +9,7 @@ import { TripList } from "@/components/trip-list";
 import { MediaLightbox } from "@/components/media-lightbox";
 import { useI18n } from "@/components/i18n-provider";
 import { formatActivityDateTime } from "@/lib/activity-dates";
+import { getSeenActivityIds } from "@/lib/activity-views";
 import { getTripContentBlocks, hasTripContent } from "@/lib/blocknote";
 import { GlobalContentRead } from "@/lib/global-content";
 import { getDateLocale, normalizeEnabledLocales } from "@/lib/i18n";
@@ -54,6 +55,7 @@ export function PublicTripPage({
   const { dict, locale } = useI18n();
   const [comments, setComments] = useState(trip.comments);
   const [selectedMediaIndex, setSelectedMediaIndex] = useState<number | null>(null);
+  const [seenActivityIds, setSeenActivityIds] = useState<Set<number> | null>(null);
   const contentBlocks = getTripContentBlocks(trip.content);
   const tripHasContent = hasTripContent(trip.content);
   const sortedActivities = sortActivitiesByStartDate(activities);
@@ -131,6 +133,21 @@ export function PublicTripPage({
           : `${formatNumber(totalElevationGainMeters, locale, { maximumFractionDigits: 0 })} m`,
     },
   ].filter((item) => item.value !== null);
+
+  useEffect(() => {
+    const refreshSeenActivityIds = () => {
+      setSeenActivityIds(getSeenActivityIds(trip.id));
+    };
+
+    refreshSeenActivityIds();
+    window.addEventListener("focus", refreshSeenActivityIds);
+    window.addEventListener("pageshow", refreshSeenActivityIds);
+
+    return () => {
+      window.removeEventListener("focus", refreshSeenActivityIds);
+      window.removeEventListener("pageshow", refreshSeenActivityIds);
+    };
+  }, [trip.id]);
 
   return (
     <main className="min-h-screen bg-[#ece3cf] bg-[url('/topo_seamless_contours.svg')] bg-[length:3000px_3000px] bg-[position:0_0] bg-repeat px-6 py-8 text-stone-900 sm:px-10 lg:px-16">
@@ -221,19 +238,32 @@ export function PublicTripPage({
             </p>
           ) : (
             <div className="mt-5 grid gap-4 lg:grid-cols-2">
-              {sortedActivities.map((activity) => (
-                <Link
-                  key={activity.id}
-                  className="rounded-[1.5rem] border border-stone-200 bg-stone-50 px-5 py-4 transition hover:border-emerald-600 hover:bg-emerald-50"
-                  href={`/activities/${activity.id}`}
-                >
-                  <p className="text-lg font-semibold text-stone-900">{activity.name}</p>
-                  <p className="mt-2 text-xs uppercase tracking-[0.2em] text-stone-400">
-                    {formatActivityDateTime(activity.start_date, locale, activity.timezone) ??
-                      dict.publicSite.metaEmpty}
-                  </p>
-                </Link>
-              ))}
+              {sortedActivities.map((activity) => {
+                const isUnseen = seenActivityIds !== null && !seenActivityIds.has(activity.id);
+
+                return (
+                  <Link
+                    key={activity.id}
+                    className={`rounded-[1.5rem] border px-5 py-4 transition hover:border-emerald-600 hover:bg-emerald-50 ${
+                      isUnseen ? "border-emerald-700 bg-emerald-50" : "border-stone-200 bg-stone-50"
+                    }`}
+                    href={`/activities/${activity.id}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      {isUnseen ? (
+                        <span className="mt-[10px] size-2 shrink-0 rounded-full bg-emerald-700" />
+                      ) : null}
+                      <div className="min-w-0">
+                        <p className="text-lg font-semibold text-stone-900">{activity.name}</p>
+                        <p className="mt-2 text-xs uppercase tracking-[0.2em] text-stone-400">
+                          {formatActivityDateTime(activity.start_date, locale, activity.timezone) ??
+                            null}
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           )}
         </section>

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useI18n } from "@/components/i18n-provider";
 import { MapyMap } from "@/components/mapy-map";
 import { formatActivityDateTime } from "@/lib/activity-dates";
+import { getSeenActivityIds } from "@/lib/activity-views";
 import { getFirstParagraphText } from "@/lib/blocknote";
 import { ActivitySummaryRead } from "@/lib/activities";
 import { getDateLocale } from "@/lib/i18n";
@@ -74,6 +75,7 @@ export function TripMapPage({
   const [hoveredActivityId, setHoveredActivityId] = useState<number | null>(null);
   const [selectedActivityId, setSelectedActivityId] = useState<number | null>(null);
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
+  const [seenActivityIds, setSeenActivityIds] = useState<Set<number> | null>(null);
   const totalDistanceMeters = activities.reduce(
     (sum, activity) => sum + (activity.distance ?? 0),
     0,
@@ -154,6 +156,21 @@ export function TripMapPage({
       },
     ];
   });
+
+  useEffect(() => {
+    const refreshSeenActivityIds = () => {
+      setSeenActivityIds(getSeenActivityIds(trip.id));
+    };
+
+    refreshSeenActivityIds();
+    window.addEventListener("focus", refreshSeenActivityIds);
+    window.addEventListener("pageshow", refreshSeenActivityIds);
+
+    return () => {
+      window.removeEventListener("focus", refreshSeenActivityIds);
+      window.removeEventListener("pageshow", refreshSeenActivityIds);
+    };
+  }, [trip.id]);
 
   return (
     <main className="relative h-screen w-full overflow-hidden bg-stone-200">
@@ -272,40 +289,54 @@ export function TripMapPage({
               {activities.length === 0 ? (
                 <p className="text-sm text-stone-500">{dict.activities.emptyPublic}</p>
               ) : (
-                activities.map((activity) => (
-                  <Link
-                    key={activity.id}
-                    className={`block rounded-[1.25rem] border px-4 py-3 transition ${
-                      selectedActivityId === activity.id
-                        ? "border-emerald-700 bg-emerald-100"
-                        : "border-stone-200 bg-stone-50 hover:border-emerald-700 hover:bg-emerald-50"
-                    }`}
-                    href={`/activities/${activity.id}`}
-                    onMouseEnter={() => {
-                      setHoveredActivityId(activity.id);
-                    }}
-                    onMouseLeave={() => {
-                      setHoveredActivityId((current) => (current === activity.id ? null : current));
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-semibold text-stone-900">{activity.name}</p>
-                      <p className="text-xs uppercase text-stone-400 text-nowrap">
-                        {formatActivityDateTime(activity.start_date, locale, activity.timezone, {
-                          day: "numeric",
-                          month: "short",
-                          hour: "numeric",
-                          minute: "2-digit",
-                          dateStyle: undefined,
-                          timeStyle: undefined,
-                        }) ?? dict.publicSite.metaEmpty}
+                activities.map((activity) => {
+                  const isUnseen = seenActivityIds !== null && !seenActivityIds.has(activity.id);
+
+                  return (
+                    <Link
+                      key={activity.id}
+                      className={`block rounded-[1.25rem] border px-4 py-3 transition ${
+                        selectedActivityId === activity.id
+                          ? "border-emerald-700 bg-emerald-100"
+                          : isUnseen
+                            ? "border-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+                            : "border-stone-200 bg-stone-50 hover:border-emerald-700 hover:bg-emerald-50"
+                      }`}
+                      href={`/activities/${activity.id}`}
+                      onMouseEnter={() => {
+                        setHoveredActivityId(activity.id);
+                      }}
+                      onMouseLeave={() => {
+                        setHoveredActivityId((current) =>
+                          current === activity.id ? null : current,
+                        );
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="flex min-w-0 items-center gap-2 text-sm font-semibold text-stone-900">
+                          {isUnseen ? (
+                            <span className="size-2 shrink-0 rounded-full bg-emerald-700" />
+                          ) : null}
+                          <span className="truncate">{activity.name}</span>
+                        </p>
+                        <p className="text-nowrap text-xs uppercase text-stone-400">
+                          {formatActivityDateTime(activity.start_date, locale, activity.timezone, {
+                            day: "numeric",
+                            month: "short",
+                            hour: "numeric",
+                            minute: "2-digit",
+                            dateStyle: undefined,
+                            timeStyle: undefined,
+                          }) ?? null}
+                        </p>
+                      </div>
+                      <p className="mt-1 text-sm leading-6 text-stone-600">
+                        {getFirstParagraphText(activity.description) ??
+                          dict.publicSite.contentEmpty}
                       </p>
-                    </div>
-                    <p className="mt-1 text-sm leading-6 text-stone-600">
-                      {getFirstParagraphText(activity.description) ?? dict.publicSite.contentEmpty}
-                    </p>
-                  </Link>
-                ))
+                    </Link>
+                  );
+                })
               )}
             </div>
           </>
