@@ -21,7 +21,13 @@ export type ActivityPhotoRead = {
   original_filename: string | null;
   gps_latitude: number | null;
   gps_longitude: number | null;
-  capture_datetime: string | null;
+  capture_datetime_local: string | null;
+  timezone: string | null;
+  capture_datetime_utc: string | null;
+  capture_timezone_source: string | null;
+  capture_datetime_source: string | null;
+  gps_datetime_utc: string | null;
+  gps_timezone: string | null;
   created_at: string;
 };
 
@@ -51,7 +57,13 @@ export type ActivityVideoRead = {
   original_filename: string | null;
   gps_latitude: number | null;
   gps_longitude: number | null;
-  capture_datetime: string | null;
+  capture_datetime_local: string | null;
+  timezone: string | null;
+  capture_datetime_utc: string | null;
+  capture_timezone_source: string | null;
+  capture_datetime_source: string | null;
+  gps_datetime_utc: string | null;
+  gps_timezone: string | null;
   created_at: string;
 };
 

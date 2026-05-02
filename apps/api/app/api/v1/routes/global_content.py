@@ -213,7 +213,13 @@ async def rotate_global_content_hero_image(
         original_filename=global_content.hero_original_filename,
         gps_latitude=None,
         gps_longitude=None,
-        capture_datetime=None,
+        capture_datetime_local=None,
+        timezone=None,
+        capture_datetime_utc=None,
+        capture_timezone_source="unknown",
+        capture_datetime_source="unknown",
+        gps_datetime_utc=None,
+        gps_timezone=None,
     )
 
     _assign_uploaded_image(global_content, asdict(rotated))

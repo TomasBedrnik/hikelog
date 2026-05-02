@@ -490,7 +490,7 @@ export function ActivityVideoManager({
                       )}
                       <div className="flex flex-col p-2 pl-4 text-sm text-stone-700 items-start">
                         <span>{video.original_filename ?? ""}</span>
-                        <span>{formatDateTime(video.capture_datetime, locale)}</span>
+                        <span>{formatDateTime(video.capture_datetime_local, locale)}</span>
                       </div>
                       <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
                         <span className="rounded-full bg-white/92 p-4 shadow-lg backdrop-blur-sm">

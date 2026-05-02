@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta, timezone
 from io import BytesIO
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import HTTPException, UploadFile, status
 from PIL import ExifTags, Image, ImageOps, UnidentifiedImageError
@@ -18,9 +20,15 @@ GPS_LATITUDE_REF = 1
 GPS_LATITUDE = 2
 GPS_LONGITUDE_REF = 3
 GPS_LONGITUDE = 4
+GPS_TIMESTAMP = 7
+GPS_DATESTAMP = 29
 EXIF_DATETIME = 306
 EXIF_DATETIME_ORIGINAL = 36867
 EXIF_DATETIME_DIGITIZED = 36868
+EXIF_OFFSET_TIME = 36880
+EXIF_OFFSET_TIME_ORIGINAL = 36881
+EXIF_OFFSET_TIME_DIGITIZED = 36882
+EXIF_TIMEZONE_PATTERN = re.compile(r"^[+-]\d{2}:\d{2}$")
 SUPPORTED_IMAGE_FORMATS = {
     "JPEG": ("jpg", "image/jpeg"),
     "PNG": ("png", "image/png"),
@@ -49,7 +57,24 @@ class UploadedImagePayload:
     original_filename: str | None
     gps_latitude: float | None
     gps_longitude: float | None
-    capture_datetime: datetime | None
+    capture_datetime_local: datetime | None
+    timezone: str | None
+    capture_datetime_utc: datetime | None
+    capture_timezone_source: str
+    capture_datetime_source: str
+    gps_datetime_utc: datetime | None
+    gps_timezone: str | None
+
+
+@dataclass(slots=True)
+class ImageCaptureMetadata:
+    capture_datetime_local: datetime | None
+    timezone: str | None
+    capture_datetime_utc: datetime | None
+    capture_timezone_source: str
+    capture_datetime_source: str
+    gps_datetime_utc: datetime | None
+    gps_timezone: str | None
 
 
 def _normalize_image_for_format(image: Image.Image, image_format: str) -> Image.Image:
@@ -125,6 +150,59 @@ def _rational_to_float(value: object) -> float | None:
     return None
 
 
+def _format_timezone_offset(offset: timedelta) -> str | None:
+    total_minutes = round(offset.total_seconds() / 60)
+    rounded_minutes = int(round(total_minutes / 15) * 15)
+    if rounded_minutes < -14 * 60 or rounded_minutes > 14 * 60:
+        return None
+
+    sign = "+" if rounded_minutes >= 0 else "-"
+    absolute_minutes = abs(rounded_minutes)
+    hours, minutes = divmod(absolute_minutes, 60)
+    return f"{sign}{hours:02d}:{minutes:02d}"
+
+
+def _timezone_info(timezone_name: str | None, value: datetime) -> timezone | ZoneInfo | None:
+    if not timezone_name:
+        return None
+
+    match = EXIF_TIMEZONE_PATTERN.match(timezone_name)
+    if match:
+        sign = 1 if timezone_name[0] == "+" else -1
+        hours = int(timezone_name[1:3])
+        minutes = int(timezone_name[4:6])
+        return timezone(sign * timedelta(hours=hours, minutes=minutes))
+
+    try:
+        return ZoneInfo(timezone_name)
+    except ZoneInfoNotFoundError:
+        return None
+
+
+def _local_to_utc(value: datetime | None, timezone_name: str | None) -> datetime | None:
+    if value is None:
+        return None
+
+    tzinfo = _timezone_info(timezone_name, value)
+    if tzinfo is None:
+        return None
+
+    return value.replace(tzinfo=tzinfo).astimezone(UTC)
+
+
+def _utc_to_local(value: datetime | None, timezone_name: str | None) -> datetime | None:
+    if value is None:
+        return None
+
+    tzinfo = _timezone_info(timezone_name, value)
+    if tzinfo is None:
+        return None
+
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
+    return value.astimezone(tzinfo).replace(tzinfo=None)
+
+
 def _convert_gps_to_decimal(values: object, ref: object) -> float | None:
     if not isinstance(values, (list, tuple)) or len(values) != 3:
         return None
@@ -183,17 +261,143 @@ def _parse_exif_datetime(value: object) -> datetime | None:
         return None
 
 
-def _extract_capture_datetime(image: Image.Image) -> datetime | None:
-    exif = image.getexif()
-    if not exif:
+def _parse_exif_timezone(value: object) -> str | None:
+    if isinstance(value, bytes):
+        text = value.decode("utf-8", errors="ignore").strip()
+    elif isinstance(value, str):
+        text = value.strip()
+    else:
         return None
 
-    for tag in (EXIF_DATETIME_ORIGINAL, EXIF_DATETIME_DIGITIZED, EXIF_DATETIME):
-        parsed = _parse_exif_datetime(exif.get(tag))
-        if parsed is not None:
-            return parsed
+    return text if EXIF_TIMEZONE_PATTERN.match(text) else None
 
-    return None
+
+def _extract_gps_info(exif: object) -> dict[object, object] | None:
+    gps_info: dict[object, object] | None = None
+    if hasattr(exif, "get_ifd"):
+        try:
+            gps_info = exif.get_ifd(GPS_IFD)
+        except KeyError:
+            gps_info = None
+    if not gps_info and hasattr(exif, "get"):
+        gps_info = exif.get(GPS_IFD)
+    return gps_info if isinstance(gps_info, dict) else None
+
+
+def _parse_gps_datetime(gps_info: dict[object, object]) -> datetime | None:
+    date_value = gps_info.get(GPS_DATESTAMP)
+    time_value = gps_info.get(GPS_TIMESTAMP)
+    if isinstance(date_value, bytes):
+        date_text = date_value.decode("utf-8", errors="ignore").strip()
+    elif isinstance(date_value, str):
+        date_text = date_value.strip()
+    else:
+        return None
+
+    if not isinstance(time_value, (list, tuple)) or len(time_value) != 3:
+        return None
+
+    hour = _rational_to_float(time_value[0])
+    minute = _rational_to_float(time_value[1])
+    second = _rational_to_float(time_value[2])
+    if hour is None or minute is None or second is None:
+        return None
+
+    try:
+        date_part = datetime.strptime(date_text, "%Y:%m:%d")
+        parsed = date_part.replace(
+            hour=int(hour),
+            minute=int(minute),
+            second=int(second),
+            microsecond=int((second % 1) * 1_000_000),
+        )
+        return parsed.replace(tzinfo=UTC)
+    except ValueError:
+        return None
+
+
+def _infer_gps_timezone(
+    gps_datetime_utc: datetime | None,
+    capture_datetime_local: datetime,
+) -> str | None:
+    if gps_datetime_utc is None:
+        return None
+
+    return _format_timezone_offset(capture_datetime_local - gps_datetime_utc.replace(tzinfo=None))
+
+
+def _extract_capture_datetime_local(image: Image.Image) -> tuple[datetime | None, str | None]:
+    metadata = _extract_image_capture_metadata(image)
+    return metadata.capture_datetime_local, metadata.timezone
+
+
+def _extract_image_capture_metadata(
+    image: Image.Image,
+    parent_timezone: str | None = None,
+) -> ImageCaptureMetadata:
+    exif = image.getexif()
+    if not exif:
+        return ImageCaptureMetadata(
+            capture_datetime_local=None,
+            timezone=parent_timezone,
+            capture_datetime_utc=None,
+            capture_timezone_source="parent" if parent_timezone else "unknown",
+            capture_datetime_source="unknown",
+            gps_datetime_utc=None,
+            gps_timezone=None,
+        )
+
+    gps_info = _extract_gps_info(exif)
+    gps_datetime_utc = _parse_gps_datetime(gps_info) if gps_info else None
+
+    for datetime_tag, timezone_tag in (
+        (EXIF_DATETIME_ORIGINAL, EXIF_OFFSET_TIME_ORIGINAL),
+        (EXIF_DATETIME_DIGITIZED, EXIF_OFFSET_TIME_DIGITIZED),
+        (EXIF_DATETIME, EXIF_OFFSET_TIME),
+    ):
+        parsed = _parse_exif_datetime(exif.get(datetime_tag))
+        if parsed is not None:
+            timezone = _parse_exif_timezone(exif.get(timezone_tag))
+            timezone_source = "embedded" if timezone else "unknown"
+            gps_timezone = _infer_gps_timezone(gps_datetime_utc, parsed)
+            if timezone is None:
+                timezone = gps_timezone
+                timezone_source = "gps" if timezone else "unknown"
+            if timezone is None and parent_timezone:
+                timezone = parent_timezone
+                timezone_source = "parent"
+
+            return ImageCaptureMetadata(
+                capture_datetime_local=parsed,
+                timezone=timezone,
+                capture_datetime_utc=_local_to_utc(parsed, timezone),
+                capture_timezone_source=timezone_source,
+                capture_datetime_source="exif_local",
+                gps_datetime_utc=gps_datetime_utc,
+                gps_timezone=gps_timezone,
+            )
+
+    if gps_datetime_utc is not None:
+        timezone_name = parent_timezone
+        return ImageCaptureMetadata(
+            capture_datetime_local=_utc_to_local(gps_datetime_utc, timezone_name),
+            timezone=timezone_name,
+            capture_datetime_utc=gps_datetime_utc,
+            capture_timezone_source="parent" if timezone_name else "unknown",
+            capture_datetime_source="gps",
+            gps_datetime_utc=gps_datetime_utc,
+            gps_timezone=timezone_name,
+        )
+
+    return ImageCaptureMetadata(
+        capture_datetime_local=None,
+        timezone=parent_timezone,
+        capture_datetime_utc=None,
+        capture_timezone_source="parent" if parent_timezone else "unknown",
+        capture_datetime_source="unknown",
+        gps_datetime_utc=None,
+        gps_timezone=None,
+    )
 
 
 def _build_storage_path(storage_prefix: str, object_id: str, suffix: str, extension: str) -> str:
@@ -208,6 +412,7 @@ async def create_uploaded_image(
     resize_height: int | None,
     storage_prefix: str,
     create_thumbnails: bool = True,
+    parent_timezone: str | None = None,
 ) -> UploadedImagePayload:
     payload = await upload.read()
     if not payload:
@@ -232,7 +437,7 @@ async def create_uploaded_image(
 
     extension, content_type = SUPPORTED_IMAGE_FORMATS[image_format]
     gps_latitude, gps_longitude = _extract_gps_coordinates(source_image)
-    capture_datetime = _extract_capture_datetime(source_image)
+    capture_metadata = _extract_image_capture_metadata(source_image, parent_timezone)
     transposed_image = ImageOps.exif_transpose(source_image)
     original_image = _normalize_image_for_format(transposed_image, image_format)
 
@@ -307,7 +512,13 @@ async def create_uploaded_image(
         original_filename=upload.filename,
         gps_latitude=gps_latitude,
         gps_longitude=gps_longitude,
-        capture_datetime=capture_datetime,
+        capture_datetime_local=capture_metadata.capture_datetime_local,
+        timezone=capture_metadata.timezone,
+        capture_datetime_utc=capture_metadata.capture_datetime_utc,
+        capture_timezone_source=capture_metadata.capture_timezone_source,
+        capture_datetime_source=capture_metadata.capture_datetime_source,
+        gps_datetime_utc=capture_metadata.gps_datetime_utc,
+        gps_timezone=capture_metadata.gps_timezone,
     )
 
 
@@ -345,7 +556,13 @@ def rotate_uploaded_image(
     original_filename: str | None,
     gps_latitude: float | None,
     gps_longitude: float | None,
-    capture_datetime: datetime | None,
+    capture_datetime_local: datetime | None,
+    timezone: str | None,
+    capture_datetime_utc: datetime | None,
+    capture_timezone_source: str,
+    capture_datetime_source: str,
+    gps_datetime_utc: datetime | None,
+    gps_timezone: str | None,
     direction: str = "right",
     create_thumbnails: bool = True,
 ) -> UploadedImagePayload:
@@ -443,5 +660,11 @@ def rotate_uploaded_image(
         original_filename=original_filename,
         gps_latitude=gps_latitude,
         gps_longitude=gps_longitude,
-        capture_datetime=capture_datetime,
+        capture_datetime_local=capture_datetime_local,
+        timezone=timezone,
+        capture_datetime_utc=capture_datetime_utc,
+        capture_timezone_source=capture_timezone_source,
+        capture_datetime_source=capture_datetime_source,
+        gps_datetime_utc=gps_datetime_utc,
+        gps_timezone=gps_timezone,
     )

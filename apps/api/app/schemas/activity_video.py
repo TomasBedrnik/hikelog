@@ -22,7 +22,13 @@ class ActivityVideoRead(BaseModel):
     original_filename: str | None
     gps_latitude: float | None = Field(default=None, ge=-90, le=90)
     gps_longitude: float | None = Field(default=None, ge=-180, le=180)
-    capture_datetime: datetime | None = None
+    capture_datetime_local: datetime | None = None
+    timezone: str | None = None
+    capture_datetime_utc: datetime | None = None
+    capture_timezone_source: str | None = None
+    capture_datetime_source: str | None = None
+    gps_datetime_utc: datetime | None = None
+    gps_timezone: str | None = None
     created_at: datetime
 
 

@@ -509,7 +509,7 @@ export function ActivityPhotoManager({
 
                     <div className="flex flex-col p-2 pl-4 text-sm text-stone-700 items-start">
                       <span>{photo.original_filename ?? ""}</span>
-                      <span>{formatDateTime(photo.capture_datetime, locale)}</span>
+                      <span>{formatDateTime(photo.capture_datetime_local, locale)}</span>
                     </div>
                     <div className="absolute left-3 top-3 flex gap-2">
                       <button

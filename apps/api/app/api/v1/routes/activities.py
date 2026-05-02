@@ -42,7 +42,7 @@ from app.schemas.activity_audio import ActivityAudioRead
 from app.schemas.activity_photo import ActivityPhotoOrderUpdate, ActivityPhotoRead
 from app.schemas.activity_video import ActivityVideoOrderUpdate, ActivityVideoRead
 from app.schemas.comment import CommentRead
-from app.services.activity_timezones import activity_read_overrides
+from app.services.activity_timezones import activity_read_overrides, effective_activity_timezone
 from app.services.audio_uploads import create_uploaded_audio, delete_uploaded_audio_file
 from app.services.gpx_polylines import build_polylines_from_gpx
 from app.services.image_uploads import (
@@ -290,14 +290,14 @@ def _delete_activity_photo_files(photo: ActivityPhoto) -> None:
 
 
 def _activity_photo_sort_key(photo: ActivityPhoto) -> tuple[int, datetime, datetime, int]:
-    capture_datetime = photo.capture_datetime or datetime.max
-    has_capture_datetime = 0 if photo.capture_datetime is not None else 1
+    capture_datetime = photo.capture_datetime_local or datetime.max
+    has_capture_datetime = 0 if photo.capture_datetime_local is not None else 1
     return (has_capture_datetime, capture_datetime, photo.created_at, photo.id)
 
 
 def _activity_video_sort_key(video: ActivityVideo) -> tuple[int, datetime, datetime, int]:
-    capture_datetime = video.capture_datetime or datetime.max
-    has_capture_datetime = 0 if video.capture_datetime is not None else 1
+    capture_datetime = video.capture_datetime_local or datetime.max
+    has_capture_datetime = 0 if video.capture_datetime_local is not None else 1
     return (has_capture_datetime, capture_datetime, video.created_at, video.id)
 
 
@@ -328,7 +328,7 @@ async def upload_activity_photos(
     resize_width: Annotated[int | None, Form()] = None,
     resize_height: Annotated[int | None, Form()] = None,
 ) -> list[ActivityPhotoRead]:
-    await _get_activity_or_404(session, activity_id)
+    activity = await _get_activity_or_404(session, activity_id)
 
     if not files:
         raise HTTPException(
@@ -360,6 +360,7 @@ async def upload_activity_photos(
                 resize_width=resize_width,
                 resize_height=resize_height,
                 storage_prefix=f"activities/{activity_id}",
+                parent_timezone=effective_activity_timezone(activity),
             )
             photo = ActivityPhoto(
                 activity_id=activity_id,
@@ -442,7 +443,7 @@ async def upload_activity_videos(
     session: Annotated[AsyncSession, Depends(get_session)],
     files: Annotated[list[UploadFile], File(...)],
 ) -> list[ActivityVideoRead]:
-    await _get_activity_or_404(session, activity_id)
+    activity = await _get_activity_or_404(session, activity_id)
 
     if not files:
         raise HTTPException(
@@ -477,6 +478,7 @@ async def upload_activity_videos(
             uploaded = await create_uploaded_video(
                 upload=file,
                 storage_prefix=f"activities/{activity_id}/videos",
+                parent_timezone=effective_activity_timezone(activity),
             )
             video = ActivityVideo(
                 activity_id=activity_id,
@@ -804,7 +806,13 @@ async def rotate_activity_photo(
         original_filename=photo.original_filename,
         gps_latitude=photo.gps_latitude,
         gps_longitude=photo.gps_longitude,
-        capture_datetime=photo.capture_datetime,
+        capture_datetime_local=photo.capture_datetime_local,
+        timezone=photo.timezone,
+        capture_datetime_utc=photo.capture_datetime_utc,
+        capture_timezone_source=photo.capture_timezone_source or "unknown",
+        capture_datetime_source=photo.capture_datetime_source or "unknown",
+        gps_datetime_utc=photo.gps_datetime_utc,
+        gps_timezone=photo.gps_timezone,
         direction=direction,
     )
 

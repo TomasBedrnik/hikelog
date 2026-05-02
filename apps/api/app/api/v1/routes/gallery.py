@@ -21,6 +21,18 @@ from app.services.image_uploads import (
 router = APIRouter()
 
 
+def _non_activity_image_payload(uploaded: object) -> dict[str, object]:
+    payload = asdict(uploaded)
+    payload.pop("capture_datetime_local", None)
+    payload.pop("timezone", None)
+    payload.pop("capture_datetime_utc", None)
+    payload.pop("capture_timezone_source", None)
+    payload.pop("capture_datetime_source", None)
+    payload.pop("gps_datetime_utc", None)
+    payload.pop("gps_timezone", None)
+    return payload
+
+
 def _delete_gallery_image_files(image: GalleryImage) -> None:
     delete_uploaded_image_files(
         storage_path=image.storage_path,
@@ -74,7 +86,7 @@ async def upload_gallery_images(
                 resize_height=resize_height,
                 storage_prefix="gallery",
             )
-            image = GalleryImage(**asdict(uploaded))
+            image = GalleryImage(**_non_activity_image_payload(uploaded))
             session.add(image)
             created_images.append(image)
 
@@ -128,10 +140,16 @@ async def rotate_gallery_image(
         original_filename=image.original_filename,
         gps_latitude=image.gps_latitude,
         gps_longitude=image.gps_longitude,
-        capture_datetime=None,
+        capture_datetime_local=None,
+        timezone=None,
+        capture_datetime_utc=None,
+        capture_timezone_source="unknown",
+        capture_datetime_source="unknown",
+        gps_datetime_utc=None,
+        gps_timezone=None,
     )
 
-    for field, value in asdict(rotated).items():
+    for field, value in _non_activity_image_payload(rotated).items():
         setattr(image, field, value)
 
     await session.commit()

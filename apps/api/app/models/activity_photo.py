@@ -39,9 +39,19 @@ class ActivityPhoto(Base):
     original_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
     gps_latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     gps_longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
-    capture_datetime: Mapped[datetime | None] = mapped_column(
+    capture_datetime_local: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=False), nullable=True
     )
+    timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    capture_datetime_utc: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    capture_timezone_source: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    capture_datetime_source: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    gps_datetime_utc: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    gps_timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

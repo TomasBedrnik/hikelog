@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import re
 import subprocess
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta, timezone
 from io import BytesIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from uuid import uuid4
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import HTTPException, UploadFile, status
 from PIL import Image
@@ -43,6 +45,7 @@ THUMBNAIL_MAX_SIZE = (480, 480)
 TINY_THUMBNAIL_MAX_SIZE = (96, 96)
 THUMBNAIL_CONTENT_TYPE = "image/jpeg"
 UPLOAD_CHUNK_SIZE = 1024 * 1024
+TIMEZONE_PATTERN = re.compile(r"(?P<timezone>Z|[+-]\d{2}:?\d{2})$")
 
 
 @dataclass(slots=True)
@@ -62,7 +65,24 @@ class UploadedVideoPayload:
     original_filename: str | None
     gps_latitude: float | None
     gps_longitude: float | None
-    capture_datetime: datetime | None
+    capture_datetime_local: datetime | None
+    timezone: str | None
+    capture_datetime_utc: datetime | None
+    capture_timezone_source: str
+    capture_datetime_source: str
+    gps_datetime_utc: datetime | None
+    gps_timezone: str | None
+
+
+@dataclass(slots=True)
+class VideoCaptureMetadata:
+    capture_datetime_local: datetime | None
+    timezone: str | None
+    capture_datetime_utc: datetime | None
+    capture_timezone_source: str
+    capture_datetime_source: str
+    gps_datetime_utc: datetime | None
+    gps_timezone: str | None
 
 
 def _normalized_extension(filename: str | None) -> str | None:
@@ -72,13 +92,84 @@ def _normalized_extension(filename: str | None) -> str | None:
     return suffix or None
 
 
-def _parse_capture_datetime(value: object) -> datetime | None:
-    if not isinstance(value, str):
-        return None
-    text = value.strip()
-    if not text:
+def _normalize_timezone(value: str) -> str | None:
+    if value == "Z":
+        return "+00:00"
+    if len(value) == 5 and value[0] in {"+", "-"}:
+        return f"{value[:3]}:{value[3:]}"
+    if len(value) == 6 and value[0] in {"+", "-"} and value[3] == ":":
+        return value
+    return None
+
+
+def _format_timezone_offset(offset: timedelta) -> str | None:
+    total_minutes = round(offset.total_seconds() / 60)
+    rounded_minutes = int(round(total_minutes / 15) * 15)
+    if rounded_minutes < -14 * 60 or rounded_minutes > 14 * 60:
         return None
 
+    sign = "+" if rounded_minutes >= 0 else "-"
+    absolute_minutes = abs(rounded_minutes)
+    hours, minutes = divmod(absolute_minutes, 60)
+    return f"{sign}{hours:02d}:{minutes:02d}"
+
+
+def _timezone_info(timezone_name: str | None, value: datetime) -> timezone | ZoneInfo | None:
+    if not timezone_name:
+        return None
+
+    normalized = _normalize_timezone(timezone_name)
+    if normalized is not None:
+        sign = 1 if normalized[0] == "+" else -1
+        hours = int(normalized[1:3])
+        minutes = int(normalized[4:6])
+        return timezone(sign * timedelta(hours=hours, minutes=minutes))
+
+    try:
+        return ZoneInfo(timezone_name)
+    except ZoneInfoNotFoundError:
+        return None
+
+
+def _local_to_utc(value: datetime | None, timezone_name: str | None) -> datetime | None:
+    if value is None:
+        return None
+
+    tzinfo = _timezone_info(timezone_name, value)
+    if tzinfo is None:
+        return None
+
+    return value.replace(tzinfo=tzinfo).astimezone(UTC)
+
+
+def _utc_to_local(value: datetime | None, timezone_name: str | None) -> datetime | None:
+    if value is None:
+        return None
+
+    tzinfo = _timezone_info(timezone_name, value)
+    if tzinfo is None:
+        return None
+
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
+    return value.astimezone(tzinfo).replace(tzinfo=None)
+
+
+def _extract_timezone_from_datetime_text(value: str) -> str | None:
+    match = TIMEZONE_PATTERN.search(value.strip())
+    if match is None:
+        return None
+    return _normalize_timezone(match.group("timezone"))
+
+
+def _parse_capture_datetime_local(value: object) -> tuple[datetime | None, str | None]:
+    if not isinstance(value, str):
+        return None, None
+    text = value.strip()
+    if not text:
+        return None, None
+
+    parsed_timezone = _extract_timezone_from_datetime_text(text)
     formats = (
         "%Y:%m:%d %H:%M:%S%z",
         "%Y:%m:%d %H:%M:%S",
@@ -88,17 +179,67 @@ def _parse_capture_datetime(value: object) -> datetime | None:
     for fmt in formats:
         try:
             parsed = datetime.strptime(text, fmt)
-            if parsed.tzinfo is not None:
-                return parsed.astimezone().replace(tzinfo=None)
-            return parsed
+            return parsed.replace(tzinfo=None), parsed_timezone
         except ValueError:
             continue
-    return None
+    return None, None
+
+
+def _capture_metadata_from_datetime_text(
+    value: object,
+    *,
+    parent_timezone: str | None,
+    source: str,
+) -> VideoCaptureMetadata | None:
+    parsed_local, parsed_timezone = _parse_capture_datetime_local(value)
+    if parsed_local is None:
+        return None
+
+    if parsed_timezone is not None:
+        return VideoCaptureMetadata(
+            capture_datetime_local=parsed_local,
+            timezone=parsed_timezone,
+            capture_datetime_utc=_local_to_utc(parsed_local, parsed_timezone),
+            capture_timezone_source="embedded",
+            capture_datetime_source=source,
+            gps_datetime_utc=None,
+            gps_timezone=None,
+        )
+
+    capture_datetime_utc = parsed_local.replace(tzinfo=UTC)
+    return VideoCaptureMetadata(
+        capture_datetime_local=(
+            _utc_to_local(capture_datetime_utc, parent_timezone)
+            if parent_timezone
+            else parsed_local
+        ),
+        timezone=parent_timezone,
+        capture_datetime_utc=capture_datetime_utc,
+        capture_timezone_source="parent" if parent_timezone else "unknown",
+        capture_datetime_source="mp4_utc",
+        gps_datetime_utc=None,
+        gps_timezone=None,
+    )
 
 
 def _extract_video_metadata(
     video_path: Path,
-) -> tuple[float | None, float | None, datetime | None, int | None, int | None, float | None]:
+    *,
+    parent_timezone: str | None = None,
+) -> tuple[
+    float | None,
+    float | None,
+    datetime | None,
+    str | None,
+    datetime | None,
+    str,
+    str,
+    datetime | None,
+    str | None,
+    int | None,
+    int | None,
+    float | None,
+]:
     try:
         result = subprocess.run(
             ["exiftool", "-j", "-n", str(video_path)],
@@ -127,7 +268,7 @@ def _extract_video_metadata(
         ) from exc
 
     if not parsed or not isinstance(parsed, list) or not isinstance(parsed[0], dict):
-        return None, None, None, None, None, None
+        return None, None, None, None, None, "unknown", "unknown", None, None, None, None, None
 
     metadata = parsed[0]
     gps_latitude = metadata.get("GPSLatitude")
@@ -135,7 +276,7 @@ def _extract_video_metadata(
     width = metadata.get("ImageWidth") or metadata.get("SourceImageWidth")
     height = metadata.get("ImageHeight") or metadata.get("SourceImageHeight")
     duration_seconds = metadata.get("Duration")
-    capture_datetime = None
+    capture_metadata = None
     for key in (
         "DateTimeOriginal",
         "CreateDate",
@@ -143,14 +284,40 @@ def _extract_video_metadata(
         "TrackCreateDate",
         "CreationDate",
     ):
-        capture_datetime = _parse_capture_datetime(metadata.get(key))
-        if capture_datetime is not None:
+        source = (
+            "mp4_utc"
+            if key in {"CreateDate", "MediaCreateDate", "TrackCreateDate"}
+            else "exif_local"
+        )
+        capture_metadata = _capture_metadata_from_datetime_text(
+            metadata.get(key),
+            parent_timezone=parent_timezone,
+            source=source,
+        )
+        if capture_metadata is not None:
             break
+
+    if capture_metadata is None:
+        capture_metadata = VideoCaptureMetadata(
+            capture_datetime_local=None,
+            timezone=parent_timezone,
+            capture_datetime_utc=None,
+            capture_timezone_source="parent" if parent_timezone else "unknown",
+            capture_datetime_source="unknown",
+            gps_datetime_utc=None,
+            gps_timezone=None,
+        )
 
     return (
         float(gps_latitude) if isinstance(gps_latitude, (int, float)) else None,
         float(gps_longitude) if isinstance(gps_longitude, (int, float)) else None,
-        capture_datetime,
+        capture_metadata.capture_datetime_local,
+        capture_metadata.timezone,
+        capture_metadata.capture_datetime_utc,
+        capture_metadata.capture_timezone_source,
+        capture_metadata.capture_datetime_source,
+        capture_metadata.gps_datetime_utc,
+        capture_metadata.gps_timezone,
         int(width) if isinstance(width, (int, float)) else None,
         int(height) if isinstance(height, (int, float)) else None,
         float(duration_seconds) if isinstance(duration_seconds, (int, float)) else None,
@@ -264,7 +431,12 @@ def _extract_video_thumbnails(video_path: Path) -> tuple[bytes, bytes]:
             return _render_jpeg_bytes(thumbnail_image), _render_jpeg_bytes(tiny_thumbnail_image)
 
 
-async def create_uploaded_video(*, upload: UploadFile, storage_prefix: str) -> UploadedVideoPayload:
+async def create_uploaded_video(
+    *,
+    upload: UploadFile,
+    storage_prefix: str,
+    parent_timezone: str | None = None,
+) -> UploadedVideoPayload:
     try:
         content_type = (upload.content_type or "").strip().lower()
         extension = SUPPORTED_VIDEO_CONTENT_TYPES.get(content_type)
@@ -308,11 +480,17 @@ async def create_uploaded_video(*, upload: UploadFile, storage_prefix: str) -> U
             (
                 gps_latitude,
                 gps_longitude,
-                capture_datetime,
+                capture_datetime_local,
+                video_timezone,
+                capture_datetime_utc,
+                capture_timezone_source,
+                capture_datetime_source,
+                gps_datetime_utc,
+                gps_timezone,
                 width,
                 height,
                 duration_seconds,
-            ) = _extract_video_metadata(video_path)
+            ) = _extract_video_metadata(video_path, parent_timezone=parent_timezone)
             thumbnail_bytes, tiny_thumbnail_bytes = _extract_video_thumbnails(video_path)
 
             uploaded_paths: list[str] = []
@@ -364,7 +542,13 @@ async def create_uploaded_video(*, upload: UploadFile, storage_prefix: str) -> U
         original_filename=upload.filename,
         gps_latitude=gps_latitude,
         gps_longitude=gps_longitude,
-        capture_datetime=capture_datetime,
+        capture_datetime_local=capture_datetime_local,
+        timezone=video_timezone,
+        capture_datetime_utc=capture_datetime_utc,
+        capture_timezone_source=capture_timezone_source,
+        capture_datetime_source=capture_datetime_source,
+        gps_datetime_utc=gps_datetime_utc,
+        gps_timezone=gps_timezone,
     )
 
 
