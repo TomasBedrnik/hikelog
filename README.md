@@ -225,7 +225,7 @@ docker build \
   --build-arg NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com \
   --build-arg NEXT_PUBLIC_MAPYCOM_API_KEY=your_mapycom_api_key \
   --build-arg NEXT_PUBLIC_WEBPUSHR_PUBLIC_KEY=your_webpushr_public_key \
-  --build-arg GOOGLE_ANALYTICS_ID=G-XXXXXXXXXX \
+  --build-arg NEXT_PUBLIC_GOOGLE_ANALYTICS_ID=G-XXXXXXXXXX \
   -t yourdockerhubuser/hikelog-web:latest \
   .
 docker push yourdockerhubuser/hikelog-web:latest

@@ -42,7 +42,7 @@ export default async function RootLayout({
   const acceptLanguage = headerStore.get("accept-language");
   const initialLocale = normalizeLocale(acceptLanguage);
   const webpushrPublicKey = process.env.NEXT_PUBLIC_WEBPUSHR_PUBLIC_KEY;
-  const googleAnalyticsId = process.env.GOOGLE_ANALYTICS_ID;
+  const googleAnalyticsId = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID;
 
   return (
     <html lang={initialLocale}>
