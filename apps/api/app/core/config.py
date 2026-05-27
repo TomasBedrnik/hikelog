@@ -13,6 +13,76 @@ load_dotenv(BASE_DIR / ".env", override=False)
 
 class Settings(BaseModel):
     google_oauth_client_id: str = Field(..., alias="GOOGLE_OAUTH_CLIENT_ID")
+    google_cloud_project_id: str | None = Field(default=None, alias="GOOGLE_CLOUD_PROJECT_ID")
+    google_cloud_private_key_id: str | None = Field(
+        default=None, alias="GOOGLE_CLOUD_PRIVATE_KEY_ID"
+    )
+    google_cloud_private_key: str | None = Field(default=None, alias="GOOGLE_CLOUD_PRIVATE_KEY")
+    google_cloud_client_email: str | None = Field(default=None, alias="GOOGLE_CLOUD_CLIENT_EMAIL")
+    google_cloud_client_id: str | None = Field(default=None, alias="GOOGLE_CLOUD_CLIENT_ID")
+    google_cloud_client_x509_cert_url: str | None = Field(
+        default=None, alias="GOOGLE_CLOUD_CLIENT_X509_CERT_URL"
+    )
+    google_application_credentials: str | None = Field(
+        default=None, alias="GOOGLE_APPLICATION_CREDENTIALS"
+    )
+    admin_session_secret: str | None = Field(default=None, alias="ADMIN_SESSION_SECRET")
+    admin_session_days: int = Field(default=30, alias="ADMIN_SESSION_DAYS")
+    firebase_project_id: str = Field(..., alias="FIREBASE_PROJECT_ID")
+    firebase_private_key_id: str = Field(..., alias="FIREBASE_PRIVATE_KEY_ID")
+    firebase_private_key: str = Field(..., alias="FIREBASE_PRIVATE_KEY")
+    firebase_client_email: str = Field(..., alias="FIREBASE_CLIENT_EMAIL")
+    firebase_client_id: str = Field(..., alias="FIREBASE_CLIENT_ID")
+    firebase_client_x509_cert_url: str = Field(..., alias="FIREBASE_CLIENT_X509_CERT_URL")
+    firebase_storage_bucket: str = Field(..., alias="FIREBASE_STORAGE_BUCKET")
+    cors_allowed_origins_raw: str | None = Field(default=None, alias="CORS_ALLOWED_ORIGINS")
+    strava_client_id: str | None = Field(default=None, alias="STRAVA_CLIENT_ID")
+    strava_client_secret: str | None = Field(default=None, alias="STRAVA_CLIENT_SECRET")
+    strava_redirect_uri: str | None = Field(default=None, alias="STRAVA_REDIRECT_URI")
+    strava_admin_redirect_url: str | None = Field(default=None, alias="STRAVA_ADMIN_REDIRECT_URL")
+    webpushr_api_key: str | None = Field(default=None, alias="WEBPUSHR_API_KEY")
+    webpushr_auth_token: str | None = Field(default=None, alias="WEBPUSHR_AUTH_TOKEN")
+    speech_to_text_location: str = Field(default="global", alias="SPEECH_TO_TEXT_LOCATION")
+    openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
+    openai_model: str = Field(default="gpt-4.1-mini", alias="OPENAI_MODEL")
+
+    def firebase_private_key_value(self) -> str:
+        return self.firebase_private_key.replace("\\n", "\n")
+
+    def google_cloud_project_id_value(self) -> str:
+        return self.google_cloud_project_id or self.firebase_project_id
+
+    def google_cloud_private_key_value(self) -> str:
+        return (self.google_cloud_private_key or self.firebase_private_key).replace("\\n", "\n")
+
+    def admin_session_secret_value(self) -> str:
+        if self.admin_session_secret:
+            return self.admin_session_secret
+        return f"{self.google_oauth_client_id}:{self.firebase_private_key}"
+
+    def cors_allowed_origins(self) -> list[str]:
+        raw = self.cors_allowed_origins_raw
+        if not raw:
+            return []
+        return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+    def strava_enabled(self) -> bool:
+        return bool(
+            self.strava_client_id and self.strava_client_secret and self.strava_redirect_uri
+        )
+
+    def strava_admin_redirect_url_value(self) -> str | None:
+        if self.strava_admin_redirect_url:
+            return self.strava_admin_redirect_url
+
+        origins = self.cors_allowed_origins()
+        if not origins:
+            return None
+
+        return f"{origins[0].rstrip('/')}/admin/strava"
+
+    def webpushr_enabled(self) -> bool:
+        return bool(self.webpushr_api_key and self.webpushr_auth_token)
 
 
 def load_settings() -> Settings:

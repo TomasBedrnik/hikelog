@@ -1,84 +1,83 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { clearIdToken, getIdToken } from "@/lib/auth";
-
-type AdminUserRead = {
-  id: number;
-  email: string;
-  google_sub: string | null;
-  created_at: string;
-  last_login_at: string | null;
-};
+import Link from "next/link";
+import { useI18n } from "@/components/i18n-provider";
+import { isBootstrapOnly } from "@/lib/auth";
 
 export default function AdminPage() {
-  const router = useRouter();
-  const [admins, setAdmins] = useState<AdminUserRead[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { dict } = useI18n();
+  const [bootstrapOnly, setBootstrapOnly] = useState(false);
 
   useEffect(() => {
-    const token = getIdToken();
-    if (!token) {
-      router.push("/login");
-      return;
-    }
+    setBootstrapOnly(isBootstrapOnly());
+  }, []);
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.API_BASE_URL;
-
-    fetch(`${baseUrl}/api/v1/admin-users`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      cache: "no-store",
-    })
-      .then(async (res) => {
-        if (res.status === 401 || res.status === 403) {
-          clearIdToken();
-          router.push("/login");
-          return;
-        }
-        if (!res.ok) {
-          throw new Error(`Request failed: ${res.status}`);
-        }
-        const data = (await res.json()) as AdminUserRead[];
-        setAdmins(data);
-      })
-      .catch((e: unknown) => {
-        setError(e instanceof Error ? e.message : "Unknown error");
-      });
-  }, [router]);
+  const sections = bootstrapOnly
+    ? [
+        {
+          href: "/admin/users",
+          title: dict.adminHome.usersTitle,
+          description: dict.adminHome.bootstrapUsersDescription,
+        },
+      ]
+    : [
+        {
+          href: "/admin/users",
+          title: dict.adminHome.usersTitle,
+          description: dict.adminHome.usersDescription,
+        },
+        {
+          href: "/admin/site",
+          title: dict.adminHome.siteTitle,
+          description: dict.adminHome.siteDescription,
+        },
+        {
+          href: "/admin/trips",
+          title: dict.adminHome.tripsTitle,
+          description: dict.adminHome.tripsDescription,
+        },
+        {
+          href: "/admin/activities",
+          title: dict.adminHome.activitiesTitle,
+          description: dict.adminHome.activitiesDescription,
+        },
+        {
+          href: "/admin/strava",
+          title: dict.adminHome.stravaTitle,
+          description: dict.adminHome.stravaDescription,
+        },
+        {
+          href: "/admin/webpushr",
+          title: dict.adminHome.webpushrTitle,
+          description: dict.adminHome.webpushrDescription,
+        },
+        {
+          href: "/admin/gallery",
+          title: dict.adminHome.galleryTitle,
+          description: dict.adminHome.galleryDescription,
+        },
+      ];
 
   return (
-    <main className="mx-auto max-w-2xl p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Admins</h1>
-        <button
-          className="rounded-md border px-3 py-2 text-sm"
-          onClick={() => {
-            clearIdToken();
-            router.push("/login");
-          }}
-        >
-          Logout
-        </button>
+    <div className="mx-auto mt-6 max-w-5xl border-t border-stone-300 pt-6">
+      <h1 className="text-4xl font-semibold tracking-tight">{dict.adminHome.title}</h1>
+      <p className="mt-3 max-w-2xl text-sm text-stone-600">
+        {bootstrapOnly ? dict.adminHome.bootstrapSubtitle : dict.adminHome.subtitle}
+      </p>
+
+      <div className="mt-8 divide-y border-y border-stone-200">
+        {sections.map((section) => (
+          <Link
+            key={section.href}
+            className="block px-1 py-5 transition hover:bg-stone-50"
+            href={section.href}
+          >
+            <div className="text-xl font-semibold">{section.title}</div>
+            <p className="mt-2 text-sm text-stone-600">{section.description}</p>
+          </Link>
+        ))}
       </div>
-
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
-      {!admins && !error && <p className="mt-4 text-sm text-gray-600">Loading…</p>}
-
-      {admins && (
-        <ul className="mt-6 divide-y rounded-md border">
-          {admins.map((a) => (
-            <li key={a.id} className="p-4">
-              <div className="font-medium">{a.email}</div>
-              <div className="mt-1 text-xs text-gray-600">
-                sub: {a.google_sub ?? "—"} · created: {new Date(a.created_at).toLocaleString()}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </main>
+    </div>
   );
 }

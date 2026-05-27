@@ -1,29 +1,14 @@
-import { getHealth } from "@/lib/api";
+import { HomePageContent } from "@/components/home-page-content";
+import { getPublicGlobalContent } from "@/lib/public-global-content";
+import { listPublicTrips } from "@/lib/public-trips";
+
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const health = await getHealth();
+  const [trips, globalContent] = await Promise.all([
+    listPublicTrips().catch(() => []),
+    getPublicGlobalContent().catch(() => null),
+  ]);
 
-  return (
-    //SOME COMMENT WHICH SHOULD NOT BE HERE
-    <main className="p-8">
-      <h1>HikeLog</h1>
-
-      <p>Hello from the frontend 👋</p>
-
-      <p>
-        <a href="/admin">Administrace</a>
-      </p>
-
-      <h2>Backend status</h2>
-      <pre
-        style={{
-          padding: 12,
-          background: "#f5f5f5",
-          borderRadius: 8,
-        }}
-      >
-        {JSON.stringify(health, null, 2)}
-      </pre>
-    </main>
-  );
+  return <HomePageContent globalContent={globalContent} trips={trips} />;
 }
